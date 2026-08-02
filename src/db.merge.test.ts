@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeImport, parseStateJson, emptyState } from "./db";
+import { mergeImport, parseStateJson, emptyState } from "./lib/appState";
 import type { Transaction } from "./types";
 
 const row = (id: string, description: string): Transaction => ({

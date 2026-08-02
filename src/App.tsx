@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppState, Period, RecurringMark, Transaction } from "./types";
-import {
-  loadState,
-  mergeImport,
-  saveState,
-  setCategoryOverride,
-  setInternalOverride,
-  setRecurringMark,
-  withOverrides,
-} from "./db";
+import { loadState } from "./db";
+import { withOverrides } from "./lib/appState";
+import { api } from "./api";
 import { Dashboard } from "./components/Dashboard";
 import { Transactions } from "./components/Transactions";
 import { Recurring } from "./components/Recurring";
@@ -26,39 +20,55 @@ export default function App() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [migrateCandidate, setMigrateCandidate] = useState<AppState | null>(null);
 
-  useEffect(() => {
-    void loadState().then(setState);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
   }, []);
 
-  const persist = useCallback(async (next: AppState) => {
-    setState(next);
-    await saveState(next);
+  useEffect(() => {
+    void api.getState().then(async (serverState) => {
+      setState(serverState);
+      if (serverState.transactions.length === 0) {
+        const idb = await loadState();
+        if (idb.transactions.length > 0) setMigrateCandidate(idb);
+      }
+    });
   }, []);
 
   const txns = state ? withOverrides(state) : [];
 
   function onImport(rows: Transaction[]) {
-    if (!state) return;
-    const { state: next, added, updated } = mergeImport(state, rows);
-    void persist(next);
-    setToast(`Import: +${added} nuovi, ${updated} aggiornati`);
-    setTimeout(() => setToast(null), 4000);
+    void api.mergeTransactions(rows).then(({ added, updated, state: next }) => {
+      setState(next);
+      showToast(`Import: +${added} nuovi, ${updated} aggiornati`);
+    });
   }
 
   function onCategory(id: string, category: string) {
-    if (!state) return;
-    void persist(setCategoryOverride(state, id, category));
+    void api.setCategory(id, category).then(setState);
   }
 
   function onInternal(id: string, internal: boolean) {
-    if (!state) return;
-    void persist(setInternalOverride(state, id, internal));
+    void api.setInternal(id, internal).then(setState);
   }
 
   function onRecurringMark(key: string, mark: RecurringMark) {
-    if (!state) return;
-    void persist(setRecurringMark(state, key, mark));
+    void api.setRecurring(key, mark).then(setState);
+  }
+
+  function onReplace(next: AppState) {
+    void api.migrate(next, true).then(({ state: applied }) => setState(applied));
+  }
+
+  function onMigrate() {
+    if (!migrateCandidate) return;
+    void api.migrate(migrateCandidate).then(({ state: applied }) => {
+      setState(applied);
+      setMigrateCandidate(null);
+      showToast("Dati migrati dal browser a SQLite");
+    });
   }
 
   if (!state) {
@@ -156,9 +166,17 @@ export default function App() {
         open={settingsOpen}
         state={state}
         onClose={() => setSettingsOpen(false)}
-        onReplace={(next) => void persist(next)}
+        onReplace={onReplace}
       />
 
+      {migrateCandidate && (
+        <div className="toast">
+          <span>Trovati dati salvati nel browser ({migrateCandidate.transactions.length} movimenti).</span>{" "}
+          <button type="button" className="btn primary" onClick={onMigrate}>
+            Migra dati browser → SQLite
+          </button>
+        </div>
+      )}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
