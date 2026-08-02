@@ -1,7 +1,7 @@
 # Design: SQLite + tab Investimenti / PAC / Risparmi
 
 **Data:** 2026-08-02  
-**Stato:** in revisione utente  
+**Stato:** implementato  
 **Progetto:** Finance Cash Flow (`C:\Users\nicho\Documents\Finance`)
 
 ## Contesto

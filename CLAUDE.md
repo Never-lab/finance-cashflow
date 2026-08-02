@@ -10,7 +10,7 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 - **Owner:** Nicholas  
 - **Path:** `C:\Users\nicho\Documents\Finance`  
 - **Lingua UI:** italiano  
-- **Privacy:** tutto nel browser (IndexedDB). Nessun backend, nessun cloud.  
+- **Privacy:** dati locali su disco (`data/finance.db`) + API Node su localhost (`:5174`). Nessun cloud, nessun multi-utente. IndexedDB resta solo per migrazione one-shot da installazioni precedenti.  
 - **Stile UI:** già approvato dall’utente — palette caldo/teal (`styles.css`), brand serif “Cash Flow”, niente tema purple/AI-slop. **Preservare questo look** in evoluzioni UI.
 
 ## Obiettivo prodotto (roadmap)
@@ -24,23 +24,28 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 | **v1.4** | Grafici Getquin-style: Sankey flusso, curva cumulata, barre, breakdown %, heatmap | **Fatta** |
 | **v1.5** | Tab Consigli: advisor locale leak/anomalie/cash flow + score | **Fatta** |
 | v2 | Budget per categoria | Non iniziata |
-| v3 | Dove mettere i soldi (risparmio / investimenti) | Non iniziata |
+| **v3 (parziale)** | Tab **Investimenti**: PAC/ETF/fondi/risparmi, KPI, allocation, P&L, quote Yahoo (+ Finnhub opzionale) | **Fatta** (F1–F3) |
 
 Non anticipare v2/v3 senza richiesta esplicita (YAGNI / ponytail).
 
 ## Stack
 
-- **Vite 6 + React 19 + TypeScript**
-- **idb-keyval** — persistenza IndexedDB (`finance-cashflow-v1`)
-- **recharts** — grafici
-- **vitest** — test unitari parser/stats
-- Nessun router, nessun UI kit, nessun backend
+- **Vite 6 + React 19 + TypeScript** — UI (`:5173`, proxy `/api` → server)
+- **Hono + @hono/node-server** — API REST locale (`:5174`, env `API_PORT`)
+- **better-sqlite3** — SQLite file `data/finance.db`
+- **concurrently** — `npm run dev` avvia web + API insieme
+- **idb-keyval** — solo lettura IndexedDB legacy (`finance-cashflow-v1`) per migrazione one-shot
+- **recharts** — grafici cash flow + investimenti
+- **vitest** — test parser/stats/server
+- Nessun router SPA, nessun UI kit, nessun Postgres/Docker
 
 ### Comandi
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
+npm run dev      # Vite :5173 + API :5174 (concurrently)
+npm run server   # solo API (se UI già su dev:web)
+npm run dev:web  # solo Vite
 npm test
 npm run build
 ```
@@ -52,30 +57,43 @@ Finance/
 ├── CLAUDE.md                 ← questo file
 ├── README.md
 ├── package.json
-├── vite.config.ts
+├── vite.config.ts            ← proxy /api → localhost:5174
 ├── index.html
+├── data/
+│   └── finance.db            ← SQLite runtime (gitignored)
 ├── docs/superpowers/
 │   ├── specs/2026-08-02-cashflow-dashboard-design.md
-│   └── plans/2026-08-02-cashflow-dashboard.md
+│   ├── specs/2026-08-02-sqlite-investimenti-design.md
+│   └── plans/2026-08-02-sqlite-investimenti.md
 ├── fixtures/                 ← CSV di prova (sample ok in git; export reali NO)
 │   ├── mediolanum-sample.csv
 │   ├── revolut-sample.csv
 │   └── Elenco movimenti*.csv ← gitignored (PII)
+├── server/
+│   ├── index.ts              ← Hono app, route /api/*
+│   ├── db.ts                 ← openDb, migrate, getDb
+│   ├── schema.sql
+│   ├── routes/               ← state, instruments, portfolio, quotes, settings
+│   └── lib/                  ← repos, portfolioMath, quotes (yahoo|finnhub)
 └── src/
     ├── main.tsx
-    ├── App.tsx               ← tabs Dashboard | Movimenti, stato, toast
+    ├── App.tsx               ← tabs incl. Investimenti; boot via API; prompt migrazione IDB
+    ├── api.ts                ← client HTTP /api/*
     ├── styles.css            ← design system (non stravolgere)
     ├── types.ts
-    ├── db.ts                 ← load/save, mergeImport, categoryOverrides
+    ├── db.ts                 ← loadState IndexedDB (migrazione) + re-export appState
     ├── components/
     │   ├── Dashboard.tsx
     │   ├── Transactions.tsx
+    │   ├── Investimenti.tsx
+    │   ├── SettingsModal.tsx ← backup JSON, Finnhub key, wipe
     │   └── UploadModal.tsx
     └── lib/
+        ├── appState.ts       ← mergeImport, overrides, export/import JSON
         ├── csv.ts            ← parse amount/date/table (con skip preamble)
         ├── detectBank.ts
         ├── importCsv.ts
-        ├── parseMediolanum.ts  ← formato reale banca
+        ├── parseMediolanum.ts
         ├── parseRevolut.ts
         ├── categorize.ts
         ├── stats.ts
@@ -97,7 +115,8 @@ type Transaction = {
 ```
 
 - **Dedup:** stesso `id` → skip in re-import (`mergeImport`).
-- **Override categoria:** `categoryOverrides[id]` in IndexedDB; sopravvivono al re-import.
+- **Override categoria / internal / recurring:** tabelle SQLite (+ tabelle override); sopravvivono al re-import.
+- **Investimenti:** `instruments`, `holdings`, `contributions`, `quotes_cache`, `settings` — CRUD via `/api/instruments`, summary/history via `/api/portfolio/*`.
 - **Periodi dashboard:** `month` | `3m` | `all`.
 
 ## Banche / CSV
@@ -132,10 +151,11 @@ Parser: `src/lib/parseRevolut.ts`.
 
 ## Design decisions (non riaprire senza motivo)
 
-1. SPA browser-only (non SQLite/server) — scelta utente.  
-2. Cash flow prima di investimenti.  
+1. Persistenza locale SQLite + mini-server Node (non cloud). Parse CSV resta in client; scritture via API.  
+2. Cash flow prima di investimenti (v3 investimenti implementata come tab separata).  
 3. Categorie = keyword rules + tipologia Mediolanum; override manuale in UI.  
-4. Stile visuale attuale = reference: teal `#1d4e4a`, clay `#c45c26`, fondo caldo `#f3efe6`.
+4. Quote: Yahoo default; Finnhub se API key in Settings (solo server, mai nel bundle).  
+5. Stile visuale attuale = reference: teal `#1d4e4a`, clay `#c45c26`, fondo caldo `#f3efe6`.
 
 ## Come lavorare qui (agent)
 
@@ -145,7 +165,7 @@ Ordine di default (allineato a FABLE + Superpowers del parent):
 2. Feature nuove → brainstorming (una domanda alla volta) → spec → plan → codice.  
 3. Fix parser/CSV → TDD sui fixture, poi UI.  
 4. Diff piccoli (ponytail). Niente dipendenze nuove se bastano poche righe.  
-5. Prima di “fatto”: `npm test` + `npm run build` (e smoke su `npm run dev` se UI).  
+5. Prima di “fatto”: `npm test` + `npm run build` (e smoke su `npm run dev` se UI — verifica che l’API risponda su `/api/health`).  
 6. **Niente commit/push** se non chiesto.  
 7. UI: verifica visuale se cambi layout (Playwright MCP ok).  
 8. Rispondi in italiano; codice/commenti in inglese.
@@ -174,15 +194,16 @@ Utile avere dall’utente **solo quando serve**:
 
 1. **CSV Revolut reale** in `fixtures/` (come fatto per Mediolanum) — se l’export Pocket differisce dal sample.  
 2. Per **v2 budget:** limiti mensili desiderati o “parti da media ultimi 3 mesi”.  
-3. Per **v3 investimenti:** orizzonte, rischio, liquidità già da parte (niente consigli regolamentati: solo organizzazione numeri).  
-4. Opzionale: skill di progetto `finance-cashflow` che punta a questo CLAUDE.md + comandi test — **non obbligatoria**; questo file basta.
+3. Opzionale: skill di progetto `finance-cashflow` che punta a questo CLAUDE.md + comandi test — **non obbligatoria**; questo file basta.
 
 Non serve: Open Banking, sync cloud, auth, rewrite React Native.
 
 ## Pitfall noti
 
 - Mediolanum: se cambi header o togli preamble, aggiorna `isMediolanumHeader` + test su fixture.  
-- IndexedDB: clear = “Application → Storage” in DevTools; non c’è reset in-app (ancora).  
+- **Migrazione IndexedDB:** al boot, se SQLite vuoto e IDB ha dati, banner “Importa nel database locale”; Settings → backup JSON usa `POST /api/migrate`. Dopo migrazione i dati vivono in `data/finance.db`.  
+- Backup SQLite: copia `data/finance.db` o export JSON da Settings.  
+- API key Finnhub: opzionale in Settings; senza chiave resta Yahoo.  
 - Periodo default `month`: fixture di test devono avere date nel mese corrente se si fa smoke “Questo mese”.  
 - Chunk recharts grande al build: ok per v1; code-split solo se diventa problema.
 
