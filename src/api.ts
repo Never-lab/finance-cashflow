@@ -10,6 +10,17 @@ import type {
 
 export type InstrumentWithHolding = Instrument & { holding: Holding | null };
 
+export type Settings = { marketProvider: "yahoo" | "finnhub"; hasApiKey: boolean };
+
+export type QuoteBar = {
+  asOf: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number;
+  source: string;
+};
+
 export type PortfolioSummary = {
   totalValue: number;
   totalContributed: number;
@@ -105,4 +116,28 @@ export const api = {
     }).then((r) => json<Contribution>(r)),
   getPortfolioSummary: () =>
     fetch("/api/portfolio/summary").then((r) => json<PortfolioSummary>(r)),
+  getSettings: () => fetch("/api/settings").then((r) => json<Settings>(r)),
+  updateSettings: (patch: { marketApiKey?: string; clearApiKey?: boolean }) =>
+    fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then((r) => json<Settings>(r)),
+  getQuote: (ticker: string) =>
+    fetch(`/api/quotes/${encodeURIComponent(ticker)}`).then((r) => json<QuoteBar>(r)),
+  getQuoteHistory: (ticker: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const qs = params.toString();
+    return fetch(`/api/quotes/${encodeURIComponent(ticker)}/history${qs ? `?${qs}` : ""}`).then(
+      (r) => json<QuoteBar[]>(r),
+    );
+  },
+  refreshQuotes: (tickers?: string[]) =>
+    fetch("/api/quotes/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tickers }),
+    }).then((r) => json<{ updated: string[]; errors: { ticker: string; error: string }[] }>(r)),
 };
