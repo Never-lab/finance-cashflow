@@ -76,3 +76,37 @@ export function buildSummary(
 
   return { totalValue, totalContributed, pnl, pnlPct, cashLiquidity, allocation, lines };
 }
+
+export type HistoryLine = {
+  quantity: number | null;
+  cashBalance: number | null;
+  closes: { asOf: string; close: number }[];
+};
+
+/** Ultima close con asOf <= date (carry-forward); 0 se nessuna quotazione disponibile ancora. */
+function closeOnOrBefore(closes: { asOf: string; close: number }[], date: string): number {
+  let best: { asOf: string; close: number } | null = null;
+  for (const c of closes) {
+    if (c.asOf <= date && (best === null || c.asOf > best.asOf)) {
+      best = c;
+    }
+  }
+  return best?.close ?? 0;
+}
+
+/**
+ * v1: per ogni data, somma su tutte le righe (quantity ?? 0) * closeOnOrBefore(date) + (cashBalance ?? 0).
+ * Le righe senza quantity (cash/fondo) contribuiscono solo con cash_balance, ignorando le closes.
+ */
+export function buildHistory(
+  lines: HistoryLine[],
+  dates: string[],
+): { date: string; value: number }[] {
+  return dates.map((date) => {
+    const value = lines.reduce((sum, line) => {
+      const qtyValue = (line.quantity ?? 0) * closeOnOrBefore(line.closes, date);
+      return sum + qtyValue + (line.cashBalance ?? 0);
+    }, 0);
+    return { date, value: round2(value) };
+  });
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { instrumentValue, buildSummary } from "./portfolioMath";
+import { instrumentValue, buildSummary, buildHistory } from "./portfolioMath";
 import type { Holding, Instrument } from "../../src/types";
 
 function makeInstrument(overrides: Partial<Instrument> = {}): Instrument {
@@ -150,5 +150,85 @@ describe("buildSummary", () => {
     expect(summary.cashLiquidity).toBe(0);
     expect(summary.allocation).toHaveLength(0);
     expect(summary.lines).toHaveLength(0);
+  });
+});
+
+describe("buildHistory", () => {
+  it("quantity fissa x closes: value = qty * close per ogni data", () => {
+    const lines = [
+      {
+        quantity: 10,
+        cashBalance: null,
+        closes: [
+          { asOf: "2026-01-01", close: 10 },
+          { asOf: "2026-01-02", close: 12 },
+        ],
+      },
+    ];
+    const history = buildHistory(lines, ["2026-01-01", "2026-01-02"]);
+    expect(history).toEqual([
+      { date: "2026-01-01", value: 100 },
+      { date: "2026-01-02", value: 120 },
+    ]);
+  });
+
+  it("data senza close disponibile (prima della prima quotazione): valore 0 per la quota a quantity", () => {
+    const lines = [
+      {
+        quantity: 10,
+        cashBalance: null,
+        closes: [{ asOf: "2026-01-05", close: 10 }],
+      },
+    ];
+    const history = buildHistory(lines, ["2026-01-01"]);
+    expect(history).toEqual([{ date: "2026-01-01", value: 0 }]);
+  });
+
+  it("carry-forward: usa l'ultimo close <= data, non quello successivo", () => {
+    const lines = [
+      {
+        quantity: 5,
+        cashBalance: null,
+        closes: [
+          { asOf: "2026-01-01", close: 10 },
+          { asOf: "2026-01-10", close: 20 },
+        ],
+      },
+    ];
+    const history = buildHistory(lines, ["2026-01-05"]);
+    expect(history).toEqual([{ date: "2026-01-05", value: 50 }]);
+  });
+
+  it("somma piu' righe (etf + cash) per la stessa data", () => {
+    const lines = [
+      {
+        quantity: 10,
+        cashBalance: null,
+        closes: [{ asOf: "2026-01-01", close: 25 }],
+      },
+      {
+        quantity: null,
+        cashBalance: 500,
+        closes: [],
+      },
+    ];
+    const history = buildHistory(lines, ["2026-01-01"]);
+    expect(history).toEqual([{ date: "2026-01-01", value: 750 }]);
+  });
+
+  it("cashBalance senza quantity ignora closes ed e' costante nel tempo", () => {
+    const lines = [{ quantity: null, cashBalance: 300, closes: [] }];
+    const history = buildHistory(lines, ["2026-01-01", "2026-06-01"]);
+    expect(history).toEqual([
+      { date: "2026-01-01", value: 300 },
+      { date: "2026-06-01", value: 300 },
+    ]);
+  });
+
+  it("lista di righe o date vuota", () => {
+    expect(buildHistory([], ["2026-01-01"])).toEqual([{ date: "2026-01-01", value: 0 }]);
+    expect(
+      buildHistory([{ quantity: 10, cashBalance: null, closes: [] }], []),
+    ).toEqual([]);
   });
 });

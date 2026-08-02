@@ -1,7 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Contribution, Instrument, InstrumentType, Transaction } from "../types";
-import { api, type InstrumentWithHolding, type PortfolioSummary } from "../api";
+import { api, type InstrumentWithHolding, type PortfolioSummary, type QuoteBar } from "../api";
 import { formatEur } from "../lib/stats";
+import {
+  AllocationChart,
+  InstrumentPriceChart,
+  PortfolioHistoryChart,
+} from "./charts/InvestimentiCharts";
 
 type Props = {
   transactions: Transaction[];
@@ -29,6 +34,8 @@ export function Investimenti({ transactions }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [history, setHistory] = useState<{ date: string; value: number }[]>([]);
+  const [instrumentQuotes, setInstrumentQuotes] = useState<QuoteBar[]>([]);
 
   const [name, setName] = useState("");
   const [type, setType] = useState<InstrumentType>("pac");
@@ -46,9 +53,14 @@ export function Investimenti({ transactions }: Props) {
   async function refresh() {
     setError(null);
     try {
-      const [list, s] = await Promise.all([api.listInstruments(), api.getPortfolioSummary()]);
+      const [list, s, h] = await Promise.all([
+        api.listInstruments(),
+        api.getPortfolioSummary(),
+        api.getPortfolioHistory(),
+      ]);
       setInstruments(list);
       setSummary(s);
+      setHistory(h);
     } catch {
       setError("Errore di connessione al server");
     }
@@ -69,6 +81,18 @@ export function Investimenti({ transactions }: Props) {
       .then(setContributions)
       .catch(() => setError("Errore di connessione al server"));
   }, [selectedId]);
+
+  useEffect(() => {
+    const ticker = instruments.find((i) => i.id === selectedId)?.ticker;
+    if (!ticker) {
+      setInstrumentQuotes([]);
+      return;
+    }
+    void api
+      .getQuoteHistory(ticker)
+      .then(setInstrumentQuotes)
+      .catch(() => setInstrumentQuotes([]));
+  }, [selectedId, instruments]);
 
   function resetForm() {
     setName("");
@@ -214,6 +238,25 @@ export function Investimenti({ transactions }: Props) {
 
       {error && <p className="error">{error}</p>}
 
+      <section className="panel chart-panel hero-panel">
+        <h3>Andamento patrimonio</h3>
+        <p className="muted tiny chart-sub">
+          Quantità ferma × prezzo di chiusura disponibile + saldi cash (ultimi 90 giorni).
+        </p>
+        <PortfolioHistoryChart data={history} />
+      </section>
+
+      <section className="panel chart-panel">
+        <h3>Allocazione per tipo</h3>
+        <AllocationChart
+          data={(summary?.allocation ?? []).map((a) => ({
+            label: TYPE_LABELS[a.type],
+            value: a.value,
+            pct: a.pct,
+          }))}
+        />
+      </section>
+
       <div className="toolbar">
         <h3 className="stat-section-title">Strumenti</h3>
         <button type="button" className="btn primary" onClick={() => setShowAdd((s) => !s)}>
@@ -325,6 +368,15 @@ export function Investimenti({ transactions }: Props) {
 
       {selected && (
         <section className="panel invest-detail">
+          <h3>{selected.name} — quotazione</h3>
+          {selected.ticker ? (
+            <InstrumentPriceChart
+              data={instrumentQuotes.map((q) => ({ asOf: q.asOf, close: q.close }))}
+            />
+          ) : (
+            <p className="muted">Nessuna quotazione — aggiorna saldo manuale.</p>
+          )}
+
           <h3>{selected.name} — versamenti</h3>
 
           {contributions.length === 0 ? (
