@@ -1,4 +1,6 @@
-import type { AppState, RecurringMark, Transaction } from "./types";
+import type { AppState, Contribution, Holding, Instrument, RecurringMark, Transaction } from "./types";
+
+export type InstrumentWithHolding = Instrument & { holding: Holding | null };
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(await res.text());
@@ -37,4 +39,42 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...state, force }),
     }).then((r) => json<{ ok: boolean; state: AppState }>(r)),
+  listInstruments: () =>
+    fetch("/api/instruments").then((r) => json<InstrumentWithHolding[]>(r)),
+  createInstrument: (instrument: Partial<Instrument>) =>
+    fetch("/api/instruments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(instrument),
+    }).then((r) => json<Instrument>(r)),
+  updateInstrument: (id: string, patch: Partial<Instrument>) =>
+    fetch(`/api/instruments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then((r) => json<Instrument>(r)),
+  deleteInstrument: (id: string) =>
+    fetch(`/api/instruments/${id}`, { method: "DELETE" }).then((r) => json<{ ok: boolean }>(r)),
+  setHolding: (id: string, holding: Partial<Holding>) =>
+    fetch(`/api/instruments/${id}/holding`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(holding),
+    }).then((r) => json<Holding>(r)),
+  listContributions: (instrumentId: string) =>
+    fetch(`/api/instruments/${instrumentId}/contributions`).then((r) => json<Contribution[]>(r)),
+  addContribution: (instrumentId: string, contribution: Partial<Contribution>) =>
+    fetch(`/api/instruments/${instrumentId}/contributions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(contribution),
+    }).then((r) => json<Contribution>(r)),
+  deleteContribution: (id: string) =>
+    fetch(`/api/contributions/${id}`, { method: "DELETE" }).then((r) => json<{ ok: boolean }>(r)),
+  linkTransaction: (instrumentId: string, transactionId: string) =>
+    fetch(`/api/instruments/${instrumentId}/link-transaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transactionId }),
+    }).then((r) => json<Contribution>(r)),
 };
