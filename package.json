@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "concurrently -n web,api -c teal,orange \"vite\" \"tsx watch server/index.ts\"",
     "server": "tsx server/index.ts",
