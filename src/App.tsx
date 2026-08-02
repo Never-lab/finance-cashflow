@@ -20,6 +20,7 @@ export default function App() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
   const [migrateCandidate, setMigrateCandidate] = useState<AppState | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -27,48 +28,76 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   }, []);
 
-  useEffect(() => {
-    void api.getState().then(async (serverState) => {
+  const loadBootState = useCallback(async () => {
+    setBootError(null);
+    try {
+      const serverState = await api.getState();
       setState(serverState);
       if (serverState.transactions.length === 0) {
         const idb = await loadState();
         if (idb.transactions.length > 0) setMigrateCandidate(idb);
       }
-    });
+    } catch {
+      setBootError("Impossibile caricare i dati dal server.");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadBootState();
+  }, [loadBootState]);
 
   const txns = state ? withOverrides(state) : [];
 
   function onImport(rows: Transaction[]) {
-    void api.mergeTransactions(rows).then(({ added, updated, state: next }) => {
-      setState(next);
-      showToast(`Import: +${added} nuovi, ${updated} aggiornati`);
-    });
+    void api
+      .mergeTransactions(rows)
+      .then(({ added, updated, state: next }) => {
+        setState(next);
+        showToast(`Import: +${added} nuovi, ${updated} aggiornati`);
+      })
+      .catch(() => showToast("Errore di connessione al server"));
   }
 
   function onCategory(id: string, category: string) {
-    void api.setCategory(id, category).then(setState);
+    void api.setCategory(id, category).then(setState).catch(() => showToast("Errore di connessione al server"));
   }
 
   function onInternal(id: string, internal: boolean) {
-    void api.setInternal(id, internal).then(setState);
+    void api.setInternal(id, internal).then(setState).catch(() => showToast("Errore di connessione al server"));
   }
 
   function onRecurringMark(key: string, mark: RecurringMark) {
-    void api.setRecurring(key, mark).then(setState);
+    void api.setRecurring(key, mark).then(setState).catch(() => showToast("Errore di connessione al server"));
   }
 
   function onReplace(next: AppState) {
-    void api.migrate(next, true).then(({ state: applied }) => setState(applied));
+    void api
+      .migrate(next, true)
+      .then(({ state: applied }) => setState(applied))
+      .catch(() => showToast("Errore di connessione al server"));
   }
 
   function onMigrate() {
     if (!migrateCandidate) return;
-    void api.migrate(migrateCandidate).then(({ state: applied }) => {
-      setState(applied);
-      setMigrateCandidate(null);
-      showToast("Dati migrati dal browser a SQLite");
-    });
+    void api
+      .migrate(migrateCandidate)
+      .then(({ state: applied }) => {
+        setState(applied);
+        setMigrateCandidate(null);
+        showToast("Dati migrati dal browser a SQLite");
+      })
+      .catch(() => showToast("Errore di connessione al server"));
+  }
+
+  if (bootError) {
+    return (
+      <div className="boot">
+        <p>{bootError}</p>
+        <button type="button" className="btn primary" onClick={() => void loadBootState()}>
+          Riprova
+        </button>
+      </div>
+    );
   }
 
   if (!state) {
