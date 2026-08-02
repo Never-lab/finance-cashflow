@@ -138,7 +138,7 @@ export function SettingsModal({ open, state, onClose, onReplace }: Props) {
         {keyError && <p className="error">{keyError}</p>}
 
         <p className="muted">
-          Tutto resta sul browser. Esporta un JSON prima di svuotare o cambiare PC.
+          Dati su SQLite locale (`data/finance.db`). Il JSON di backup copre i movimenti; per il portafoglio copia anche il file `.db`.
         </p>
 
         <div className="settings-actions">
