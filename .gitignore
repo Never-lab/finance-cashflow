@@ -6,3 +6,5 @@ dist
 fixtures/Elenco movimenti*.csv
 fixtures/account-statement*.csv
 fixtures/*-real.csv
+data/*.db
+data/*.db-*
