@@ -1,0 +1,8 @@
+node_modules
+dist
+.DS_Store
+*.local
+# Real bank exports (PII)
+fixtures/Elenco movimenti*.csv
+fixtures/account-statement*.csv
+fixtures/*-real.csv

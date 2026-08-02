@@ -1,0 +1,7 @@
+Tipo,Prodotto,Data di inizio,Data di completamento,Descrizione,Importo,Costo,Valuta,State,Saldo
+Ricarica,Attuale,2026-08-01 09:00:00,2026-08-01 09:00:01,Pagamento da TEST USER,500,0,EUR,COMPLETATO,500
+Pagamento,Attuale,2026-08-01 09:05:00,2026-08-01 09:05:00,Accredita EUR Fondo Vacanze da EUR,-200,0,EUR,COMPLETATO,300
+Pagamento,Risparmi,2026-08-01 09:05:00,2026-08-01 09:05:00,Accredita EUR Fondo Vacanze da EUR,200,0,EUR,COMPLETATO,200
+Pagamento,Attuale,2026-08-02 12:00:00,2026-08-02 12:00:00,Esselunga,-45.20,0,EUR,COMPLETATO,254.80
+Interessi,Deposito,2026-08-02 03:00:00,2026-08-02 03:00:00,"Interessi netti pagati nel conto ""Instant Access Savings""",0.05,0,EUR,COMPLETATO,430.05
+Pagamento,Attuale,2026-08-02 18:00:00,2026-08-02 18:00:00,Pending Shop,-10,0,EUR,PENDING,244.80

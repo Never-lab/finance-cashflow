@@ -1,0 +1,168 @@
+import { useMemo } from "react";
+import type { Transaction } from "../types";
+import { buildPaypalSummary } from "../lib/paypal";
+import { formatEur } from "../lib/stats";
+
+type Props = {
+  transactions: Transaction[];
+  onUpload: () => void;
+};
+
+export function PaypalTab({ transactions, onUpload }: Props) {
+  const summary = useMemo(() => buildPaypalSummary(transactions), [transactions]);
+
+  if (transactions.length === 0) {
+    return (
+      <div className="empty">
+        <h2>Nessun movimento</h2>
+        <button type="button" className="btn primary" onClick={onUpload}>
+          Carica CSV
+        </button>
+      </div>
+    );
+  }
+
+  if (
+    summary.plans.length === 0 &&
+    summary.otherOut.length === 0 &&
+    summary.income.length === 0
+  ) {
+    return (
+      <div className="empty">
+        <h2>Nessun movimento PayPal</h2>
+        <p className="muted">
+          Quando in banca compaiono addebiti tipo «Paga in 3» o SDD PayPal, li
+          vedrai qui raggruppati. Nessuna API: solo dai CSV già caricati.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="paypal-tab">
+      <div className="kpi-row recurring-kpis">
+        <div className="kpi neg">
+          <span className="kpi-label">Uscite PayPal (totale)</span>
+          <span className="kpi-value">{formatEur(summary.totalOut)}</span>
+        </div>
+        <div className="kpi neg">
+          <span className="kpi-label">Debito rate stimato</span>
+          <span className="kpi-value">{formatEur(summary.remainingDebt)}</span>
+        </div>
+        <div className="kpi pos">
+          <span className="kpi-label">Accrediti PayPal</span>
+          <span className="kpi-value">{formatEur(summary.totalIn)}</span>
+        </div>
+      </div>
+      <p className="muted kpi-note">
+        Piani stimati dai movimenti banca (stesso importo = stesso piano). «Paga
+        in 3»: residuo = rate mancanti × importo. Non è l’API PayPal.
+      </p>
+
+      {summary.plans.length > 0 && (
+        <section className="panel paypal-section">
+          <h3>Piani e rate</h3>
+          <div className="table-wrap flat">
+            <table>
+              <thead>
+                <tr>
+                  <th>Piano</th>
+                  <th>Stato</th>
+                  <th className="num">Rata</th>
+                  <th className="num">Pagate</th>
+                  <th className="num">Residuo stim.</th>
+                  <th>Ultima</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.plans.map((p) => (
+                  <tr key={p.key}>
+                    <td>
+                      <div>{p.label}</div>
+                      <div className="muted tiny">
+                        {p.dates.map((d) => d.slice(5)).join(" · ")}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`tag status-${p.status}`}>
+                        {p.status === "active"
+                          ? "In corso"
+                          : p.status === "likely_done"
+                            ? "Prob. chiuso"
+                            : "Ricorrente"}
+                      </span>
+                    </td>
+                    <td className="num neg">{formatEur(p.installmentAmount)}</td>
+                    <td className="num">
+                      {p.expectedCount
+                        ? `${p.paidCount}/${p.expectedCount}`
+                        : String(p.paidCount)}
+                    </td>
+                    <td className="num neg">
+                      {p.remainingEstimate != null
+                        ? formatEur(p.remainingEstimate)
+                        : "—"}
+                    </td>
+                    <td>{p.lastDate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {summary.otherOut.length > 0 && (
+        <section className="panel paypal-section">
+          <h3>Altri addebiti PayPal</h3>
+          <div className="table-wrap flat">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrizione</th>
+                  <th className="num">Importo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.otherOut.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.date}</td>
+                    <td title={t.description}>{t.description}</td>
+                    <td className="num neg">{formatEur(t.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {summary.income.length > 0 && (
+        <section className="panel paypal-section">
+          <h3>Accrediti</h3>
+          <div className="table-wrap flat">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrizione</th>
+                  <th className="num">Importo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.income.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.date}</td>
+                    <td title={t.description}>{t.description}</td>
+                    <td className="num pos">{formatEur(t.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
