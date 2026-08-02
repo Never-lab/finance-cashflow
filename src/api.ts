@@ -1,6 +1,32 @@
-import type { AppState, Contribution, Holding, Instrument, RecurringMark, Transaction } from "./types";
+import type {
+  AppState,
+  Contribution,
+  Holding,
+  Instrument,
+  InstrumentType,
+  RecurringMark,
+  Transaction,
+} from "./types";
 
 export type InstrumentWithHolding = Instrument & { holding: Holding | null };
+
+export type PortfolioSummary = {
+  totalValue: number;
+  totalContributed: number;
+  pnl: number;
+  pnlPct: number | null;
+  cashLiquidity: number;
+  allocation: { type: InstrumentType; value: number; pct: number }[];
+  lines: {
+    instrumentId: string;
+    name: string;
+    type: InstrumentType;
+    value: number;
+    contributed: number;
+    pnl: number;
+    price: number | null;
+  }[];
+};
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(await res.text());
@@ -77,4 +103,6 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transactionId }),
     }).then((r) => json<Contribution>(r)),
+  getPortfolioSummary: () =>
+    fetch("/api/portfolio/summary").then((r) => json<PortfolioSummary>(r)),
 };

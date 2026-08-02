@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Contribution, Instrument, InstrumentType, Transaction } from "../types";
-import { api, type InstrumentWithHolding } from "../api";
+import { api, type InstrumentWithHolding, type PortfolioSummary } from "../api";
 import { formatEur } from "../lib/stats";
 
 type Props = {
@@ -17,12 +17,13 @@ const TYPE_LABELS: Record<InstrumentType, string> = {
 
 const CASH_TYPES = new Set<InstrumentType>(["risparmio", "deposito"]);
 
-function instrumentValue(i: InstrumentWithHolding): number {
+function fallbackValue(i: InstrumentWithHolding): number {
   return (i.holding?.cashBalance ?? 0) + (i.holding?.costBasis ?? 0);
 }
 
 export function Investimenti({ transactions }: Props) {
   const [instruments, setInstruments] = useState<InstrumentWithHolding[]>([]);
+  const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -45,8 +46,9 @@ export function Investimenti({ transactions }: Props) {
   async function refresh() {
     setError(null);
     try {
-      const list = await api.listInstruments();
+      const [list, s] = await Promise.all([api.listInstruments(), api.getPortfolioSummary()]);
       setInstruments(list);
+      setSummary(s);
     } catch {
       setError("Errore di connessione al server");
     }
@@ -122,12 +124,14 @@ export function Investimenti({ transactions }: Props) {
       });
       setDepAmount("");
       setDepNote("");
-      const [list, contribs] = await Promise.all([
+      const [list, contribs, s] = await Promise.all([
         api.listInstruments(),
         api.listContributions(selectedId),
+        api.getPortfolioSummary(),
       ]);
       setInstruments(list);
       setContributions(contribs);
+      setSummary(s);
     } catch {
       setError("Errore di connessione al server");
     }
@@ -138,12 +142,14 @@ export function Investimenti({ transactions }: Props) {
     if (!confirm("Eliminare questo versamento?")) return;
     try {
       await api.deleteContribution(id);
-      const [list, contribs] = await Promise.all([
+      const [list, contribs, s] = await Promise.all([
         api.listInstruments(),
         api.listContributions(selectedId),
+        api.getPortfolioSummary(),
       ]);
       setInstruments(list);
       setContributions(contribs);
+      setSummary(s);
     } catch {
       setError("Errore di connessione al server");
     }
@@ -154,19 +160,21 @@ export function Investimenti({ transactions }: Props) {
     try {
       await api.linkTransaction(selectedId, linkTxId);
       setLinkTxId("");
-      const [list, contribs] = await Promise.all([
+      const [list, contribs, s] = await Promise.all([
         api.listInstruments(),
         api.listContributions(selectedId),
+        api.getPortfolioSummary(),
       ]);
       setInstruments(list);
       setContributions(contribs);
+      setSummary(s);
     } catch {
       setError("Errore di connessione al server");
     }
   }
 
-  const patrimonio = instruments.reduce((s, i) => s + instrumentValue(i), 0);
   const selected = instruments.find((i) => i.id === selectedId) ?? null;
+  const lineByInstrument = new Map((summary?.lines ?? []).map((l) => [l.instrumentId, l]));
   const linkedTxIds = new Set(contributions.map((c) => c.transactionId).filter(Boolean));
   const linkableTx = transactions
     .filter((t) => t.internal && !linkedTxIds.has(t.id))
@@ -180,23 +188,28 @@ export function Investimenti({ transactions }: Props) {
     <div className="investimenti">
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
-          <span className="stat-label">Patrimonio (stima)</span>
-          <span className="stat-value">{formatEur(patrimonio)}</span>
+          <span className="stat-label">Patrimonio</span>
+          <span className="stat-value">{formatEur(summary?.totalValue ?? 0)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">P&amp;L</span>
+          <span className={`stat-value ${(summary?.pnl ?? 0) >= 0 ? "pos" : "neg"}`}>
+            {formatEur(summary?.pnl ?? 0)}
+            {summary?.pnlPct != null ? ` (${summary.pnlPct.toFixed(1)}%)` : ""}
+          </span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Liquidità (risparmio+deposito)</span>
+          <span className="stat-value">{formatEur(summary?.cashLiquidity ?? 0)}</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Strumenti</span>
           <span className="stat-value">{String(instruments.length)}</span>
         </div>
-        <div className="stat-card">
-          <span className="stat-label">Versamenti collegati</span>
-          <span className="stat-value">
-            {String(instruments.length > 0 ? contributions.length : 0)}
-          </span>
-        </div>
       </div>
       <p className="muted kpi-note">
-        Valore ≈ versato finché non è collegato un prezzo di mercato (arriva in un
-        prossimo aggiornamento).
+        Valore = quantità × ultimo prezzo disponibile per gli strumenti con ticker
+        quotato; altrimenti fallback sul versato.
       </p>
 
       {error && <p className="error">{error}</p>}
@@ -270,7 +283,7 @@ export function Investimenti({ transactions }: Props) {
                 <th>Tipo</th>
                 <th>Ticker</th>
                 <th className="num">Qty / Saldo</th>
-                <th className="num">Versato ≈ Valore</th>
+                <th className="num">Valore</th>
                 <th>Azioni</th>
               </tr>
             </thead>
@@ -288,7 +301,9 @@ export function Investimenti({ transactions }: Props) {
                   <td className="num">
                     {i.holding?.quantity ?? i.holding?.cashBalance ?? 0}
                   </td>
-                  <td className="num">{formatEur(instrumentValue(i))}</td>
+                  <td className="num">
+                    {formatEur(lineByInstrument.get(i.id)?.value ?? fallbackValue(i))}
+                  </td>
                   <td>
                     <button
                       type="button"
