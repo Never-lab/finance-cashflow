@@ -883,3 +883,11 @@ select {
   gap: 0.4rem;
   margin-top: 0.75rem;
 }
+
+.invest-detail {
+  margin-top: 1rem;
+}
+
+.invest-spaced {
+  margin-top: 1rem;
+}

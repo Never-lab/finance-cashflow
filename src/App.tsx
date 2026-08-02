@@ -8,10 +8,11 @@ import { Transactions } from "./components/Transactions";
 import { Recurring } from "./components/Recurring";
 import { PaypalTab } from "./components/PaypalTab";
 import { Advisor } from "./components/Advisor";
+import { Investimenti } from "./components/Investimenti";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 
-type Tab = "dashboard" | "movimenti" | "abbonamenti" | "paypal" | "consigli";
+type Tab = "dashboard" | "movimenti" | "abbonamenti" | "paypal" | "consigli" | "investimenti";
 
 export default function App() {
   const [state, setState] = useState<AppState | null>(null);
@@ -120,6 +121,7 @@ export default function App() {
                 ["abbonamenti", "Abbonamenti"],
                 ["paypal", "PayPal"],
                 ["consigli", "Consigli"],
+                ["investimenti", "Investimenti"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -184,6 +186,7 @@ export default function App() {
             onUpload={() => setUploadOpen(true)}
           />
         )}
+        {tab === "investimenti" && <Investimenti transactions={txns} />}
       </main>
 
       <UploadModal
