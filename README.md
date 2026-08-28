@@ -76,7 +76,7 @@ Progetto **separato** da liquidazi. Piano Hobby: un servizio + volume SQLite su 
 5. Health: `GET https://<tuo-dominio>/api/health` → `{ "ok": true, "storage": "sqlite", "auth": … }`.
 6. Dopo il deploy F-deploy: login → ricarica CSV da zero (nessuna migrazione automatica).
 
-Build/start: `railway.toml` (`npm run build` + `npm start`). Node **22** via `nixpacks.toml`.
+Build/install: `nixpacks.toml` (Node 22, Python + gcc for `better-sqlite3`, `npm ci`, `npm run build`). Node **22** via `NIXPACKS_NODE_VERSION`.
 
 ### Stato attuale
 

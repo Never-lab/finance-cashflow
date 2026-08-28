@@ -1,2 +1,14 @@
+# Native addon compile for better-sqlite3 (node-gyp needs Python + gcc).
+# Explicit nixPkgs replaces the Node provider defaults — include nodejs here too.
+
 [variables]
 NIXPACKS_NODE_VERSION = "22"
+
+[phases.setup]
+nixPkgs = ["nodejs_22", "python312", "gcc", "gnumake"]
+
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]
