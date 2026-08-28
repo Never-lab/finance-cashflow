@@ -5,6 +5,7 @@ import { formatEur } from "../lib/stats";
 
 type Props = {
   transactions: Transaction[];
+  categoryOverrides: Record<string, string>;
   onCategoryChange: (id: string, category: string) => void;
   onInternalChange: (id: string, internal: boolean) => void;
   onUpload: () => void;
@@ -12,6 +13,7 @@ type Props = {
 
 export function Transactions({
   transactions,
+  categoryOverrides,
   onCategoryChange,
   onInternalChange,
   onUpload,
@@ -36,6 +38,16 @@ export function Transactions({
     });
   }, [transactions, month, source, q, hideInternal]);
 
+  const summary = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const t of filtered) {
+      if (t.amount >= 0) income += t.amount;
+      else expense += t.amount;
+    }
+    return { count: filtered.length, income, expense, net: income + expense };
+  }, [filtered]);
+
   if (transactions.length === 0) {
     return (
       <div className="empty">
@@ -49,7 +61,7 @@ export function Transactions({
 
   return (
     <div className="transactions">
-      <div className="toolbar wrap">
+      <div className="toolbar wrap sticky">
         <label>
           Mese{" "}
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
@@ -90,6 +102,14 @@ export function Transactions({
         </button>
       </div>
 
+      <p className="txn-summary">
+        <strong>{summary.count}</strong> movimenti · Uscite{" "}
+        <strong className="neg">{formatEur(summary.expense)}</strong> · Entrate{" "}
+        <strong className="pos">{formatEur(summary.income)}</strong> · Netto{" "}
+        <strong className={summary.net >= 0 ? "pos" : "neg"}>{formatEur(summary.net)}</strong>
+        {hideInternal && <span> · interni esclusi</span>}
+      </p>
+
       <div className="table-wrap">
         <table>
           <thead>
@@ -99,7 +119,9 @@ export function Transactions({
               <th>Fonte</th>
               <th>Categoria</th>
               <th>Interno</th>
-              <th className="num">Importo</th>
+              <th className="num" title="+ entrata, − uscita">
+                Importo
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -127,14 +149,17 @@ export function Transactions({
                       </option>
                     ))}
                   </select>
+                  {!categoryOverrides[t.id] && <span className="tag auto">auto</span>}
                 </td>
                 <td>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(t.internal)}
-                    title="Escludi dai KPI cash flow"
-                    onChange={(e) => onInternalChange(t.id, e.target.checked)}
-                  />
+                  <label className="internal-toggle" title="Escluso dai KPI cash flow">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(t.internal)}
+                      onChange={(e) => onInternalChange(t.id, e.target.checked)}
+                    />
+                    Interno
+                  </label>
                 </td>
                 <td className={`num ${t.amount >= 0 ? "pos" : "neg"}`}>
                   {formatEur(t.amount)}

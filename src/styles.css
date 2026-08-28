@@ -740,6 +740,80 @@ select {
   background: linear-gradient(90deg, #c45c26, #d97845);
 }
 
+.charts-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.toolbar.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+}
+
+.txn-summary {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--panel);
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+}
+
+.txn-summary strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.tag.auto {
+  opacity: 0.75;
+  font-size: 0.72rem;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.internal-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (min-width: 1280px) {
+  .app {
+    max-width: 1440px;
+  }
+
+  .charts-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .charts-hero .hero-panel {
+    margin-bottom: 0;
+  }
+
+  .chart-panel.hero-panel .chart-box,
+  .chart-panel.hero-panel .sankey-block {
+    min-height: 340px;
+  }
+
+  th,
+  td {
+    padding: 0.65rem 0.85rem;
+  }
+}
+
 @media (max-width: 960px) {
   .stat-row.kpi-row,
   .stat-row.impegni-row,

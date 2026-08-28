@@ -105,14 +105,29 @@ export function Dashboard({
       </div>
 
       <div className="stat-row kpi-row">
-        <Kpi label="Entrate" value={formatEur(kpis.income)} tone="pos" />
-        <Kpi label="Uscite" value={formatEur(kpis.expense)} tone="neg" />
-        <Kpi label="Netto" value={formatEur(kpis.net)} tone={kpis.net >= 0 ? "pos" : "neg"} />
-        <Kpi label="Movimenti" value={String(kpis.count)} />
+        <Kpi
+          label="Entrate"
+          value={formatEur(kpis.income)}
+          tone="pos"
+          hint="Somma entrate nel periodo selezionato"
+        />
+        <Kpi
+          label="Uscite"
+          value={formatEur(kpis.expense)}
+          tone="neg"
+          hint="Somma uscite (no trasferimenti interni)"
+        />
+        <Kpi
+          label="Netto"
+          value={formatEur(kpis.net)}
+          tone={kpis.net >= 0 ? "pos" : "neg"}
+          hint="Entrate − uscite"
+        />
+        <Kpi label="Movimenti" value={String(kpis.count)} hint="Transazioni nel periodo" />
       </div>
       {hiddenInternal > 0 && (
         <p className="muted kpi-note">
-          KPI senza trasferimenti interni ({hiddenInternal} esclusi).
+          Esclusi {hiddenInternal} trasferimenti interni dai KPI.
         </p>
       )}
 
@@ -126,44 +141,50 @@ export function Dashboard({
             </span>
             <span className="stat-hint">
               {impegni.planCount > 0
-                ? `${impegni.planCount} piani attivi`
-                : "Apri PayPal"}
+                ? `${impegni.planCount} piani attivi · stimato da CSV banca`
+                : "Rate mancanti × importo rata — stimato da CSV banca"}
             </span>
           </button>
           <button type="button" className="stat-card interactive" onClick={onGoAbbonamenti}>
             <span className="stat-label">Ricorrenti / mese</span>
             <span className="stat-value neg">{formatEur(impegni.recurringMonthly)}</span>
-            <span className="stat-hint">Esclusi i cancellati</span>
+            <span className="stat-hint">
+              Media mensile abbonamenti attivi (no cancellati)
+            </span>
           </button>
           <div className="stat-card">
             <span className="stat-label">Totale impegnato</span>
             <span className="stat-value neg">
               {formatEur(impegni.paypalDebt + impegni.recurringMonthly)}
             </span>
-            <span className="stat-hint">Rate + abbonamenti</span>
+            <span className="stat-hint">
+              PayPal residuo + ricorrenti attivi — non cash disponibile
+            </span>
           </div>
         </div>
       </section>
 
-      <section className="panel chart-panel hero-panel">
-        <h3>Flusso di cassa (Sankey)</h3>
-        <p className="muted tiny chart-sub">
-          Come su Getquin: da dove entra il denaro e dove finisce (categorie + risparmio).
-        </p>
-        {sankey ? (
-          <CashflowSankeyChart data={sankey} />
-        ) : (
-          <p className="muted">Servono entrate o uscite nel periodo.</p>
-        )}
-      </section>
+      <div className="charts-hero">
+        <section className="panel chart-panel hero-panel">
+          <h3>Flusso di cassa (Sankey)</h3>
+          <p className="muted tiny chart-sub">
+            Da dove entrano i soldi e dove escono (categorie e risparmio).
+          </p>
+          {sankey ? (
+            <CashflowSankeyChart data={sankey} />
+          ) : (
+            <p className="muted">Servono entrate o uscite nel periodo.</p>
+          )}
+        </section>
 
-      <section className="panel chart-panel hero-panel">
-        <h3>Cash flow cumulato</h3>
-        <p className="muted tiny chart-sub">
-          Come la curva patrimonio su Getquin, ma sul flusso del periodo selezionato.
-        </p>
-        <CashflowCurve data={curve} />
-      </section>
+        <section className="panel chart-panel hero-panel">
+          <h3>Cash flow cumulato</h3>
+          <p className="muted tiny chart-sub">
+            Andamento del netto giorno per giorno nel periodo.
+          </p>
+          <CashflowCurve data={curve} />
+        </section>
+      </div>
 
       <div className="charts">
         <section className="panel chart-panel">
@@ -179,18 +200,29 @@ export function Dashboard({
 
       <section className="panel chart-panel">
         <h3>Heatmap spesa</h3>
-        <p className="muted tiny chart-sub">Intensità per mese e categoria (top 5).</p>
+        <p className="muted tiny chart-sub">Top 5 categorie per mese — intensità colore.</p>
         <SpendingHeatmap data={heat} />
       </section>
     </div>
   );
 }
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
+function Kpi({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  tone?: "pos" | "neg";
+  hint?: string;
+}) {
   return (
     <div className={`stat-card kpi ${tone ?? ""}`}>
       <span className="stat-label">{label}</span>
       <span className="stat-value">{value}</span>
+      {hint && <span className="stat-hint">{hint}</span>}
     </div>
   );
 }

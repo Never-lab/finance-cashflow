@@ -40,24 +40,26 @@ export function PaypalTab({ transactions, onUpload }: Props) {
 
   return (
     <div className="paypal-tab">
-      <div className="kpi-row recurring-kpis">
-        <div className="kpi neg">
-          <span className="kpi-label">Uscite PayPal (totale)</span>
-          <span className="kpi-value">{formatEur(summary.totalOut)}</span>
+      <div className="stat-row recurring-kpis">
+        <div className="stat-card">
+          <span className="stat-label">Uscite PayPal (totale)</span>
+          <span className="stat-value neg">{formatEur(summary.totalOut)}</span>
+          <span className="stat-hint">Tutti gli addebiti PayPal nel CSV, piani inclusi</span>
         </div>
-        <div className="kpi neg">
-          <span className="kpi-label">Debito rate stimato</span>
-          <span className="kpi-value">{formatEur(summary.remainingDebt)}</span>
+        <div className="stat-card">
+          <span className="stat-label">Debito rate stimato</span>
+          <span className="stat-value neg">{formatEur(summary.remainingDebt)}</span>
+          <span className="stat-hint">
+            Somma residui piani “In corso” — non saldo PayPal reale
+          </span>
         </div>
-        <div className="kpi pos">
-          <span className="kpi-label">Accrediti PayPal</span>
-          <span className="kpi-value">{formatEur(summary.totalIn)}</span>
+        <div className="stat-card">
+          <span className="stat-label">Accrediti PayPal</span>
+          <span className="stat-value pos">{formatEur(summary.totalIn)}</span>
+          <span className="stat-hint">Entrate da movimenti PayPal in banca</span>
         </div>
       </div>
-      <p className="muted kpi-note">
-        Piani stimati dai movimenti banca (stesso importo = stesso piano). «Paga
-        in 3»: residuo = rate mancanti × importo. Non è l’API PayPal.
-      </p>
+      <p className="muted kpi-note">Stima da CSV banca. Non è l’app PayPal.</p>
 
       {summary.plans.length > 0 && (
         <section className="panel paypal-section">
@@ -70,7 +72,9 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                   <th>Stato</th>
                   <th className="num">Rata</th>
                   <th className="num">Pagate</th>
-                  <th className="num">Residuo stim.</th>
+                  <th className="num" title="Rate mancanti × importo rata">
+                    Residuo
+                  </th>
                   <th>Ultima</th>
                 </tr>
               </thead>
@@ -82,6 +86,9 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                       <div className="muted tiny">
                         {p.dates.map((d) => d.slice(5)).join(" · ")}
                       </div>
+                      {p.status === "active" && (
+                        <div className="muted tiny">Prossima rata ~ fine mese</div>
+                      )}
                     </td>
                     <td>
                       <span className={`tag status-${p.status}`}>

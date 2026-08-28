@@ -160,6 +160,7 @@ export default function App() {
         {tab === "movimenti" && (
           <Transactions
             transactions={txns}
+            categoryOverrides={state.categoryOverrides}
             onCategoryChange={onCategory}
             onInternalChange={onInternal}
             onUpload={() => setUploadOpen(true)}

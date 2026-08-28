@@ -11,7 +11,11 @@ type Props = {
 };
 
 export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
-  const items = useMemo(() => findRecurring(transactions), [transactions]);
+  const items = useMemo(
+    () =>
+      [...findRecurring(transactions)].sort((a, b) => b.monthlyEstimate - a.monthlyEstimate),
+    [transactions],
+  );
   const active = items.filter((i) => marks[i.key] !== "cancelled");
   const burden = active
     .filter((i) => marks[i.key] !== "could_cancel")
@@ -49,14 +53,19 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
         <div className="stat-card">
           <span className="stat-label">Stima ricorrenti / mese</span>
           <span className="stat-value">{formatEur(burden)}</span>
+          <span className="stat-hint">
+            Abbonamenti attivi, esclusi “cancellato” e “potrei tagliare”
+          </span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Potresti tagliare</span>
           <span className="stat-value neg">{formatEur(couldSave)}</span>
+          <span className="stat-hint">Somma voci segnate “potrei tagliare”</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Voci trovate</span>
           <span className="stat-value">{String(items.length)}</span>
+          <span className="stat-hint">Merchant con ≥2 mesi di uscite simili</span>
         </div>
       </div>
       <p className="muted kpi-note">
@@ -70,8 +79,10 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
             <tr>
               <th>Descrizione</th>
               <th>Categoria</th>
-              <th className="num">Media</th>
-              <th>Mesi</th>
+              <th className="num" title="Media importi negli ultimi mesi rilevati">
+                €/mese
+              </th>
+              <th>Frequenza</th>
               <th>Stato</th>
             </tr>
           </thead>
@@ -97,7 +108,12 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
                   </td>
                   <td>{i.category}</td>
                   <td className="num neg">{formatEur(i.monthlyEstimate)}</td>
-                  <td>{i.months.length}</td>
+                  <td>
+                    {i.months.length} mesi
+                    {i.months.length >= 2 && (
+                      <span className="muted tiny"> · ~mensile</span>
+                    )}
+                  </td>
                   <td>
                     <select
                       value={mark}
