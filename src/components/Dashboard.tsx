@@ -16,6 +16,7 @@ import { sumEmergencyFundOutflows } from "../lib/knownAccounts";
 import { buildPaypalSummary } from "../lib/paypal";
 import { buildLoanSummary, type LoanTarget } from "../lib/loans";
 import { mergeLoanTargets } from "../lib/knownLoans";
+import { buildLiberationPlan, LIBERATION_DEFAULTS } from "../lib/liberationPlan";
 import { findRecurring, isSubscriptionLike } from "../lib/recurring";
 import {
   CashflowCurve,
@@ -88,6 +89,11 @@ export function Dashboard({
       planCount: paypal.plans.filter((p) => p.status === "active").length,
     };
   }, [transactions, recurringMarks, loanTargets]);
+
+  const liberation = useMemo(
+    () => buildLiberationPlan(transactions, loanTargets, liquidity),
+    [transactions, loanTargets, liquidity],
+  );
 
   if (transactions.length === 0) {
     return (
@@ -170,6 +176,12 @@ export function Dashboard({
       )}
 
       <LiquidityPanel liquidity={liquidity} onUpload={onUpload} />
+
+      <LiberationPlanPanel
+        plan={liberation}
+        onGoPaypal={onGoPaypal}
+        onGoMutui={onGoMutui}
+      />
 
       <section className="stat-section">
         <h3 className="stat-section-title">Risparmio programmato</h3>
@@ -293,6 +305,83 @@ export function Dashboard({
         <SpendingHeatmap data={heat} />
       </section>
     </div>
+  );
+}
+
+function LiberationPlanPanel({
+  plan,
+  onGoPaypal,
+  onGoMutui,
+}: {
+  plan: ReturnType<typeof buildLiberationPlan>;
+  onGoPaypal: () => void;
+  onGoMutui: () => void;
+}) {
+  return (
+    <section className="stat-section liberation-section">
+      <h3 className="stat-section-title">Piano liberazione</h3>
+      <p className="muted liberation-intro">
+        PayPal prima, Selfycredit a colpi parziali, bucket Viaggio e Tech in parallelo. Le barre
+        mostrano quanto hai già liberato (debiti) o accantonato (risparmi).
+      </p>
+      <div className="liberation-grid">
+        {plan.goals.map((goal) => {
+          const isDebt = goal.kind === "debt";
+          const onClick =
+            goal.id === "paypal" ? onGoPaypal : goal.id === "selfy" ? onGoMutui : undefined;
+          return (
+            <div
+              key={goal.id}
+              className={`liberation-card ${goal.kind}${onClick ? " interactive" : ""}`}
+              role={onClick ? "button" : undefined}
+              tabIndex={onClick ? 0 : undefined}
+              onClick={onClick}
+              onKeyDown={
+                onClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") onClick();
+                    }
+                  : undefined
+              }
+            >
+              <div className="liberation-head">
+                <span className="liberation-label">{goal.label}</span>
+                <span className={`liberation-pct ${isDebt ? "debt" : "savings"}`}>
+                  {goal.pct.toFixed(0)}%
+                </span>
+              </div>
+              <div className="liberation-progress" aria-hidden>
+                <div
+                  className={`liberation-progress-fill ${goal.kind}`}
+                  style={{ width: `${goal.pct}%` }}
+                />
+              </div>
+              <div className="liberation-meta">
+                <span>
+                  {isDebt
+                    ? `${formatEur(goal.current)} restituiti`
+                    : `${formatEur(goal.current)} accantonati`}
+                </span>
+                <span className="liberation-remaining">
+                  {isDebt
+                    ? `${formatEur(goal.remaining)} residuo`
+                    : `mancano ${formatEur(goal.remaining)}`}
+                </span>
+              </div>
+              <span className="stat-hint">{goal.hint}</span>
+              {goal.phase && <span className="liberation-phase">{goal.phase}</span>}
+            </div>
+          );
+        })}
+      </div>
+      {plan.liberabileEstimate != null && (
+        <p className="muted liberation-note">
+          Liberabile su Attuale (al netto di {formatEur(LIBERATION_DEFAULTS.attualeFloat)} di float):{" "}
+          <strong>{formatEur(plan.liberabileEstimate)}</strong>
+          {plan.paypalUnder600 ? " · PayPal sotto soglia fase Selfy" : ""}
+        </p>
+      )}
+    </section>
   );
 }
 

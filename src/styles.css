@@ -270,6 +270,122 @@ body {
   margin-top: 0.5rem;
 }
 
+.liberation-section {
+  margin-bottom: 1.5rem;
+}
+
+.liberation-intro {
+  margin: -0.25rem 0 1rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.liberation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+.liberation-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.liberation-card.interactive {
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.liberation-card.interactive:hover {
+  border-color: var(--teal);
+  transform: translateY(-1px);
+}
+
+.liberation-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.liberation-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.liberation-pct {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.liberation-pct.debt {
+  color: var(--clay);
+}
+
+.liberation-pct.savings {
+  color: var(--teal);
+}
+
+.liberation-progress {
+  height: 6px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.liberation-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.liberation-progress-fill.debt {
+  background: linear-gradient(90deg, var(--clay), #e8a07a);
+}
+
+.liberation-progress-fill.savings {
+  background: var(--teal);
+}
+
+.liberation-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.liberation-remaining {
+  text-align: right;
+}
+
+.liberation-phase {
+  font-size: 0.72rem;
+  color: var(--teal);
+  letter-spacing: 0.02em;
+}
+
+.liberation-note {
+  margin: 0.85rem 0 0;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .liberation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .liquidity-note {
   margin: 0.65rem 0 0;
   font-size: 0.85rem;
