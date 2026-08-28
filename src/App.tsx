@@ -13,8 +13,10 @@ import { Investimenti } from "./components/Investimenti";
 import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
+import { LoansTab } from "./components/LoansTab";
+import type { LoanTarget } from "./lib/loans";
 
-type Tab = "dashboard" | "movimenti" | "abbonamenti" | "paypal" | "consigli" | "investimenti";
+type Tab = "dashboard" | "movimenti" | "abbonamenti" | "mutui" | "paypal" | "consigli" | "investimenti";
 type Gate = "loading" | "login" | "app";
 
 export default function App() {
@@ -28,6 +30,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   const [migrateCandidate, setMigrateCandidate] = useState<AppState | null>(null);
+  const [loanTargets, setLoanTargets] = useState<Record<string, LoanTarget>>({});
+  const [dataRefreshKey, setDataRefreshKey] = useState(0);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -38,6 +42,11 @@ export default function App() {
     setBootError(null);
     const serverState = await api.getState();
     setState(serverState);
+    try {
+      setLoanTargets(await api.getLoanTargets());
+    } catch {
+      setLoanTargets({});
+    }
     if (serverState.transactions.length === 0) {
       const idb = await loadState();
       if (idb.transactions.length > 0) setMigrateCandidate(idb);
@@ -118,11 +127,31 @@ export default function App() {
     void api.setRecurring(key, mark).then(setState).catch(() => showToast("Errore di connessione al server"));
   }
 
+  function onLoanTarget(key: string, target: LoanTarget | null) {
+    void api
+      .setLoanTarget(key, target)
+      .then(setLoanTargets)
+      .catch(() => showToast("Errore di connessione al server"));
+  }
+
   function onReplace(next: AppState) {
     void api
       .migrate(next, true)
-      .then(({ state: applied }) => setState(applied))
+      .then(({ state: applied }) => {
+        setState(applied);
+        setDataRefreshKey((k) => k + 1);
+      })
       .catch(() => showToast("Errore di connessione al server"));
+  }
+
+  async function onRecompute(): Promise<string> {
+    const { state: next, loanTargets: targets, report } = await api.recompute();
+    setState(next);
+    setLoanTargets(targets);
+    setDataRefreshKey((k) => k + 1);
+    const msg = `Ricalcolo ok: ${report.categoriesUpdated} categorie, ${report.internalUpdated} interni, ${report.instrumentsRecalced} strumenti · ${report.transactions} movimenti`;
+    showToast(msg);
+    return msg;
   }
 
   function onMigrate() {
@@ -182,6 +211,7 @@ export default function App() {
                 ["dashboard", "Dashboard"],
                 ["movimenti", "Movimenti"],
                 ["abbonamenti", "Abbonamenti"],
+                ["mutui", "Mutui"],
                 ["paypal", "PayPal"],
                 ["consigli", "Consigli"],
                 ["investimenti", "Investimenti"],
@@ -214,10 +244,12 @@ export default function App() {
             transactions={txns}
             period={period}
             recurringMarks={state.recurringMarks}
+            loanTargets={loanTargets}
             onPeriod={setPeriod}
             onUpload={() => setUploadOpen(true)}
             onGoPaypal={() => setTab("paypal")}
             onGoAbbonamenti={() => setTab("abbonamenti")}
+            onGoMutui={() => setTab("mutui")}
             onGoInvestimenti={() => setTab("investimenti")}
           />
         )}
@@ -238,6 +270,14 @@ export default function App() {
             onUpload={() => setUploadOpen(true)}
           />
         )}
+        {tab === "mutui" && (
+          <LoansTab
+            transactions={txns}
+            loanTargets={loanTargets}
+            onSaveTarget={onLoanTarget}
+            onUpload={() => setUploadOpen(true)}
+          />
+        )}
         {tab === "paypal" && (
           <PaypalTab transactions={txns} onUpload={() => setUploadOpen(true)} />
         )}
@@ -251,7 +291,9 @@ export default function App() {
             onUpload={() => setUploadOpen(true)}
           />
         )}
-        {tab === "investimenti" && <Investimenti transactions={txns} />}
+        {tab === "investimenti" && (
+          <Investimenti transactions={txns} refreshKey={dataRefreshKey} />
+        )}
       </main>
 
       <UploadModal
@@ -265,6 +307,7 @@ export default function App() {
         authRequired={authRequired}
         onClose={() => setSettingsOpen(false)}
         onReplace={onReplace}
+        onRecompute={onRecompute}
         onLogout={onLogout}
       />
 

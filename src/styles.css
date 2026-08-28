@@ -561,6 +561,19 @@ select {
   background: transparent;
 }
 
+.input-compact {
+  width: 5rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--panel);
+}
+
+.loans-tab .stat-row {
+  margin-bottom: 0.5rem;
+}
+
 .tag.status-active {
   background: #f3e4d4;
   color: #8a3b12;

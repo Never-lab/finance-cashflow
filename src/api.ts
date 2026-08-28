@@ -1,3 +1,5 @@
+import type { LoanTarget } from "./lib/loans";
+import type { RecomputeReport } from "./lib/recompute";
 import type {
   AppState,
   Contribution,
@@ -158,4 +160,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ tickers }),
     }).then((r) => json<{ updated: string[]; errors: { ticker: string; error: string }[] }>(r)),
+  getLoanTargets: () =>
+    apiFetch("/api/loans/targets").then((r) => json<Record<string, LoanTarget>>(r)),
+  setLoanTarget: (key: string, target: LoanTarget | null) =>
+    apiFetch("/api/loans/targets", {
+      method: "PUT",
+      body: JSON.stringify({ key, target }),
+    }).then((r) => json<Record<string, LoanTarget>>(r)),
+  recompute: () =>
+    apiFetch("/api/recompute", { method: "POST" }).then((r) =>
+      json<{ ok: boolean; state: AppState; loanTargets: Record<string, LoanTarget>; report: RecomputeReport }>(
+        r,
+      ),
+    ),
 };

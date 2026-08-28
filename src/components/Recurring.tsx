@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { RecurringMark, Transaction } from "../types";
-import { findRecurring } from "../lib/recurring";
+import { findRecurring, isSubscriptionLike } from "../lib/recurring";
 import { formatEur } from "../lib/stats";
 
 type Props = {
@@ -13,7 +13,9 @@ type Props = {
 export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
   const items = useMemo(
     () =>
-      [...findRecurring(transactions)].sort((a, b) => b.monthlyEstimate - a.monthlyEstimate),
+      [...findRecurring(transactions)]
+        .filter(isSubscriptionLike)
+        .sort((a, b) => b.monthlyEstimate - a.monthlyEstimate),
     [transactions],
   );
   const active = items.filter((i) => marks[i.key] !== "cancelled");
@@ -69,8 +71,8 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
         </div>
       </div>
       <p className="muted kpi-note">
-        Rilevati da uscite ripetute (no trasferimenti interni). Segna “potrei
-        tagliare” o “cancellato” — resta salvato in locale.
+        Solo abbonamenti e servizi cancellabili (no mutuo, assicurazioni, bollette). Segna
+        “potrei tagliare” o “cancellato” — resta salvato in locale.
       </p>
 
       <div className="table-wrap">

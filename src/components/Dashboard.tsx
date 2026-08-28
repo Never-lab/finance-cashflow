@@ -13,7 +13,9 @@ import {
 import { forCashflow } from "../lib/internal";
 import { sumEmergencyFundOutflows } from "../lib/knownAccounts";
 import { buildPaypalSummary } from "../lib/paypal";
-import { findRecurring } from "../lib/recurring";
+import { buildLoanSummary, type LoanTarget } from "../lib/loans";
+import { mergeLoanTargets } from "../lib/knownLoans";
+import { findRecurring, isSubscriptionLike } from "../lib/recurring";
 import {
   CashflowCurve,
   CashflowSankeyChart,
@@ -26,10 +28,12 @@ type Props = {
   transactions: Transaction[];
   period: Period;
   recurringMarks: Record<string, RecurringMark>;
+  loanTargets: Record<string, LoanTarget>;
   onPeriod: (p: Period) => void;
   onUpload: () => void;
   onGoPaypal: () => void;
   onGoAbbonamenti: () => void;
+  onGoMutui: () => void;
   onGoInvestimenti?: () => void;
 };
 
@@ -37,10 +41,12 @@ export function Dashboard({
   transactions,
   period,
   recurringMarks,
+  loanTargets,
   onPeriod,
   onUpload,
   onGoPaypal,
   onGoAbbonamenti,
+  onGoMutui,
   onGoInvestimenti,
 }: Props) {
   const filtered = useMemo(() => {
@@ -66,15 +72,20 @@ export function Dashboard({
 
   const impegni = useMemo(() => {
     const paypal = buildPaypalSummary(transactions);
+    const loans = buildLoanSummary(transactions, mergeLoanTargets(loanTargets));
     const recurringMonthly = findRecurring(transactions)
+      .filter(isSubscriptionLike)
       .filter((r) => recurringMarks[r.key] !== "cancelled")
       .reduce((s, r) => s + r.monthlyEstimate, 0);
     return {
       paypalDebt: paypal.remainingDebt,
+      loanDebt: loans.remainingDebt,
+      loanMonthly: loans.monthlyBurden,
+      loanCount: loans.plans.length,
       recurringMonthly,
       planCount: paypal.plans.filter((p) => p.status === "active").length,
     };
-  }, [transactions, recurringMarks]);
+  }, [transactions, recurringMarks, loanTargets]);
 
   if (transactions.length === 0) {
     return (
@@ -186,20 +197,42 @@ export function Dashboard({
                 : "Rate mancanti × importo rata — stimato da CSV banca"}
             </span>
           </button>
+          <button type="button" className="stat-card interactive" onClick={onGoMutui}>
+            <span className="stat-label">Mutui e prestiti</span>
+            <span className={`stat-value ${impegni.loanDebt > 0 ? "neg" : impegni.loanMonthly > 0 ? "neg" : ""}`}>
+              {impegni.loanDebt > 0
+                ? formatEur(impegni.loanDebt)
+                : impegni.loanMonthly > 0
+                  ? formatEur(impegni.loanMonthly)
+                  : "—"}
+            </span>
+            <span className="stat-hint">
+              {impegni.loanCount > 0
+                ? impegni.loanDebt > 0
+                  ? `${impegni.loanCount} finanziament${impegni.loanCount === 1 ? "o" : "i"} · ${formatEur(impegni.loanDebt)} residuo`
+                  : `${formatEur(impegni.loanMonthly)}/m · Selfycredit e altri`
+                : "Nessun finanziamento rilevato nei CSV"}
+            </span>
+          </button>
           <button type="button" className="stat-card interactive" onClick={onGoAbbonamenti}>
-            <span className="stat-label">Ricorrenti / mese</span>
+            <span className="stat-label">Abbonamenti / mese</span>
             <span className="stat-value neg">{formatEur(impegni.recurringMonthly)}</span>
             <span className="stat-hint">
-              Media mensile abbonamenti attivi (no cancellati)
+              Solo abbonamenti (no mutuo, assicurazioni, bollette)
             </span>
           </button>
           <div className="stat-card">
             <span className="stat-label">Totale impegnato</span>
             <span className="stat-value neg">
-              {formatEur(impegni.paypalDebt + impegni.recurringMonthly)}
+              {formatEur(
+                impegni.paypalDebt +
+                  impegni.loanDebt +
+                  impegni.recurringMonthly +
+                  (impegni.loanDebt > 0 ? 0 : impegni.loanMonthly),
+              )}
             </span>
             <span className="stat-hint">
-              PayPal residuo + ricorrenti attivi — non cash disponibile
+              PayPal residuo + mutuo + abbonamenti — non cash disponibile
             </span>
           </div>
         </div>

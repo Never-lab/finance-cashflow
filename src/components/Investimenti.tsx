@@ -10,6 +10,7 @@ import {
 
 type Props = {
   transactions: Transaction[];
+  refreshKey?: number;
 };
 
 const TYPE_LABELS: Record<InstrumentType, string> = {
@@ -26,7 +27,7 @@ function fallbackValue(i: InstrumentWithHolding): number {
   return (i.holding?.cashBalance ?? 0) + (i.holding?.costBasis ?? 0);
 }
 
-export function Investimenti({ transactions }: Props) {
+export function Investimenti({ transactions, refreshKey = 0 }: Props) {
   const [instruments, setInstruments] = useState<InstrumentWithHolding[]>([]);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ export function Investimenti({ transactions }: Props) {
   useEffect(() => {
     setLoading(true);
     void refresh().finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   useEffect(() => {
     if (!selectedId) {

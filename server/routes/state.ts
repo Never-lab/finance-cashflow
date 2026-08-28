@@ -9,8 +9,22 @@ import {
   setInternalOverrideDb,
   setRecurringMarkDb,
 } from "../lib/stateRepo";
+import { recomputeDatabase } from "../lib/recomputeRepo";
+import { getSetting } from "../lib/settingsRepo";
+import { mergeLoanTargets } from "../../src/lib/knownLoans";
+import type { LoanTarget } from "../../src/lib/loans";
 
 export const stateRoutes = new Hono();
+
+function storedLoanTargets(db: ReturnType<typeof getDb>): Record<string, LoanTarget> {
+  const raw = getSetting(db, "loan_targets");
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Record<string, LoanTarget>;
+  } catch {
+    return {};
+  }
+}
 
 stateRoutes.get("/state", (c) => {
   return c.json(loadAppState(getDb()));
@@ -53,6 +67,17 @@ stateRoutes.post("/migrate", async (c) => {
     replaceAppState(db, state);
   }
   return c.json({ ok: true, state: loadAppState(db) });
+});
+
+stateRoutes.post("/recompute", (c) => {
+  const db = getDb();
+  const report = recomputeDatabase(db);
+  return c.json({
+    ok: true,
+    state: loadAppState(db),
+    loanTargets: mergeLoanTargets(storedLoanTargets(db)),
+    report,
+  });
 });
 
 stateRoutes.get("/export", (c) => {

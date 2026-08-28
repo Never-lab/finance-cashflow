@@ -9,12 +9,15 @@ type Props = {
   authRequired: boolean;
   onClose: () => void;
   onReplace: (next: AppState) => void;
+  onRecompute: () => Promise<string | null>;
   onLogout: () => void;
 };
 
-export function SettingsModal({ open, state, authRequired, onClose, onReplace, onLogout }: Props) {
+export function SettingsModal({ open, state, authRequired, onClose, onReplace, onRecompute, onLogout }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recomputeMsg, setRecomputeMsg] = useState<string | null>(null);
+  const [recomputing, setRecomputing] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [savingKey, setSavingKey] = useState(false);
@@ -24,6 +27,7 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
     if (!open) return;
     setApiKeyInput("");
     setKeyError(null);
+    setRecomputeMsg(null);
     api.getSettings().then(setSettings).catch(() => setSettings(null));
   }, [open]);
 
@@ -93,6 +97,27 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
     onClose();
   }
 
+  async function recomputeAll() {
+    if (
+      !confirm(
+        "Ricalcolare categorie, trasferimenti interni e investimenti su tutti i movimenti? Gli override manuali restano.",
+      )
+    ) {
+      return;
+    }
+    setRecomputing(true);
+    setRecomputeMsg(null);
+    setError(null);
+    try {
+      const msg = await onRecompute();
+      setRecomputeMsg(msg);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore ricalcolo");
+    } finally {
+      setRecomputing(false);
+    }
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
@@ -143,6 +168,25 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
           Dati su SQLite locale (`data/finance.db`). Il JSON di backup copre i movimenti; per il portafoglio copia anche il file `.db`.
         </p>
 
+        <h3>Manutenzione</h3>
+        <p className="muted">
+          Riallinea DB e dashboard: riapplica regole categorie e flag «interno», ricalcola cost basis
+          investimenti e ricarica mutui/abbonamenti/PayPal. Non tocca override manuali né segnalazioni
+          abbonamenti.
+        </p>
+        <div className="settings-actions">
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => void recomputeAll()}
+            disabled={recomputing || state.transactions.length === 0}
+          >
+            {recomputing ? "Ricalcolo…" : "Ricalcola tutto"}
+          </button>
+        </div>
+        {recomputeMsg && <p className="muted">{recomputeMsg}</p>}
+
+        <h3>Backup</h3>
         <div className="settings-actions">
           <button type="button" className="btn primary" onClick={download}>
             Esporta backup JSON
