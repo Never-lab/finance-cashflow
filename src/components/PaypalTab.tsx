@@ -8,8 +8,16 @@ type Props = {
   onUpload: () => void;
 };
 
+function formatItDate(iso: string | null): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 export function PaypalTab({ transactions, onUpload }: Props) {
   const summary = useMemo(() => buildPaypalSummary(transactions), [transactions]);
+  const knownPlans = summary.plans.filter((p) => p.merchantLabel);
+  const otherPlans = summary.plans.filter((p) => !p.merchantLabel);
 
   if (transactions.length === 0) {
     return (
@@ -42,28 +50,95 @@ export function PaypalTab({ transactions, onUpload }: Props) {
     <div className="paypal-tab">
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
-          <span className="stat-label">Uscite PayPal (totale)</span>
-          <span className="stat-value neg">{formatEur(summary.totalOut)}</span>
-          <span className="stat-hint">Tutti gli addebiti PayPal nel CSV, piani inclusi</span>
+          <span className="stat-label">Rate attive (mese)</span>
+          <span className="stat-value neg">{formatEur(summary.monthlyBurden)}</span>
+          <span className="stat-hint">Unieuro + Autodoc e altri piani in corso</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Debito rate stimato</span>
           <span className="stat-value neg">{formatEur(summary.remainingDebt)}</span>
           <span className="stat-hint">
-            Somma residui piani “In corso” — non saldo PayPal reale
+            {knownPlans.length > 0
+              ? "Residuo da app PayPal (Unieuro + Autodoc) + stime altri piani"
+              : "Somma residui piani in corso — non saldo PayPal reale"}
           </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Accrediti PayPal</span>
-          <span className="stat-value pos">{formatEur(summary.totalIn)}</span>
-          <span className="stat-hint">Entrate da movimenti PayPal in banca</span>
+          <span className="stat-label">Uscite PayPal (totale)</span>
+          <span className="stat-value neg">{formatEur(summary.totalOut)}</span>
+          <span className="stat-hint">Tutti gli addebiti PayPal nel CSV</span>
         </div>
       </div>
-      <p className="muted kpi-note">Stima da CSV banca. Non è l’app PayPal.</p>
+      <p className="muted kpi-note">
+        Piani noti allineati all’app PayPal. Altri «Paga in 3» / Pay Monthly restano stima da CSV
+        banca (descrizione generica, senza merchant).
+      </p>
 
-      {summary.plans.length > 0 && (
+      {knownPlans.length > 0 && (
         <section className="panel paypal-section">
-          <h3>Piani e rate</h3>
+          <h3>Piani attivi</h3>
+          <div className="table-wrap flat">
+            <table>
+              <thead>
+                <tr>
+                  <th>Merchant</th>
+                  <th>Piano</th>
+                  <th>Stato</th>
+                  <th className="num">Rata</th>
+                  <th className="num">Pagate</th>
+                  <th className="num">Residuo</th>
+                  <th>Prossima</th>
+                  <th>Ultima</th>
+                </tr>
+              </thead>
+              <tbody>
+                {knownPlans.map((p) => (
+                  <tr key={p.key}>
+                    <td>
+                      <div>{p.merchantLabel}</div>
+                      {p.startDate && (
+                        <div className="muted tiny">Acquisto {formatItDate(p.startDate)}</div>
+                      )}
+                      {p.principalAmount != null && (
+                        <div className="muted tiny">
+                          Importo {formatEur(p.principalAmount)}
+                          {p.totalAmount != null && p.totalAmount !== p.principalAmount
+                            ? ` · totale ${formatEur(p.totalAmount)}`
+                            : ""}
+                          {p.indicativeTaeg != null ? ` · TAEG ${p.indicativeTaeg}%` : ""}
+                        </div>
+                      )}
+                    </td>
+                    <td>{p.kind === "pay_monthly" ? "Pay Monthly" : "Paga in 3"}</td>
+                    <td>
+                      <span className={`tag status-${p.status}`}>
+                        {p.status === "active"
+                          ? "In corso"
+                          : p.status === "likely_done"
+                            ? "Chiuso"
+                            : "Ricorrente"}
+                      </span>
+                    </td>
+                    <td className="num neg">{formatEur(p.installmentAmount)}</td>
+                    <td className="num">
+                      {p.expectedCount ? `${p.paidCount}/${p.expectedCount}` : String(p.paidCount)}
+                    </td>
+                    <td className="num neg">
+                      {p.remainingEstimate != null ? formatEur(p.remainingEstimate) : "—"}
+                    </td>
+                    <td>{formatItDate(p.nextPaymentDate)}</td>
+                    <td>{p.lastDate || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {otherPlans.length > 0 && (
+        <section className="panel paypal-section">
+          <h3>Altri piani (stima CSV)</h3>
           <div className="table-wrap flat">
             <table>
               <thead>
@@ -72,23 +147,18 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                   <th>Stato</th>
                   <th className="num">Rata</th>
                   <th className="num">Pagate</th>
-                  <th className="num" title="Rate mancanti × importo rata">
-                    Residuo
-                  </th>
+                  <th className="num">Residuo</th>
                   <th>Ultima</th>
                 </tr>
               </thead>
               <tbody>
-                {summary.plans.map((p) => (
+                {otherPlans.map((p) => (
                   <tr key={p.key}>
                     <td>
                       <div>{p.label}</div>
                       <div className="muted tiny">
                         {p.dates.map((d) => d.slice(5)).join(" · ")}
                       </div>
-                      {p.status === "active" && (
-                        <div className="muted tiny">Prossima rata ~ fine mese</div>
-                      )}
                     </td>
                     <td>
                       <span className={`tag status-${p.status}`}>
@@ -106,9 +176,7 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                         : String(p.paidCount)}
                     </td>
                     <td className="num neg">
-                      {p.remainingEstimate != null
-                        ? formatEur(p.remainingEstimate)
-                        : "—"}
+                      {p.remainingEstimate != null ? formatEur(p.remainingEstimate) : "—"}
                     </td>
                     <td>{p.lastDate}</td>
                   </tr>

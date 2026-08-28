@@ -67,12 +67,54 @@ describe("paypal", () => {
       }),
     ];
     const s = buildPaypalSummary(rows);
-    const plan = s.plans.find((p) => p.kind === "pay_in_3");
+    const plan = s.plans.find((p) => p.key === "pay_in_3|146.83");
     expect(plan?.paidCount).toBe(3);
     expect(plan?.remainingEstimate).toBe(0);
     expect(plan?.status).toBe("likely_done");
     expect(s.otherOut).toHaveLength(1);
-    expect(s.remainingDebt).toBe(0);
+    expect(s.remainingDebt).toBe(397.46);
+  });
+
+  it("aligns Unieuro and Autodoc with known PayPal metadata", () => {
+    const rows = [
+      tx({
+        id: "u1",
+        date: "2026-08-04",
+        description: "PAYPAL *PYPL PAYMTHLY",
+        amount: -23.94,
+      }),
+      tx({
+        id: "a1",
+        date: "2026-07-17",
+        description: "PAYPAL *PAGA IN 3 RATE",
+        amount: -28.13,
+      }),
+      tx({
+        id: "a2",
+        date: "2026-07-17",
+        description: "PAYPAL *PAGA IN 3 RATE",
+        amount: -10.33,
+      }),
+      tx({
+        id: "a3",
+        date: "2026-08-16",
+        description: "PAYPAL *PAGA IN 3 RATE",
+        amount: -38.46,
+      }),
+    ];
+    const s = buildPaypalSummary(rows);
+    const unieuro = s.plans.find((p) => p.key === "paypal-unieuro");
+    const autodoc = s.plans.find((p) => p.key === "paypal-autodoc");
+    expect(unieuro?.merchantLabel).toBe("Unieuro S.p.A.");
+    expect(unieuro?.paidCount).toBe(9);
+    expect(unieuro?.remainingEstimate).toBe(359);
+    expect(unieuro?.nextPaymentDate).toBe("2026-09-05");
+    expect(autodoc?.merchantLabel).toBe("Autodoc SE");
+    expect(autodoc?.paidCount).toBe(2);
+    expect(autodoc?.remainingEstimate).toBe(38.46);
+    expect(autodoc?.nextPaymentDate).toBe("2026-09-17");
+    expect(s.remainingDebt).toBe(397.46);
+    expect(s.monthlyBurden).toBe(62.4);
   });
 
   it("estimates 1 remaining for 2 of 3 installments", () => {
@@ -91,7 +133,8 @@ describe("paypal", () => {
       }),
     ];
     const s = buildPaypalSummary(rows);
-    expect(s.plans[0]?.remainingEstimate).toBe(50);
-    expect(s.remainingDebt).toBe(50);
+    const plan = s.plans.find((p) => p.key === "pay_in_3|50.00");
+    expect(plan?.remainingEstimate).toBe(50);
+    expect(s.remainingDebt).toBe(447.46);
   });
 });
