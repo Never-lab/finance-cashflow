@@ -52,15 +52,13 @@ export function PaypalTab({ transactions, onUpload }: Props) {
         <div className="stat-card">
           <span className="stat-label">Rate attive (mese)</span>
           <span className="stat-value neg">{formatEur(summary.monthlyBurden)}</span>
-          <span className="stat-hint">Unieuro + Autodoc e altri piani in corso</span>
+          <span className="stat-hint">Solo Unieuro + Autodoc (allineati all’app)</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Debito rate stimato</span>
           <span className="stat-value neg">{formatEur(summary.remainingDebt)}</span>
           <span className="stat-hint">
-            {knownPlans.length > 0
-              ? "Residuo da app PayPal (Unieuro + Autodoc) + stime altri piani"
-              : "Somma residui piani in corso — non saldo PayPal reale"}
+            Residuo piani noti — senza stime generiche CSV
           </span>
         </div>
         <div className="stat-card">
@@ -70,8 +68,8 @@ export function PaypalTab({ transactions, onUpload }: Props) {
         </div>
       </div>
       <p className="muted kpi-note">
-        Piani noti allineati all’app PayPal. Altri «Paga in 3» / Pay Monthly restano stima da CSV
-        banca (descrizione generica, senza merchant).
+        Rate e debito KPI contano solo i piani noti (Unieuro + Autodoc). Altri «Paga in 3» da CSV
+        banca restano sotto come stima incerto — non entrano nei consigli né nel piano liberazione.
       </p>
 
       {knownPlans.length > 0 && (

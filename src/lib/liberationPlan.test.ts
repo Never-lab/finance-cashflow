@@ -29,7 +29,8 @@ describe("liberationPlan", () => {
 
     const paypal = plan.goals.find((g) => g.id === "paypal")!;
     expect(paypal.kind).toBe("debt");
-    expect(paypal.remaining).toBeGreaterThan(1000);
+    expect(paypal.remaining).toBeCloseTo(397.46, 0);
+    expect(paypal.monthlyHint).toBeCloseTo(62.4, 0);
     expect(paypal.pct).toBeGreaterThan(0);
     expect(paypal.pct).toBeLessThan(100);
 

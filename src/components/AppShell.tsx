@@ -64,7 +64,6 @@ export function AppShell({ tab, onTab, onUpload, onSettings, children }: Props) 
       <aside className="sidebar">
         <div className="sidebar-brand">
           <p className="brand">Cash Flow</p>
-          <p className="tagline">Mediolanum + Revolut</p>
         </div>
 
         <nav className="sidebar-nav" aria-label="Sezioni">

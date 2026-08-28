@@ -391,6 +391,31 @@ function LiberationPlanPanel({
           {plan.paypalUnder600 ? " · PayPal sotto soglia fase Selfy" : ""}
         </p>
       )}
+
+      <div className="roadmap-memo" aria-label="Memo piano pocket">
+        <p className="roadmap-memo-title">Memo retta via · 4 pocket</p>
+        <p className="roadmap-memo-pockets muted tiny">
+          Auto 75 · Vacanze 75 · Tech 75 · Debiti 218 €/m · Emergenza Med +150 €/m
+        </p>
+        <ol className="roadmap-memo-list">
+          <li>
+            <time dateTime="2026-09">Set 2026</time>
+            <span>Zona secca → stipendio 15 · buffer Med 950 €</span>
+          </li>
+          <li>
+            <time dateTime="2026-12">Dic 2026</time>
+            <span>PayPal chiuso · 13ª 50% emergenza / 40% Debiti</span>
+          </li>
+          <li>
+            <time dateTime="2027-04">Apr 2027</time>
+            <span>1° colpo Selfy −1.000 € (pocket Debiti ≥1.200)</span>
+          </li>
+          <li>
+            <time dateTime="2027-08">Ago 2027</time>
+            <span>2° colpo Selfy · focus Avvera + emergenza ~1.900 €</span>
+          </li>
+        </ol>
+      </div>
     </section>
   );
 }

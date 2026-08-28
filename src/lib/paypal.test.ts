@@ -135,6 +135,8 @@ describe("paypal", () => {
     const s = buildPaypalSummary(rows);
     const plan = s.plans.find((p) => p.key === "pay_in_3|50.00");
     expect(plan?.remainingEstimate).toBe(50);
-    expect(s.remainingDebt).toBe(447.46);
+    // KPI usa solo piani noti (Unieuro+Autodoc); stime generiche non gonfiano il debito
+    expect(s.remainingDebt).toBe(397.46);
+    expect(s.monthlyBurden).toBe(62.4);
   });
 });

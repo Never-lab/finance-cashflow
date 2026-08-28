@@ -66,7 +66,9 @@ export function buildLiberationPlan(
   const paypalRepaid = round2(paypal.plans.reduce((s, p) => s + p.totalPaid, 0));
   const paypalRemaining = paypal.remainingDebt;
   const paypalTotal = round2(paypalRepaid + paypalRemaining);
-  const activePaypal = paypal.plans.filter((p) => p.status === "active").length;
+  const activePaypal = paypal.plans.filter(
+    (p) => p.merchantLabel && p.status === "active",
+  ).length;
 
   const selfy = loans.plans.find((p) => p.key === SELFYCREDIT_00136196.key);
   const selfyPrincipal =

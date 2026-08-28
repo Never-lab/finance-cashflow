@@ -244,16 +244,14 @@ export function buildPaypalSummary(txns: Transaction[]): PaypalSummary {
 
   const totalOut = round2(out.reduce((s, t) => s + -t.amount, 0));
   const totalIn = round2(income.reduce((s, t) => s + t.amount, 0));
-  const remainingDebt = round2(
-    plans
-      .filter((p) => p.remainingEstimate != null && p.status !== "likely_done")
-      .reduce((s, p) => s + (p.remainingEstimate ?? 0), 0),
+
+  // KPIs = piani noti (merchant da app PayPal). Bucket generici CSV restano in lista ma non gonfiano rate/debito.
+  const knownOpen = plans.filter(
+    (p) => p.merchantLabel && p.remainingEstimate != null && p.status !== "likely_done",
   );
-  const monthlyBurden = round2(
-    plans
-      .filter((p) => p.status === "active")
-      .reduce((s, p) => s + p.installmentAmount, 0),
-  );
+  const knownActive = plans.filter((p) => p.merchantLabel && p.status === "active");
+  const remainingDebt = round2(knownOpen.reduce((s, p) => s + (p.remainingEstimate ?? 0), 0));
+  const monthlyBurden = round2(knownActive.reduce((s, p) => s + p.installmentAmount, 0));
 
   return { plans, otherOut, income, totalOut, totalIn, remainingDebt, monthlyBurden };
 }
