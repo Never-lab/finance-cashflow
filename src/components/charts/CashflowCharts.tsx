@@ -242,7 +242,7 @@ function SankeyNode(props: {
   const name = payload?.name ?? "";
   const isRight = x > containerWidth / 2;
   const isHub = name.startsWith("Entrate");
-  const isSave = name.startsWith("Risparmio");
+  const isSave = name.startsWith("Margine");
   const fill = isSave || isHub || !isRight ? CHART.teal : SANKEY_COLORS[index % SANKEY_COLORS.length]!;
 
   return (
@@ -284,7 +284,7 @@ function SankeyLink(props: {
     index = 0,
     payload,
   } = props;
-  const toSave = payload?.target?.name?.startsWith("Risparmio");
+  const toSave = payload?.target?.name?.startsWith("Margine");
   const stroke = toSave ? CHART.teal : SANKEY_COLORS[index % SANKEY_COLORS.length]!;
 
   return (
@@ -318,7 +318,7 @@ export function CashflowSankeyChart({ data }: { data: SankeyData }) {
           <span className="stat-value neg">{formatEur(data.expense)}</span>
         </div>
         <div className="stat-card compact">
-          <span className="stat-label">Risparmio</span>
+          <span className="stat-label">Margine</span>
           <span className={`stat-value ${data.net >= 0 ? "pos" : "neg"}`}>
             {formatEur(data.net)}
           </span>

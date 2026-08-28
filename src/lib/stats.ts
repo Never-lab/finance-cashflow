@@ -207,7 +207,7 @@ export function cashflowSankey(txns: Transaction[], topExpenses = 7): SankeyData
 
   if (kpis.net > 0.009) {
     const idx = nodes.length;
-    nodes.push({ name: `Risparmio ${formatEurCompact(kpis.net)}` });
+    nodes.push({ name: `Margine ${formatEurCompact(kpis.net)}` });
     links.push({ source: hubIdx, target: idx, value: kpis.net });
   } else if (kpis.net < -0.009 && kpis.income > 0) {
     // Deficit: show gap as outflow from hub already covered by expenses > income;

@@ -134,7 +134,7 @@ export function Advisor({
           <span className={`stat-value ${report.summary.savingsRate >= 15 ? "pos" : "neg"}`}>
             {report.summary.savingsRate.toFixed(0)}%
           </span>
-          <span className="stat-hint">Netto {formatEur(report.summary.net)}</span>
+          <span className="stat-hint">Netto consumo {formatEur(report.summary.net)} · non saldo conti</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Impegni / mese</span>
@@ -153,8 +153,8 @@ export function Advisor({
       </div>
 
       <p className="muted kpi-note">
-        Analisi automatica su ricorrenti, anomalie, impegni e patrimonio. Non è consulenza
-        finanziaria — sono segnali dai tuoi movimenti nel periodo selezionato.
+        Analisi su consumo reale (giroconti Mediolanum↔Revolut esclusi). Margine % ≠ liquidità
+        sui conti — rate future non ancora in CSV non sono incluse.
       </p>
 
       {report.topActions.length > 0 && (

@@ -1,6 +1,6 @@
 import type { Period, RecurringMark, Transaction } from "../types";
 import type { LoanTarget } from "./loans";
-import { forCashflow } from "./internal";
+import { forConsumption } from "./consumptionView";
 import { buildLoanSummary } from "./loans";
 import { mergeLoanTargets } from "./knownLoans";
 import { findRecurring, isSubscriptionLike } from "./recurring";
@@ -135,7 +135,7 @@ export function analyzeFinances(
   const portfolio = opts.portfolio ?? null;
   const now = opts.now ?? new Date();
 
-  const filtered = forCashflow(filterByPeriod(txns, period, now));
+  const filtered = forConsumption(filterByPeriod(txns, period, now));
   const kpis = computeKpis(filtered);
   const avgIncome = avgMonthlyIncome(filtered);
   const savingsRate =

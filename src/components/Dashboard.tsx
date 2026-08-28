@@ -10,7 +10,7 @@ import {
   monthlySeries,
   spendingHeatmap,
 } from "../lib/stats";
-import { forCashflow } from "../lib/internal";
+import { forConsumption } from "../lib/consumptionView";
 import { sumEmergencyFundOutflows } from "../lib/knownAccounts";
 import { buildPaypalSummary } from "../lib/paypal";
 import { buildLoanSummary, type LoanTarget } from "../lib/loans";
@@ -49,21 +49,20 @@ export function Dashboard({
   onGoMutui,
   onGoInvestimenti,
 }: Props) {
-  const filtered = useMemo(() => {
-    const byPeriod = filterByPeriod(transactions, period);
-    return forCashflow(byPeriod);
-  }, [transactions, period]);
+  const periodAll = useMemo(() => filterByPeriod(transactions, period), [transactions, period]);
+
+  const filtered = useMemo(() => forConsumption(periodAll), [periodAll]);
   const kpis = useMemo(() => computeKpis(filtered), [filtered]);
+  const savingsRate = kpis.income > 0 ? Math.round((kpis.net / kpis.income) * 1000) / 10 : 0;
   const monthly = useMemo(() => monthlySeries(filtered), [filtered]);
   const cats = useMemo(() => categoryBreakdownPct(filtered, 6), [filtered]);
   const curve = useMemo(() => cumulativeSeries(filtered), [filtered]);
   const heat = useMemo(() => spendingHeatmap(filtered, 5), [filtered]);
   const sankey = useMemo(() => cashflowSankey(filtered, 7), [filtered]);
-  const hiddenInternal = useMemo(() => {
-    return filterByPeriod(transactions, period).length - filtered.length;
-  }, [transactions, period, filtered]);
-
-  const periodAll = useMemo(() => filterByPeriod(transactions, period), [transactions, period]);
+  const hiddenFromCharts = useMemo(
+    () => periodAll.length - filtered.length,
+    [periodAll, filtered],
+  );
 
   const savings = useMemo(() => {
     const emergencyOut = sumEmergencyFundOutflows(periodAll);
@@ -130,29 +129,40 @@ export function Dashboard({
           label="Entrate"
           value={formatEur(kpis.income)}
           tone="pos"
-          hint="Somma entrate nel periodo selezionato"
+          hint="Stipendio e altre entrate reali (no giroconti Revolut)"
         />
         <Kpi
           label="Uscite"
           value={formatEur(kpis.expense)}
           tone="neg"
-          hint="Somma uscite (no trasferimenti interni)"
+          hint="Solo consumo e addebiti (no trasferimenti tra conti)"
         />
         <Kpi
-          label="Netto"
+          label="Margine"
+          value={`${savingsRate.toFixed(0)}%`}
+          tone={savingsRate >= 15 ? "pos" : "neg"}
+          hint={`Netto ${formatEur(kpis.net)} · non è il saldo sui conti`}
+        />
+        <Kpi
+          label="Netto periodo"
           value={formatEur(kpis.net)}
           tone={kpis.net >= 0 ? "pos" : "neg"}
-          hint="Entrate − uscite"
+          hint="Entrate − uscite consumo nel periodo"
         />
-        <Kpi label="Movimenti" value={String(kpis.count)} hint="Transazioni nel periodo" />
       </div>
-      {hiddenInternal > 0 && (
+      {hiddenFromCharts > 0 && (
         <p className="muted kpi-note">
-          Esclusi {hiddenInternal} trasferimenti interni dai KPI
+          Esclusi {hiddenFromCharts} giroconti / trasferimenti interni da KPI e grafici
           {savings.emergencyOut > 0
             ? ` (inclusi ${formatEur(savings.emergencyOut)} verso fondo emergenza deposito)`
             : ""}
-          .
+          . Rate non ancora addebitate (es. mutuo in arrivo) non compaiono finché non sono nel CSV.
+        </p>
+      )}
+      {hiddenFromCharts === 0 && (
+        <p className="muted kpi-note">
+          Margine % = quanto resta dopo il consumo tracciato — non è la liquidità sui conti Mediolanum +
+          Revolut.
         </p>
       )}
 
@@ -242,7 +252,7 @@ export function Dashboard({
         <section className="panel chart-panel hero-panel">
           <h3>Flusso di cassa (Sankey)</h3>
           <p className="muted tiny chart-sub">
-            Da dove entrano i soldi e dove escono (categorie e risparmio).
+            Entrate reali → categorie di spesa + margine periodo. Giroconti Mediolanum↔Revolut esclusi.
           </p>
           {sankey ? (
             <CashflowSankeyChart data={sankey} />
@@ -254,7 +264,7 @@ export function Dashboard({
         <section className="panel chart-panel hero-panel">
           <h3>Cash flow cumulato</h3>
           <p className="muted tiny chart-sub">
-            Andamento del netto giorno per giorno nel periodo.
+            Saldo cumulato del consumo netto (senza trasferimenti tra conti).
           </p>
           <CashflowCurve data={curve} />
         </section>

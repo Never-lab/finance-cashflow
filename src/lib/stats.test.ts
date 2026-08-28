@@ -82,7 +82,7 @@ describe("stats", () => {
     const s = cashflowSankey(txns, 6);
     expect(s).not.toBeNull();
     expect(s!.links.length).toBeGreaterThan(1);
-    expect(s!.nodes.some((n) => n.name.startsWith("Risparmio"))).toBe(true);
+    expect(s!.nodes.some((n) => n.name.startsWith("Margine"))).toBe(true);
     expect(s!.savingsRate).toBe(75);
   });
 });
