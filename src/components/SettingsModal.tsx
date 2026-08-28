@@ -6,11 +6,13 @@ import { api, type Settings } from "../api";
 type Props = {
   open: boolean;
   state: AppState;
+  authRequired: boolean;
   onClose: () => void;
   onReplace: (next: AppState) => void;
+  onLogout: () => void;
 };
 
-export function SettingsModal({ open, state, onClose, onReplace }: Props) {
+export function SettingsModal({ open, state, authRequired, onClose, onReplace, onLogout }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -165,6 +167,18 @@ export function SettingsModal({ open, state, onClose, onReplace }: Props) {
         </div>
 
         {error && <p className="error">{error}</p>}
+
+        {authRequired && (
+          <>
+            <h3>Sessione</h3>
+            <p className="muted">Disconnetti questo browser dal monitoring plane.</p>
+            <div className="settings-actions">
+              <button type="button" className="btn danger" onClick={onLogout}>
+                Esci
+              </button>
+            </div>
+          </>
+        )}
 
         <div className="modal-actions">
           <button type="button" className="btn" onClick={onClose}>

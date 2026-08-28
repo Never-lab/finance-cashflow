@@ -31,6 +31,7 @@ describe("sqlite schema", () => {
         "contributions",
         "quotes_cache",
         "settings",
+        "auth_user",
       ]),
     );
     db.close();

@@ -67,11 +67,13 @@ Progetto **separato** da liquidazi. Piano Hobby: un servizio + volume SQLite su 
    | Variable | Valore |
    |----------|--------|
    | `NODE_ENV` | `production` |
-   | `FINANCE_AUTH` | `on` *(dopo slice auth; fino ad allora `off` per smoke)* |
+   | `FINANCE_AUTH` | `on` |
    | `FINANCE_USERNAME` | il tuo username |
    | `FINANCE_PASSWORD` | password ≥ 8 caratteri |
    | `FINANCE_SECRET` | stringa random 32+ byte (`openssl rand -hex 32`) |
    | `DATABASE_PATH` | `/data/finance.db` |
+
+   Al primo boot con DB vuoto, l'utente viene creato da `FINANCE_USERNAME` / `FINANCE_PASSWORD`. Nessuna registrazione pubblica.
 
 5. Health: `GET https://<tuo-dominio>/api/health` → `{ "ok": true, … }` (**senza `:8080`** — Railway espone solo HTTPS sulla porta 443).
 6. Apri `https://<tuo-dominio>/` per la UI (dopo build con `dist/`).
@@ -80,5 +82,5 @@ Build/install: `nixpacks.toml` (Node 22, Python + gcc for `better-sqlite3`, `npm
 
 ### Stato attuale
 
-- **Fatto:** config Railway, CI GitHub, health API, `PORT` Railway.
-- **Prossimo (F-deploy):** auth, serve static `dist/`, login UI, passkey fase 2.
+- **Fatto:** config Railway, CI, health API, UI static, **auth login + sessioni HMAC**.
+- **Prossimo:** passkey fase 2, v2 budget, v4 obiettivi Vault.

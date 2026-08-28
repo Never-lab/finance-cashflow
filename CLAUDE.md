@@ -26,7 +26,7 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 | **v1.5** | Tab Consigli: advisor locale leak/anomalie/cash flow + score | **Fatta** |
 | v2 | Budget per categoria + alert | Non iniziata — vedi stack unificato |
 | **v3 (parziale)** | Tab **Investimenti**: PAC/ETF/fondi/risparmi, KPI, allocation, P&L, quote Yahoo (+ Finnhub opzionale) | **Fatta** (F1–F3) |
-| **F-deploy** | Auth + Railway + volume SQLite | **In corso** |
+| **F-deploy** | Auth + Railway + volume SQLite | **Fatta** |
 | v3.1 | Tier rendimento (T0/T1/T2) in Investimenti | Non iniziata |
 | v4 | Obiettivi Vault (Auto, Casa) + waterfall visuale | Non iniziata |
 

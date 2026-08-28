@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppState, Period, RecurringMark, Transaction } from "./types";
 import { loadState } from "./db";
 import { withOverrides } from "./lib/appState";
+import { clearAuthToken, getAuthToken } from "./lib/authToken";
 import { api } from "./api";
 import { Dashboard } from "./components/Dashboard";
 import { Transactions } from "./components/Transactions";
@@ -9,12 +10,16 @@ import { Recurring } from "./components/Recurring";
 import { PaypalTab } from "./components/PaypalTab";
 import { Advisor } from "./components/Advisor";
 import { Investimenti } from "./components/Investimenti";
+import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 
 type Tab = "dashboard" | "movimenti" | "abbonamenti" | "paypal" | "consigli" | "investimenti";
+type Gate = "loading" | "login" | "app";
 
 export default function App() {
+  const [gate, setGate] = useState<Gate>("loading");
+  const [authRequired, setAuthRequired] = useState(false);
   const [state, setState] = useState<AppState | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [period, setPeriod] = useState<Period>("month");
@@ -31,21 +36,63 @@ export default function App() {
 
   const loadBootState = useCallback(async () => {
     setBootError(null);
-    try {
-      const serverState = await api.getState();
-      setState(serverState);
-      if (serverState.transactions.length === 0) {
-        const idb = await loadState();
-        if (idb.transactions.length > 0) setMigrateCandidate(idb);
-      }
-    } catch {
-      setBootError("Impossibile caricare i dati dal server.");
+    const serverState = await api.getState();
+    setState(serverState);
+    if (serverState.transactions.length === 0) {
+      const idb = await loadState();
+      if (idb.transactions.length > 0) setMigrateCandidate(idb);
+    } else {
+      setMigrateCandidate(null);
     }
   }, []);
 
-  useEffect(() => {
-    void loadBootState();
+  const bootApp = useCallback(async () => {
+    setBootError(null);
+    try {
+      const health = await api.getHealth();
+      setAuthRequired(health.auth);
+
+      if (health.auth) {
+        if (!getAuthToken()) {
+          setGate("login");
+          return;
+        }
+        await api.authMe();
+      }
+
+      await loadBootState();
+      setGate("app");
+    } catch {
+      try {
+        const health = await api.getHealth();
+        if (health.auth) {
+          clearAuthToken();
+          setState(null);
+          setGate("login");
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      setBootError("Impossibile caricare i dati dal server.");
+      setGate("app");
+    }
   }, [loadBootState]);
+
+  useEffect(() => {
+    void bootApp();
+  }, [bootApp]);
+
+  useEffect(() => {
+    const onLogout = () => {
+      clearAuthToken();
+      setState(null);
+      setMigrateCandidate(null);
+      setGate("login");
+    };
+    window.addEventListener("finance-auth-logout", onLogout);
+    return () => window.removeEventListener("finance-auth-logout", onLogout);
+  }, []);
 
   const txns = state ? withOverrides(state) : [];
 
@@ -90,11 +137,27 @@ export default function App() {
       .catch(() => showToast("Errore di connessione al server"));
   }
 
+  function onLogout() {
+    clearAuthToken();
+    setState(null);
+    setMigrateCandidate(null);
+    setSettingsOpen(false);
+    setGate("login");
+  }
+
+  if (gate === "loading") {
+    return <div className="boot">Caricamento…</div>;
+  }
+
+  if (gate === "login") {
+    return <LoginScreen onSuccess={() => void bootApp()} />;
+  }
+
   if (bootError) {
     return (
       <div className="boot">
         <p>{bootError}</p>
-        <button type="button" className="btn primary" onClick={() => void loadBootState()}>
+        <button type="button" className="btn primary" onClick={() => void bootApp()}>
           Riprova
         </button>
       </div>
@@ -110,7 +173,7 @@ export default function App() {
       <header className="top">
         <div>
           <p className="brand">Cash Flow</p>
-          <p className="tagline">Mediolanum + Revolut · tutto in locale</p>
+          <p className="tagline">Mediolanum + Revolut · monitoring plane</p>
         </div>
         <div className="top-right">
           <nav className="tabs">
@@ -198,8 +261,10 @@ export default function App() {
       <SettingsModal
         open={settingsOpen}
         state={state}
+        authRequired={authRequired}
         onClose={() => setSettingsOpen(false)}
         onReplace={onReplace}
+        onLogout={onLogout}
       />
 
       {migrateCandidate && (
