@@ -61,7 +61,8 @@ export function detectInternal(input: {
   }
   if (/ricarica carta prepagata/i.test(desc)) return true;
 
-  if (isMediolanumRevolutFunding(input)) return false;
+  // Mediolanum satellite → Revolut daily/pocket (mirror of Revolut top-up leg)
+  if (isMediolanumRevolutFunding(input)) return true;
 
   if (
     isInvestmentOutflow({

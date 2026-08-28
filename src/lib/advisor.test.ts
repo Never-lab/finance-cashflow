@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeFinances } from "./advisor";
+import { withResolvedInternal } from "./internal";
 import type { Transaction } from "../types";
 
 function tx(
@@ -80,6 +81,24 @@ describe("analyzeFinances", () => {
       portfolio: { totalContributed: 650, totalValue: 700, pnl: 50 },
     });
     expect(r.insights.some((i) => i.id === "invest-low-savings")).toBe(true);
+  });
+
+  it("ignores Mediolanum → Revolut pocket funding in large-hit", () => {
+    const rows: Transaction[] = [
+      tx({ id: "1", date: "2026-08-01", description: "Stipendio", amount: 3000, category: "Stipendio" }),
+      tx({
+        id: "2",
+        date: "2026-08-12",
+        description: "Bonifico Pocket Revolut",
+        amount: -1190,
+        category: "Trasferimenti",
+      }),
+    ];
+    const r = analyzeFinances(
+      rows.map((t) => withResolvedInternal(t, {})),
+      { now: new Date(2026, 7, 15), period: "month" },
+    );
+    expect(r.insights.some((i) => i.id === "large-hit")).toBe(false);
   });
 
   it("computes score delta without infinite recursion", () => {

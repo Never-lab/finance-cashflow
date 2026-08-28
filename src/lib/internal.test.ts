@@ -23,7 +23,7 @@ describe("detectInternal", () => {
     ).toBe(false);
   });
 
-  it("marks Mediolanum prepaid top-up and Revolut funding, not fees", () => {
+  it("marks Mediolanum prepaid top-up and Revolut pocket funding as internal, not fees", () => {
     expect(
       detectInternal({
         source: "mediolanum",
@@ -46,7 +46,7 @@ describe("detectInternal", () => {
         description: "Bonifico Pocket Revolut",
         rawDescription: "BONIFICO ... REVOITM2XXX NOTE: POCKET REVOLUT",
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("marks bonifici verso conto deposito fondo emergenza (IBAN)", () => {
