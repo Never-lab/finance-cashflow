@@ -13,6 +13,8 @@ import {
 import { recomputeDatabase } from "../lib/recomputeRepo";
 import { syncKnownInvestmentContributions } from "../lib/investmentSync";
 import { getSetting } from "../lib/settingsRepo";
+import { loadLiquidityView, mergeLiquidityPatch } from "../lib/liquidityRepo";
+import type { LiquiditySnapshots } from "../../src/lib/liquidity";
 import { mergeLoanTargets } from "../../src/lib/knownLoans";
 import type { LoanTarget } from "../../src/lib/loans";
 
@@ -29,15 +31,27 @@ function storedLoanTargets(db: ReturnType<typeof getDb>): Record<string, LoanTar
 }
 
 stateRoutes.get("/state", (c) => {
-  return c.json(loadAppState(getDb()));
+  const db = getDb();
+  const state = loadAppState(db);
+  return c.json({ ...state, liquidity: loadLiquidityView(db, state.transactions) });
 });
 
 stateRoutes.post("/transactions/merge", async (c) => {
-  const body = await c.req.json<{ transactions: Transaction[] }>();
+  const body = await c.req.json<{ transactions: Transaction[]; liquidity?: Partial<LiquiditySnapshots> }>();
   const db = getDb();
   const { added, updated } = mergeImportIntoDb(db, body.transactions ?? []);
+  if (body.liquidity && Object.keys(body.liquidity).length > 0) {
+    mergeLiquidityPatch(db, body.liquidity);
+  }
   const investment = syncKnownInvestmentContributions(db);
-  return c.json({ added, updated, investment, state: loadAppState(db) });
+  const state = loadAppState(db);
+  return c.json({
+    added,
+    updated,
+    investment,
+    state,
+    liquidity: loadLiquidityView(db, state.transactions),
+  });
 });
 
 stateRoutes.put("/overrides/category", async (c) => {
@@ -82,11 +96,13 @@ stateRoutes.post("/migrate", async (c) => {
 stateRoutes.post("/recompute", (c) => {
   const db = getDb();
   const report = recomputeDatabase(db);
+  const state = loadAppState(db);
   return c.json({
     ok: true,
-    state: loadAppState(db),
+    state,
     loanTargets: mergeLoanTargets(storedLoanTargets(db)),
     report,
+    liquidity: loadLiquidityView(db, state.transactions),
   });
 });
 

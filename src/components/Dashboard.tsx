@@ -11,6 +11,7 @@ import {
   spendingHeatmap,
 } from "../lib/stats";
 import { forConsumption } from "../lib/consumptionView";
+import type { LiquidityView } from "../lib/liquidity";
 import { sumEmergencyFundOutflows } from "../lib/knownAccounts";
 import { buildPaypalSummary } from "../lib/paypal";
 import { buildLoanSummary, type LoanTarget } from "../lib/loans";
@@ -26,6 +27,7 @@ import {
 
 type Props = {
   transactions: Transaction[];
+  liquidity: LiquidityView | null;
   period: Period;
   recurringMarks: Record<string, RecurringMark>;
   loanTargets: Record<string, LoanTarget>;
@@ -39,6 +41,7 @@ type Props = {
 
 export function Dashboard({
   transactions,
+  liquidity,
   period,
   recurringMarks,
   loanTargets,
@@ -166,6 +169,8 @@ export function Dashboard({
         </p>
       )}
 
+      <LiquidityPanel liquidity={liquidity} onUpload={onUpload} />
+
       <section className="stat-section">
         <h3 className="stat-section-title">Risparmio programmato</h3>
         <div className="stat-row impegni-row">
@@ -288,6 +293,93 @@ export function Dashboard({
         <SpendingHeatmap data={heat} />
       </section>
     </div>
+  );
+}
+
+function LiquidityPanel({
+  liquidity,
+  onUpload,
+}: {
+  liquidity: LiquidityView | null;
+  onUpload: () => void;
+}) {
+  if (!liquidity?.totalEur && !liquidity?.mediolanum && !liquidity?.revolut) {
+    return (
+      <section className="stat-section liquidity-section">
+        <h3 className="stat-section-title">Liquidità conti</h3>
+        <p className="muted liquidity-note">
+          Importa gli export CSV Mediolanum e Revolut per vedere saldi reali e pocket Revolut.
+          I KPI sopra restano flussi di consumo, non liquidità.
+        </p>
+        <button type="button" className="btn" onClick={onUpload}>
+          Carica CSV
+        </button>
+      </section>
+    );
+  }
+
+  const med = liquidity.mediolanum;
+  const rev = liquidity.revolut;
+  const attuale = liquidity.revolutAttualeEffective ?? rev?.attuale ?? null;
+  const pockets = liquidity.pockets;
+
+  return (
+    <section className="stat-section liquidity-section">
+      <h3 className="stat-section-title">Liquidità conti</h3>
+      <div className="stat-row liquidity-row">
+        <div className="stat-card kpi">
+          <span className="stat-label">Totale EUR</span>
+          <span className="stat-value pos">
+            {liquidity.totalEur != null ? formatEur(liquidity.totalEur) : "—"}
+          </span>
+          <span className="stat-hint">Mediolanum + Revolut (Attuale, pocket, deposito)</span>
+        </div>
+        {med && (
+          <div className="stat-card">
+            <span className="stat-label">Mediolanum</span>
+            <span className="stat-value">{formatEur(med.available)}</span>
+            <span className="stat-hint">
+              Disponibile · contabile {formatEur(med.ledger)} · export {med.asOf}
+            </span>
+          </div>
+        )}
+        {attuale != null && (
+          <div className="stat-card">
+            <span className="stat-label">Revolut Attuale</span>
+            <span className="stat-value">{formatEur(attuale)}</span>
+            <span className="stat-hint">
+              {rev && rev.pendingAttuale > 0
+                ? `Al netto di ${formatEur(rev.pendingAttuale)} in sospeso · CSV ${rev.asOf}`
+                : `Conto principale · CSV ${rev?.asOf ?? ""}`}
+            </span>
+          </div>
+        )}
+        {rev && (
+          <div className="stat-card">
+            <span className="stat-label">Revolut pocket + deposito</span>
+            <span className="stat-value">{formatEur(rev.risparmi + rev.deposito)}</span>
+            <span className="stat-hint">
+              Risparmi {formatEur(rev.risparmi)} · Deposito {formatEur(rev.deposito)}
+            </span>
+          </div>
+        )}
+      </div>
+      {pockets && rev && (
+        <div className="stat-row liquidity-pockets">
+          <div className="stat-card compact">
+            <span className="stat-label">Pocket Viaggio</span>
+            <span className="stat-value">{formatEur(pockets.viaggio)}</span>
+            <span className="stat-hint">Stima da movimenti · Risparmi</span>
+          </div>
+          <div className="stat-card compact">
+            <span className="stat-label">Pocket Manutenzione Auto</span>
+            <span className="stat-value">{formatEur(pockets.manutenzioneAuto)}</span>
+            <span className="stat-hint">Stima da movimenti · Risparmi</span>
+          </div>
+        </div>
+      )}
+      {liquidity.note && <p className="muted liquidity-note">{liquidity.note}</p>}
+    </section>
   );
 }
 

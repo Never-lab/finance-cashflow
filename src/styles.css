@@ -261,6 +261,24 @@ body {
   grid-template-columns: repeat(3, 1fr);
 }
 
+.stat-row.liquidity-row {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.stat-row.liquidity-pockets {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 0.5rem;
+}
+
+.liquidity-note {
+  margin: 0.65rem 0 0;
+  font-size: 0.85rem;
+}
+
+.stat-card.compact {
+  padding: 0.85rem 1rem;
+}
+
 .stat-row.recurring-kpis {
   grid-template-columns: repeat(3, 1fr);
 }

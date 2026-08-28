@@ -15,6 +15,7 @@ import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { LoansTab } from "./components/LoansTab";
 import { AppShell, type AppTab } from "./components/AppShell";
+import type { LiquidityView } from "./lib/liquidity";
 import type { LoanTarget } from "./lib/loans";
 
 type Gate = "loading" | "login" | "app";
@@ -23,6 +24,7 @@ export default function App() {
   const [gate, setGate] = useState<Gate>("loading");
   const [authRequired, setAuthRequired] = useState(false);
   const [state, setState] = useState<AppState | null>(null);
+  const [liquidity, setLiquidity] = useState<LiquidityView | null>(null);
   const [tab, setTab] = useState<AppTab>("dashboard");
   const [period, setPeriod] = useState<Period>("month");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -41,7 +43,9 @@ export default function App() {
   const loadBootState = useCallback(async () => {
     setBootError(null);
     const serverState = await api.getState();
-    setState(serverState);
+    const { liquidity: liq, ...appState } = serverState;
+    setState(appState);
+    setLiquidity(liq);
     try {
       setLoanTargets(await api.getLoanTargets());
     } catch {
@@ -105,11 +109,12 @@ export default function App() {
 
   const txns = state ? withOverrides(state) : [];
 
-  function onImport(rows: Transaction[]) {
+  function onImport(rows: Transaction[], liquidityPatch?: Parameters<typeof api.mergeTransactions>[1]) {
     void api
-      .mergeTransactions(rows)
-      .then(({ added, updated, state: next }) => {
+      .mergeTransactions(rows, liquidityPatch)
+      .then(({ added, updated, state: next, liquidity: liq }) => {
         setState(next);
+        setLiquidity(liq);
         showToast(`Import: +${added} nuovi, ${updated} aggiornati`);
       })
       .catch(() => showToast("Errore di connessione al server"));
@@ -153,9 +158,10 @@ export default function App() {
   }
 
   async function onRecompute(): Promise<string> {
-    const { state: next, loanTargets: targets, report } = await api.recompute();
+    const { state: next, loanTargets: targets, report, liquidity: liq } = await api.recompute();
     setState(next);
     setLoanTargets(targets);
+    setLiquidity(liq);
     setDataRefreshKey((k) => k + 1);
     const msg = `Ricalcolo ok: ${report.categoriesUpdated} categorie, ${report.internalUpdated} interni, ${report.instrumentsRecalced} strumenti${report.investmentContributionsLinked ? `, +${report.investmentContributionsLinked} versamenti PAC` : ""} · ${report.transactions} movimenti`;
     showToast(msg);
@@ -215,6 +221,7 @@ export default function App() {
       {tab === "dashboard" && (
           <Dashboard
             transactions={txns}
+            liquidity={liquidity}
             period={period}
             recurringMarks={state.recurringMarks}
             loanTargets={loanTargets}

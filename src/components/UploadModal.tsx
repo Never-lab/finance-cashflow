@@ -2,12 +2,13 @@ import { useState } from "react";
 import type { BankSource, Transaction } from "../types";
 import { detectBank } from "../lib/detectBank";
 import { importCsv } from "../lib/importCsv";
+import { extractLiquidityFromCsv, type LiquiditySnapshots } from "../lib/liquidity";
 import { formatEur } from "../lib/stats";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onImport: (rows: Transaction[]) => void;
+  onImport: (rows: Transaction[], liquidity?: Partial<LiquiditySnapshots>) => void;
 };
 
 export function UploadModal({ open, onClose, onImport }: Props) {
@@ -16,6 +17,7 @@ export function UploadModal({ open, onClose, onImport }: Props) {
   const [source, setSource] = useState<BankSource | "auto">("auto");
   const [filename, setFilename] = useState("");
   const [raw, setRaw] = useState("");
+  const [bank, setBank] = useState<BankSource | null>(null);
 
   if (!open) return null;
 
@@ -31,6 +33,7 @@ export function UploadModal({ open, onClose, onImport }: Props) {
       setError("Banca non riconosciuta: scegli Mediolanum o Revolut e riprova.");
       return;
     }
+    setBank(bank);
     try {
       const rows = importCsv(text, { filename: file.name, source: bank });
       setPreview(rows);
@@ -47,8 +50,10 @@ export function UploadModal({ open, onClose, onImport }: Props) {
     if (!bank) {
       setError("Banca non riconosciuta: scegli Mediolanum o Revolut.");
       setPreview(null);
+      setBank(null);
       return;
     }
+    setBank(bank);
     try {
       setPreview(importCsv(raw, { filename, source: bank }));
     } catch (e) {
@@ -58,11 +63,13 @@ export function UploadModal({ open, onClose, onImport }: Props) {
   }
 
   function confirm() {
-    if (!preview?.length) return;
-    onImport(preview);
+    if (!preview?.length || !bank) return;
+    const liquidity = extractLiquidityFromCsv(raw, bank);
+    onImport(preview, Object.keys(liquidity).length > 0 ? liquidity : undefined);
     setPreview(null);
     setRaw("");
     setFilename("");
+    setBank(null);
     setError(null);
     onClose();
   }

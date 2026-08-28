@@ -9,9 +9,12 @@ import type {
   RecurringMark,
   Transaction,
 } from "./types";
+import type { LiquidityView, LiquiditySnapshots } from "./lib/liquidity";
 import { apiFetch, setAuthToken } from "./lib/authToken";
 
 export type HealthResponse = { ok: boolean; storage: string; auth: boolean };
+
+export type StateResponse = AppState & { liquidity: LiquidityView };
 
 export type InstrumentWithHolding = Instrument & { holding: Holding | null };
 
@@ -68,12 +71,14 @@ export const api = {
     if (data.token) setAuthToken(data.token);
     return data;
   },
-  getState: () => apiFetch("/api/state").then((r) => json<AppState>(r)),
-  mergeTransactions: (transactions: Transaction[]) =>
+  getState: () => apiFetch("/api/state").then((r) => json<StateResponse>(r)),
+  mergeTransactions: (transactions: Transaction[], liquidity?: Partial<LiquiditySnapshots>) =>
     apiFetch("/api/transactions/merge", {
       method: "POST",
-      body: JSON.stringify({ transactions }),
-    }).then((r) => json<{ added: number; updated: number; state: AppState }>(r)),
+      body: JSON.stringify({ transactions, liquidity }),
+    }).then((r) =>
+      json<{ added: number; updated: number; state: AppState; liquidity: LiquidityView }>(r),
+    ),
   setCategory: (id: string, category: string) =>
     apiFetch("/api/overrides/category", {
       method: "PUT",
@@ -174,8 +179,12 @@ export const api = {
     }).then((r) => json<Record<string, LoanTarget>>(r)),
   recompute: () =>
     apiFetch("/api/recompute", { method: "POST" }).then((r) =>
-      json<{ ok: boolean; state: AppState; loanTargets: Record<string, LoanTarget>; report: RecomputeReport }>(
-        r,
-      ),
+      json<{
+        ok: boolean;
+        state: AppState;
+        loanTargets: Record<string, LoanTarget>;
+        report: RecomputeReport;
+        liquidity: LiquidityView;
+      }>(r),
     ),
 };
