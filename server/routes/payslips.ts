@@ -12,6 +12,19 @@ import {
 
 export const payslipsRoutes = new Hono();
 
+function filesFromBody(body: Record<string, unknown>): File[] {
+  const files: File[] = [];
+  for (const value of Object.values(body)) {
+    if (value instanceof File) files.push(value);
+    else if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item instanceof File) files.push(item);
+      }
+    }
+  }
+  return files;
+}
+
 payslipsRoutes.get("/payslips", (c) => {
   const db = getDb();
   const payslips = listPayslips(db);
@@ -34,14 +47,11 @@ payslipsRoutes.post("/payslips/preview", async (c) => {
 });
 
 payslipsRoutes.post("/payslips/import", async (c) => {
-  const body = await c.req.parseBody();
+  const body = await c.req.parseBody({ all: true });
   const db = getDb();
   const transactions = loadAppState(db).transactions;
 
-  const files: File[] = [];
-  for (const value of Object.values(body)) {
-    if (value instanceof File) files.push(value);
-  }
+  const files = filesFromBody(body);
   if (files.length === 0) return c.json({ error: "Nessun file PDF" }, 400);
 
   const imported: PayslipRecord[] = [];

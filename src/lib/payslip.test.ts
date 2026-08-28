@@ -44,6 +44,25 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.periodMonth).toBe(13);
     expect(parsed!.grossTotal).toBeGreaterThan(0);
   });
+
+  it("parses all fixture PDFs with unique periods", async () => {
+    const pdfs = fs
+      .readdirSync("fixtures")
+      .filter((f) => f.endsWith(".pdf"))
+      .sort();
+
+    expect(pdfs.length).toBeGreaterThan(1);
+
+    const ids = new Set<string>();
+    for (const file of pdfs) {
+      const buffer = fs.readFileSync(path.join("fixtures", file));
+      const parsed = parseOsraPayslipText(await extractPdfText(buffer), file);
+      expect(parsed, file).not.toBeNull();
+      ids.add(parsed!.id);
+    }
+
+    expect(ids.size).toBe(pdfs.length);
+  });
 });
 
 describe("matchBankCredit", () => {
