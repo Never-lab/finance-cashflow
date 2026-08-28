@@ -15,6 +15,11 @@ describe("categorize", () => {
     );
   });
 
+  it("maps fuel stations to Trasporti", () => {
+    expect(categorize("C/O ENILIVE", "Prelievi - Pagamenti")).toBe("Trasporti");
+    expect(categorize("C/O IS TERNI", "Prelievi - Pagamenti")).toBe("Trasporti");
+  });
+
   it("maps insurance and car finance SDD", () => {
     expect(
       categorize(

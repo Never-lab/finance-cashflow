@@ -1,3 +1,5 @@
+import { isFuelPurchase } from "./fuel";
+
 const RULES: { category: string; patterns: RegExp[] }[] = [
   { category: "Stipendio", patterns: [/stipendio/i, /salary/i, /accredito stipendio/i, /disposizione vs\.?\s*favore/i] },
   { category: "Affitto", patterns: [/affitto/i, /rent/i, /locazione/i] },
@@ -40,6 +42,7 @@ export function categorize(
   if (tipo.includes("mutui") || tipo.includes("prestiti")) return "Mutuo";
   if (tipo.includes("carte") && /prelievo/i.test(hay)) return "Prelievi";
   if (/avvera/i.test(hay) && /payment loan|installment/i.test(hay)) return "Finanziamento auto";
+  if (isFuelPurchase(hay)) return "Trasporti";
 
   for (const rule of RULES) {
     if (rule.patterns.some((p) => p.test(hay))) return rule.category;
@@ -52,6 +55,7 @@ export function categorize(
   // Mediolanum labels card POS as "Prelievi - Pagamenti"; cash ATM stays Prelievi
   if (tipo.includes("prelievi")) {
     if (/prelievo|atm|maxiprelievo|contante/i.test(hay)) return "Prelievi";
+    if (isFuelPurchase(hay)) return "Trasporti";
     return "Shopping";
   }
 

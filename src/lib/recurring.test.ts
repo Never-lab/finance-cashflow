@@ -72,6 +72,36 @@ describe("findRecurring", () => {
     expect(isSubscriptionLike(allianz!)).toBe(false);
   });
 
+  it("excludes fuel stations from subscription-like", () => {
+    const rows = [
+      tx({
+        id: "1",
+        date: "2026-06-10",
+        description: "C/O ENILIVE",
+        amount: -45.2,
+        category: "Trasporti",
+      }),
+      tx({
+        id: "2",
+        date: "2026-07-12",
+        description: "C/O ENILIVE",
+        amount: -48.5,
+        category: "Trasporti",
+      }),
+      tx({
+        id: "3",
+        date: "2026-08-08",
+        description: "C/O ENILIVE",
+        amount: -44.0,
+        category: "Trasporti",
+      }),
+    ];
+    const found = findRecurring(rows);
+    const fuel = found.find((f) => /enilive/i.test(f.label));
+    expect(fuel).toBeDefined();
+    expect(isSubscriptionLike(fuel!)).toBe(false);
+  });
+
   it("excludes SEPA bonifici from subscription-like", () => {
     const item = {
       key: "bonifico sepa",

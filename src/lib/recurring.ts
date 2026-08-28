@@ -1,5 +1,6 @@
 import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
+import { isFuelPurchase } from "./fuel";
 
 export type RecurringItem = {
   key: string;
@@ -24,6 +25,7 @@ const NON_SUBSCRIPTION_CATEGORIES = new Set([
   "Bollette",
   "Stipendio",
   "Trasferimenti",
+  "Trasporti",
 ]);
 
 /** Normalize merchant-ish label for grouping. */
@@ -43,6 +45,7 @@ export function isSubscriptionLike(item: RecurringItem): boolean {
   if (NON_SUBSCRIPTION_CATEGORIES.has(item.category)) return false;
   const hay = `${item.label} ${item.key}`;
   if (INSURANCE_RE.test(hay)) return false;
+  if (isFuelPurchase(hay)) return false;
   if (/bonifico|sepa ist|sepa instant|c\/o benef|disposizione vs/i.test(hay)) return false;
   return true;
 }
