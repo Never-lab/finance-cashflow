@@ -285,9 +285,13 @@ export default function App() {
           <Advisor
             transactions={txns}
             recurringMarks={state.recurringMarks}
+            loanTargets={loanTargets}
             onGoAbbonamenti={() => setTab("abbonamenti")}
             onGoPaypal={() => setTab("paypal")}
             onGoMovimenti={() => setTab("movimenti")}
+            onGoMutui={() => setTab("mutui")}
+            onGoInvestimenti={() => setTab("investimenti")}
+            onGoDashboard={() => setTab("dashboard")}
             onUpload={() => setUploadOpen(true)}
           />
         )}

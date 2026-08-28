@@ -1,28 +1,91 @@
-import { useMemo } from "react";
-import type { RecurringMark, Transaction } from "../types";
-import { analyzeFinances, type Insight } from "../lib/advisor";
+import { useEffect, useMemo, useState } from "react";
+import type { Period, RecurringMark, Transaction } from "../types";
+import type { LoanTarget } from "../lib/loans";
+import { api, type PortfolioSummary } from "../api";
+import {
+  analyzeFinances,
+  kindLabel,
+  type Insight,
+  type InsightKind,
+} from "../lib/advisor";
 import { formatEur } from "../lib/stats";
 
 type Props = {
   transactions: Transaction[];
   recurringMarks: Record<string, RecurringMark>;
+  loanTargets: Record<string, LoanTarget>;
   onGoAbbonamenti: () => void;
   onGoPaypal: () => void;
   onGoMovimenti: () => void;
+  onGoMutui: () => void;
+  onGoInvestimenti: () => void;
+  onGoDashboard: () => void;
   onUpload: () => void;
 };
+
+const PERIOD_LABELS: Record<Period, string> = {
+  month: "Questo mese",
+  "3m": "3 mesi",
+  all: "Tutto",
+};
+
+const FILTER_KINDS: { id: "all" | InsightKind; label: string }[] = [
+  { id: "all", label: "Tutti" },
+  { id: "recurring", label: "Ricorrenti" },
+  { id: "anomaly", label: "Anomalie" },
+  { id: "cashflow", label: "Cash flow" },
+  { id: "patrimonio", label: "Patrimonio" },
+];
 
 export function Advisor({
   transactions,
   recurringMarks,
+  loanTargets,
   onGoAbbonamenti,
   onGoPaypal,
   onGoMovimenti,
+  onGoMutui,
+  onGoInvestimenti,
+  onGoDashboard,
   onUpload,
 }: Props) {
+  const [period, setPeriod] = useState<Period>("3m");
+  const [kindFilter, setKindFilter] = useState<"all" | InsightKind>("all");
+  const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
+
+  useEffect(() => {
+    void api.getPortfolioSummary().then(setPortfolio).catch(() => setPortfolio(null));
+  }, []);
+
+  const portfolioSnap = useMemo(
+    () =>
+      portfolio
+        ? {
+            totalContributed: portfolio.totalContributed,
+            totalValue: portfolio.totalValue,
+            pnl: portfolio.pnl,
+          }
+        : null,
+    [portfolio],
+  );
+
   const report = useMemo(
-    () => analyzeFinances(transactions, { recurringMarks }),
-    [transactions, recurringMarks],
+    () =>
+      analyzeFinances(transactions, {
+        recurringMarks,
+        loanTargets,
+        period,
+        portfolio: portfolioSnap,
+      }),
+    [transactions, recurringMarks, loanTargets, period, portfolioSnap],
+  );
+
+  const visibleInsights = useMemo(
+    () =>
+      kindFilter === "all"
+        ? report.insights
+        : report.insights.filter((i) => i.kind === kindFilter),
+    [report.insights, kindFilter],
   );
 
   if (transactions.length === 0) {
@@ -39,11 +102,32 @@ export function Advisor({
 
   return (
     <div className="advisor">
+      <div className="period">
+        {(Object.keys(PERIOD_LABELS) as Period[]).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={period === k ? "chip active" : "chip"}
+            onClick={() => setPeriod(k)}
+          >
+            {PERIOD_LABELS[k]}
+          </button>
+        ))}
+      </div>
+
       <div className="stat-row advisor-hero">
         <div className={`stat-card score-card score-${scoreTone(report.score)}`}>
           <span className="stat-label">Salute cash flow</span>
           <span className="stat-value">{report.score}</span>
-          <span className="stat-hint">{report.label}</span>
+          <span className="stat-hint">
+            {report.label}
+            {report.scoreDelta != null && (
+              <span className={`score-trend ${report.scoreDelta >= 0 ? "pos" : "neg"}`}>
+                {" "}
+                {report.scoreDelta >= 0 ? "▲" : "▼"} {Math.abs(report.scoreDelta)}
+              </span>
+            )}
+          </span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Savings rate</span>
@@ -53,6 +137,15 @@ export function Advisor({
           <span className="stat-hint">Netto {formatEur(report.summary.net)}</span>
         </div>
         <div className="stat-card">
+          <span className="stat-label">Impegni / mese</span>
+          <span className="stat-value neg">{formatEur(report.impegni.monthlyBurden)}</span>
+          <span className="stat-hint">
+            {report.impegni.paypalDebt > 0
+              ? `+ PayPal residuo ${formatEur(report.impegni.paypalDebt)}`
+              : "Mutui + ricorrenti"}
+          </span>
+        </div>
+        <div className="stat-card">
           <span className="stat-label">Insight</span>
           <span className="stat-value">{report.insights.length}</span>
           <span className="stat-hint">Regole locali · no cloud</span>
@@ -60,24 +153,71 @@ export function Advisor({
       </div>
 
       <p className="muted kpi-note">
-        Analisi automatica su ricorrenti, anomalie e impegni. Non è consulenza
-        finanziaria — sono segnali dai tuoi movimenti.
+        Analisi automatica su ricorrenti, anomalie, impegni e patrimonio. Non è consulenza
+        finanziaria — sono segnali dai tuoi movimenti nel periodo selezionato.
       </p>
 
-      {report.insights.length === 0 ? (
+      {report.topActions.length > 0 && (
+        <section className="advisor-top-actions">
+          <h3 className="stat-section-title">Top azioni</h3>
+          <div className="top-action-list">
+            {report.topActions.map((ins, i) => (
+              <div key={ins.id} className="top-action-item">
+                <span className="top-action-num">{i + 1}</span>
+                <div>
+                  <strong>{ins.title}</strong>
+                  {ins.action && <p className="muted">{ins.action}</p>}
+                </div>
+                <InsightLinks
+                  insight={ins}
+                  onGoAbbonamenti={onGoAbbonamenti}
+                  onGoPaypal={onGoPaypal}
+                  onGoMovimenti={onGoMovimenti}
+                  onGoMutui={onGoMutui}
+                  onGoInvestimenti={onGoInvestimenti}
+                  onGoDashboard={onGoDashboard}
+                  compact
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="period advisor-filters">
+        {FILTER_KINDS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className={kindFilter === f.id ? "chip active" : "chip"}
+            onClick={() => setKindFilter(f.id)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {visibleInsights.length === 0 ? (
         <div className="empty soft">
           <h2>Nessun leak evidente</h2>
-          <p className="muted">Con i dati attuali non emergono critiche forti.</p>
+          <p className="muted">
+            {kindFilter === "all"
+              ? "Con i dati attuali non emergono critiche forti."
+              : "Nessun insight in questa categoria per il periodo."}
+          </p>
         </div>
       ) : (
         <div className="insight-list">
-          {report.insights.map((ins) => (
+          {visibleInsights.map((ins) => (
             <InsightCard
               key={ins.id}
               insight={ins}
               onGoAbbonamenti={onGoAbbonamenti}
               onGoPaypal={onGoPaypal}
               onGoMovimenti={onGoMovimenti}
+              onGoMutui={onGoMutui}
+              onGoInvestimenti={onGoInvestimenti}
+              onGoDashboard={onGoDashboard}
             />
           ))}
         </div>
@@ -97,11 +237,17 @@ function InsightCard({
   onGoAbbonamenti,
   onGoPaypal,
   onGoMovimenti,
+  onGoMutui,
+  onGoInvestimenti,
+  onGoDashboard,
 }: {
   insight: Insight;
   onGoAbbonamenti: () => void;
   onGoPaypal: () => void;
   onGoMovimenti: () => void;
+  onGoMutui: () => void;
+  onGoInvestimenti: () => void;
+  onGoDashboard: () => void;
 }) {
   return (
     <article className={`insight-card sev-${insight.severity}`}>
@@ -117,29 +263,74 @@ function InsightCard({
         <p className="insight-impact">Impatto stimato: {formatEur(insight.impactEur)}</p>
       )}
       {insight.action && <p className="insight-action">{insight.action}</p>}
-      <div className="insight-actions">
-        {insight.kind === "recurring" && (
-          <button type="button" className="btn" onClick={onGoAbbonamenti}>
-            Abbonamenti
-          </button>
-        )}
-        {(insight.id.includes("paypal") || insight.id.includes("commitment")) && (
-          <button type="button" className="btn" onClick={onGoPaypal}>
-            PayPal
-          </button>
-        )}
-        {(insight.kind === "anomaly" || insight.id.includes("uncategorized")) && (
-          <button type="button" className="btn" onClick={onGoMovimenti}>
-            Movimenti
-          </button>
-        )}
-      </div>
+      <InsightLinks
+        insight={insight}
+        onGoAbbonamenti={onGoAbbonamenti}
+        onGoPaypal={onGoPaypal}
+        onGoMovimenti={onGoMovimenti}
+        onGoMutui={onGoMutui}
+        onGoInvestimenti={onGoInvestimenti}
+        onGoDashboard={onGoDashboard}
+      />
     </article>
   );
 }
 
-function kindLabel(kind: Insight["kind"]): string {
-  if (kind === "recurring") return "Ricorrenti";
-  if (kind === "anomaly") return "Anomalie";
-  return "Cash flow";
+function InsightLinks({
+  insight,
+  onGoAbbonamenti,
+  onGoPaypal,
+  onGoMovimenti,
+  onGoMutui,
+  onGoInvestimenti,
+  onGoDashboard,
+  compact = false,
+}: {
+  insight: Insight;
+  onGoAbbonamenti: () => void;
+  onGoPaypal: () => void;
+  onGoMovimenti: () => void;
+  onGoMutui: () => void;
+  onGoInvestimenti: () => void;
+  onGoDashboard: () => void;
+  compact?: boolean;
+}) {
+  const cls = compact ? "btn sm" : "btn";
+  return (
+    <div className="insight-actions">
+      {insight.kind === "recurring" && (
+        <button type="button" className={cls} onClick={onGoAbbonamenti}>
+          Abbonamenti
+        </button>
+      )}
+      {(insight.id.includes("paypal") ||
+        insight.id.includes("commitment") ||
+        insight.id.includes("debt")) && (
+        <button type="button" className={cls} onClick={onGoPaypal}>
+          PayPal
+        </button>
+      )}
+      {(insight.id.includes("loan") || insight.id.includes("mutui")) && (
+        <button type="button" className={cls} onClick={onGoMutui}>
+          Mutui
+        </button>
+      )}
+      {insight.kind === "patrimonio" && (
+        <button type="button" className={cls} onClick={onGoInvestimenti}>
+          Investimenti
+        </button>
+      )}
+      {(insight.kind === "anomaly" || insight.id.includes("uncategorized")) && (
+        <button type="button" className={cls} onClick={onGoMovimenti}>
+          Movimenti
+        </button>
+      )}
+      {(insight.kind === "cashflow" &&
+        (insight.id.includes("savings") || insight.id.includes("red-months"))) && (
+        <button type="button" className={cls} onClick={onGoDashboard}>
+          Dashboard
+        </button>
+      )}
+    </div>
+  );
 }

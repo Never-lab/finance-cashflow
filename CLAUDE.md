@@ -24,6 +24,7 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 | **v1.3** | Mix D: backup/reset, upsert import, internal override, blocco Impegni | **Fatta** |
 | **v1.4** | Grafici Getquin-style: Sankey flusso, curva cumulata, barre, breakdown %, heatmap | **Fatta** |
 | **v1.5** | Tab Consigli: advisor locale leak/anomalie/cash flow + score | **Fatta** |
+| **v1.6** | Consigli rivisto: periodo, impegni+mutui, score v2, patrimonio | **Fatta** |
 | v2 | Budget per categoria + alert | Non iniziata — vedi stack unificato |
 | **v3 (parziale)** | Tab **Investimenti**: PAC/ETF/fondi/risparmi, KPI, allocation, P&L, quote Yahoo (+ Finnhub opzionale) | **Fatta** (F1–F3) |
 | **F-deploy** | Auth + Railway + volume SQLite | **Fatta** |
