@@ -79,6 +79,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ id, category }),
     }).then((r) => json<AppState>(r)),
+  setCategoryBulk: (ids: string[], category: string) =>
+    apiFetch("/api/overrides/category/bulk", {
+      method: "PUT",
+      body: JSON.stringify({ ids, category }),
+    }).then((r) => json<AppState>(r)),
   setInternal: (id: string, internal: boolean) =>
     apiFetch("/api/overrides/internal", {
       method: "PUT",

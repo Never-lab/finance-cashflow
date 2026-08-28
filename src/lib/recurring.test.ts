@@ -119,6 +119,7 @@ describe("findRecurring", () => {
         count: 3,
         lastDate: "2026-08-01",
         monthlyEstimate: 80,
+        transactionIds: [],
       };
       expect(isSubscriptionLike(item)).toBe(false);
     }
@@ -131,8 +132,63 @@ describe("findRecurring", () => {
       count: 2,
       lastDate: "2026-07-01",
       monthlyEstimate: 4.99,
+      transactionIds: [],
     };
     expect(isSubscriptionLike(prime)).toBe(true);
+  });
+
+  it("excludes Terni bars and restaurants from subscription-like", () => {
+    const venues: Array<[string, string]> = [
+      ["OLD WILD WEST TERNI", "Altro"],
+      ["OFFICINA 41 TERNI (BAR)", "Altro"],
+      ["POSCARGANO DAL1890 TERNI (BAR)", "Altro"],
+      ["BAR LUME TERNI (BAR)", "Altro"],
+      ["C/O IS TERNI", "Trasporti"],
+    ];
+    for (const [label, category] of venues) {
+      const item = {
+        key: recurringKey(label),
+        label,
+        category,
+        avgAmount: 35,
+        months: ["2026-06", "2026-07", "2026-08"],
+        count: 3,
+        lastDate: "2026-08-01",
+        monthlyEstimate: 35,
+        transactionIds: [],
+      };
+      expect(isSubscriptionLike(item)).toBe(false);
+    }
+  });
+
+  it("keeps Netflix as subscription-like", () => {
+    const item = {
+      key: "netflix",
+      label: "Netflix",
+      category: "Abbonamenti",
+      avgAmount: 15.99,
+      months: ["2026-06", "2026-07"],
+      count: 2,
+      lastDate: "2026-07-01",
+      monthlyEstimate: 15.99,
+      transactionIds: [],
+    };
+    expect(isSubscriptionLike(item)).toBe(true);
+  });
+
+  it("excludes generic Altro merchants without subscription signal", () => {
+    const item = {
+      key: "decathlon terni",
+      label: "DECATHLON TERNI",
+      category: "Altro",
+      avgAmount: 60,
+      months: ["2026-06", "2026-07"],
+      count: 2,
+      lastDate: "2026-07-01",
+      monthlyEstimate: 60,
+      transactionIds: [],
+    };
+    expect(isSubscriptionLike(item)).toBe(false);
   });
 
   it("excludes SEPA bonifici from subscription-like", () => {
@@ -145,6 +201,7 @@ describe("findRecurring", () => {
       count: 2,
       lastDate: "2026-07-01",
       monthlyEstimate: 350,
+      transactionIds: [],
     };
     expect(isSubscriptionLike(item)).toBe(false);
   });

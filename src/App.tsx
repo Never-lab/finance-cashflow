@@ -119,6 +119,14 @@ export default function App() {
     void api.setCategory(id, category).then(setState).catch(() => showToast("Errore di connessione al server"));
   }
 
+  function onCategoryBulk(ids: string[], category: string) {
+    if (ids.length === 0) return;
+    void api
+      .setCategoryBulk(ids, category)
+      .then(setState)
+      .catch(() => showToast("Errore di connessione al server"));
+  }
+
   function onInternal(id: string, internal: boolean) {
     void api.setInternal(id, internal).then(setState).catch(() => showToast("Errore di connessione al server"));
   }
@@ -230,8 +238,10 @@ export default function App() {
         {tab === "abbonamenti" && (
           <Recurring
             transactions={txns}
+            categoryOverrides={state.categoryOverrides}
             marks={state.recurringMarks}
             onMark={onRecurringMark}
+            onCategoryChange={onCategoryBulk}
             onUpload={() => setUploadOpen(true)}
           />
         )}

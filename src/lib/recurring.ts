@@ -1,6 +1,7 @@
 import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
 import { isFuelPurchase } from "./fuel";
+import { isHospitalityVenue } from "./hospitality";
 
 export type RecurringItem = {
   key: string;
@@ -12,6 +13,7 @@ export type RecurringItem = {
   lastDate: string;
   /** Amortized monthly burden (not raw installment for semi-annual/quarterly) */
   monthlyEstimate: number;
+  transactionIds: string[];
 };
 
 const INSURANCE_RE =
@@ -37,6 +39,10 @@ const NON_SUBSCRIPTION_CATEGORIES = new Set([
 const RETAIL_RE =
   /\bamazon\b(?! prime)|mediaworld|media world|zalando|ikea|decathlon|unieuro|trony|euronics|conad|esselunga|essellunga|coop\b|lidl|aldi|carrefour|eurospin|tigros|\biper\b|simply|pam\b|autodoc|steam games|prozis/i;
 
+/** Known cancellable services (when bank description is generic). */
+const SUBSCRIPTION_MERCHANT_RE =
+  /netflix|spotify|disney|youtube.?premium|\bsky\b|cursor|klarna|amazon prime|dazn|icloud|apple\.com\/bill|google.?one|adobe|microsoft 365|office 365|openai|chatgpt|playstation.?plus|xbox live|now tv|paramount|crunchyroll|tidal|deezer|audible|dropbox|nordvpn|fastweb|tim\b|vodafone|windtre/i;
+
 /** Normalize merchant-ish label for grouping. */
 export function recurringKey(description: string): string {
   return description
@@ -49,15 +55,18 @@ export function recurringKey(description: string): string {
     .slice(0, 48);
 }
 
-/** True for cancellable subs (Netflix, gym) — not insurance, mutuo, bonifici SDD. */
+/** True for cancellable subs (Netflix, gym) — not bars, fuel, shopping, insurance. */
 export function isSubscriptionLike(item: RecurringItem): boolean {
   if (NON_SUBSCRIPTION_CATEGORIES.has(item.category)) return false;
   const hay = `${item.label} ${item.key}`;
   if (INSURANCE_RE.test(hay)) return false;
   if (isFuelPurchase(hay)) return false;
+  if (isHospitalityVenue(hay)) return false;
   if (RETAIL_RE.test(hay)) return false;
   if (/bonifico|sepa ist|sepa instant|c\/o benef|disposizione vs/i.test(hay)) return false;
-  return true;
+  if (SUBSCRIPTION_MERCHANT_RE.test(hay)) return true;
+  if (item.category === "Abbonamenti") return true;
+  return false;
 }
 
 function medianGapDays(dates: string[]): number {
@@ -129,6 +138,7 @@ export function findRecurring(txns: Transaction[]): RecurringItem[] {
       count: similar.length,
       lastDate,
       monthlyEstimate: estimateMonthlyBurden(avg, dates),
+      transactionIds: similar.map((t) => t.id),
     });
   }
 

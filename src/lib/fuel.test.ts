@@ -5,6 +5,7 @@ describe("isFuelPurchase", () => {
   it("detects enilive and highway service stations", () => {
     expect(isFuelPurchase("PAGAMENTI PAESI UE C/O ENILIVE ROMA")).toBe(true);
     expect(isFuelPurchase("C/O IS TERNI")).toBe(true);
+    expect(isFuelPurchase("IS TERNI")).toBe(true);
     expect(isFuelPurchase("IP GRUPPO AGIP")).toBe(true);
   });
 

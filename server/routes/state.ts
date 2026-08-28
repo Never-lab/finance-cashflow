@@ -6,6 +6,7 @@ import {
   replaceAppState,
   mergeImportIntoDb,
   setCategoryOverrideDb,
+  setCategoryOverridesBulkDb,
   setInternalOverrideDb,
   setRecurringMarkDb,
 } from "../lib/stateRepo";
@@ -43,6 +44,13 @@ stateRoutes.put("/overrides/category", async (c) => {
   const { id, category } = await c.req.json<{ id: string; category: string }>();
   const db = getDb();
   setCategoryOverrideDb(db, id, category);
+  return c.json(loadAppState(db));
+});
+
+stateRoutes.put("/overrides/category/bulk", async (c) => {
+  const { ids, category } = await c.req.json<{ ids: string[]; category: string }>();
+  const db = getDb();
+  setCategoryOverridesBulkDb(db, ids ?? [], category);
   return c.json(loadAppState(db));
 });
 

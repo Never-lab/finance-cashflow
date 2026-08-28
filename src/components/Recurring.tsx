@@ -1,16 +1,26 @@
 import { useMemo } from "react";
 import type { RecurringMark, Transaction } from "../types";
+import { CATEGORIES } from "../lib/categorize";
 import { findRecurring, isSubscriptionLike } from "../lib/recurring";
 import { formatEur } from "../lib/stats";
 
 type Props = {
   transactions: Transaction[];
+  categoryOverrides: Record<string, string>;
   marks: Record<string, RecurringMark>;
   onMark: (key: string, mark: RecurringMark) => void;
+  onCategoryChange: (transactionIds: string[], category: string) => void;
   onUpload: () => void;
 };
 
-export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
+export function Recurring({
+  transactions,
+  categoryOverrides,
+  marks,
+  onMark,
+  onCategoryChange,
+  onUpload,
+}: Props) {
   const items = useMemo(
     () =>
       [...findRecurring(transactions)]
@@ -71,8 +81,8 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
         </div>
       </div>
       <p className="muted kpi-note">
-        Solo abbonamenti e servizi cancellabili (no mutuo, assicurazioni, bollette). Segna
-        “potrei tagliare” o “cancellato” — resta salvato in locale.
+        Solo abbonamenti e servizi cancellabili. Cambia categoria per spostare una voce fuori da
+        questa lista (es. Ristoranti, Shopping) — si applica a tutti i movimenti del merchant.
       </p>
 
       <div className="table-wrap">
@@ -91,6 +101,7 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
           <tbody>
             {items.map((i) => {
               const mark = marks[i.key] ?? "";
+              const hasManualCategory = i.transactionIds.some((id) => categoryOverrides[id]);
               return (
                 <tr
                   key={i.key}
@@ -108,7 +119,22 @@ export function Recurring({ transactions, marks, onMark, onUpload }: Props) {
                       {i.count} mov. · ultimo {i.lastDate}
                     </div>
                   </td>
-                  <td>{i.category}</td>
+                  <td>
+                    <select
+                      value={i.category}
+                      onChange={(e) => onCategoryChange(i.transactionIds, e.target.value)}
+                    >
+                      {!CATEGORIES.includes(i.category as (typeof CATEGORIES)[number]) && (
+                        <option value={i.category}>{i.category}</option>
+                      )}
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    {!hasManualCategory && <span className="tag auto">auto</span>}
+                  </td>
                   <td className="num neg">{formatEur(i.monthlyEstimate)}</td>
                   <td>
                     {i.months.length} mesi

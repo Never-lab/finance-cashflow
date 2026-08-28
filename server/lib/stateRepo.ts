@@ -167,6 +167,21 @@ export function setCategoryOverrideDb(db: Database.Database, id: string, categor
   ).run(id, category);
 }
 
+export function setCategoryOverridesBulkDb(
+  db: Database.Database,
+  ids: string[],
+  category: string,
+): void {
+  const stmt = db.prepare(
+    `INSERT INTO category_overrides (transaction_id, category) VALUES (?, ?)
+     ON CONFLICT(transaction_id) DO UPDATE SET category = excluded.category`,
+  );
+  const run = db.transaction((rows: string[]) => {
+    for (const id of rows) stmt.run(id, category);
+  });
+  run(ids);
+}
+
 export function setInternalOverrideDb(
   db: Database.Database,
   id: string,

@@ -20,6 +20,15 @@ describe("categorize", () => {
     expect(categorize("C/O IS TERNI", "Prelievi - Pagamenti")).toBe("Trasporti");
   });
 
+  it("maps Terni hospitality venues to Ristoranti", () => {
+    expect(categorize("OLD WILD WEST TERNI", "Prelievi - Pagamenti")).toBe("Ristoranti");
+    expect(categorize("OFFICINA 41 TERNI (BAR)", "Prelievi - Pagamenti")).toBe("Ristoranti");
+    expect(categorize("POSCARGANO DAL1890 TERNI (BAR)", "Prelievi - Pagamenti")).toBe(
+      "Ristoranti",
+    );
+    expect(categorize("BAR LUME TERNI (BAR)", "Prelievi - Pagamenti")).toBe("Ristoranti");
+  });
+
   it("maps insurance and car finance SDD", () => {
     expect(
       categorize(
