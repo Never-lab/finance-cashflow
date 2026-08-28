@@ -1,0 +1,11 @@
+# Finance Cash Flow — Railway (single production service + volume on /data).
+# Auth + static UI: see README Deploy section (F-deploy slice).
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm install --include=dev && npm run build"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"

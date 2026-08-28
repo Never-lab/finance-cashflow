@@ -51,3 +51,34 @@ Per provider ufficiale: in **Impostazioni → Quotazioni di mercato** inserisci 
 - `npm run dev:web` — solo Vite
 - `npm test` — test parser/statistiche/server
 - `npm run build` — build produzione UI
+- `npm start` — API Node (Railway / produzione; UI static in arrivo con F-deploy)
+
+## Deploy (Railway)
+
+Progetto **separato** da liquidazi. Piano Hobby: un servizio + volume SQLite su `/data`.
+
+### Checklist dashboard (una tantum)
+
+1. [Railway](https://railway.com) → **New Project** → **Deploy from GitHub repo** → `Never-lab/finance-cashflow`, branch **`master`**, autodeploy **ON** (opzionale: Wait for CI).
+2. Servizio web → **Settings** → **Generate Domain** (URL `*.up.railway.app`).
+3. **Add Volume** → mount path **`/data`** (collegato al servizio).
+4. **Variables** (environment production):
+
+   | Variable | Valore |
+   |----------|--------|
+   | `NODE_ENV` | `production` |
+   | `FINANCE_AUTH` | `on` *(dopo slice auth; fino ad allora `off` per smoke)* |
+   | `FINANCE_USERNAME` | il tuo username |
+   | `FINANCE_PASSWORD` | password ≥ 8 caratteri |
+   | `FINANCE_SECRET` | stringa random 32+ byte (`openssl rand -hex 32`) |
+   | `DATABASE_PATH` | `/data/finance.db` |
+
+5. Health: `GET https://<tuo-dominio>/api/health` → `{ "ok": true, "storage": "sqlite", "auth": … }`.
+6. Dopo il deploy F-deploy: login → ricarica CSV da zero (nessuna migrazione automatica).
+
+Build/start: `railway.toml` (`npm run build` + `npm start`). Node **22** via `nixpacks.toml`.
+
+### Stato attuale
+
+- **Fatto:** config Railway, CI GitHub, health API, `PORT` Railway.
+- **Prossimo (F-deploy):** auth, serve static `dist/`, login UI, passkey fase 2.
