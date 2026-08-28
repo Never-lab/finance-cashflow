@@ -17,6 +17,7 @@ import { buildPaypalSummary } from "../lib/paypal";
 import { buildLoanSummary, type LoanTarget } from "../lib/loans";
 import { mergeLoanTargets } from "../lib/knownLoans";
 import { buildLiberationPlan, LIBERATION_DEFAULTS } from "../lib/liberationPlan";
+import { buildMediolanumBuffer, MEDIOLANUM_BUFFER_OVERSHOOT } from "../lib/mediolanumBuffer";
 import { findRecurring, isSubscriptionLike } from "../lib/recurring";
 import {
   CashflowCurve,
@@ -93,6 +94,11 @@ export function Dashboard({
   const liberation = useMemo(
     () => buildLiberationPlan(transactions, loanTargets, liquidity),
     [transactions, loanTargets, liquidity],
+  );
+
+  const mediolanumBuffer = useMemo(
+    () => buildMediolanumBuffer(transactions, liquidity),
+    [transactions, liquidity],
   );
 
   if (transactions.length === 0) {
@@ -175,7 +181,11 @@ export function Dashboard({
         </p>
       )}
 
-      <LiquidityPanel liquidity={liquidity} onUpload={onUpload} />
+      <LiquidityPanel
+        liquidity={liquidity}
+        buffer={mediolanumBuffer}
+        onUpload={onUpload}
+      />
 
       <LiberationPlanPanel
         plan={liberation}
@@ -318,7 +328,7 @@ function LiberationPlanPanel({
   onGoMutui: () => void;
 }) {
   return (
-    <section className="stat-section liberation-section">
+    <section className="stat-section liberation-section" id="piano-liberazione">
       <h3 className="stat-section-title">Piano liberazione</h3>
       <p className="muted liberation-intro">
         PayPal prima, Selfycredit a colpi parziali, bucket Viaggio e Tech in parallelo. Le barre
@@ -387,14 +397,16 @@ function LiberationPlanPanel({
 
 function LiquidityPanel({
   liquidity,
+  buffer,
   onUpload,
 }: {
   liquidity: LiquidityView | null;
+  buffer: ReturnType<typeof buildMediolanumBuffer>;
   onUpload: () => void;
 }) {
   if (!liquidity?.totalEur && !liquidity?.mediolanum && !liquidity?.revolut) {
     return (
-      <section className="stat-section liquidity-section">
+      <section className="stat-section liquidity-section" id="liquidita-conti">
         <h3 className="stat-section-title">Liquidità conti</h3>
         <p className="muted liquidity-note">
           Importa gli export CSV Mediolanum e Revolut per vedere saldi reali e pocket Revolut.
@@ -413,7 +425,7 @@ function LiquidityPanel({
   const pockets = liquidity.pockets;
 
   return (
-    <section className="stat-section liquidity-section">
+    <section className="stat-section liquidity-section" id="liquidita-conti">
       <h3 className="stat-section-title">Liquidità conti</h3>
       <div className="stat-row liquidity-row">
         <div className="stat-card kpi">
@@ -467,8 +479,78 @@ function LiquidityPanel({
           </div>
         </div>
       )}
+
+      {buffer && med && (
+        <MediolanumBufferPanel buffer={buffer} />
+      )}
+
       {liquidity.note && <p className="muted liquidity-note">{liquidity.note}</p>}
     </section>
+  );
+}
+
+function MediolanumBufferPanel({
+  buffer,
+}: {
+  buffer: NonNullable<ReturnType<typeof buildMediolanumBuffer>>;
+}) {
+  const statusLabel =
+    buffer.status === "ok"
+      ? "Sufficiente"
+      : buffer.status === "low"
+        ? "Sotto target"
+        : buffer.status === "critical"
+          ? "Troppo basso"
+          : "—";
+
+  return (
+    <div className="mediolanum-buffer" id="buffer-mediolanum">
+      <h4 className="mediolanum-buffer-title">Buffer Mediolanum consigliato</h4>
+      <p className="muted mediolanum-buffer-intro">
+        Quanto lasciare sul conto corrente per SDD, rate carta e bonifico emergenza. Include{" "}
+        {formatEur(MEDIOLANUM_BUFFER_OVERSHOOT)} di margine quando chiudi un piano.
+      </p>
+      <div className="stat-row mediolanum-buffer-kpis">
+        <div className={`stat-card compact buffer-${buffer.status}`}>
+          <span className="stat-label">Target mese tipo</span>
+          <span className="stat-value">{formatEur(buffer.recommendedNormal)}</span>
+          <span className="stat-hint">
+            Base {formatEur(buffer.monthlyBase)} + {formatEur(MEDIOLANUM_BUFFER_OVERSHOOT)} margine
+          </span>
+        </div>
+        <div className="stat-card compact">
+          <span className="stat-label">Target mese PayPal alto</span>
+          <span className="stat-value">{formatEur(buffer.recommendedPeak)}</span>
+          <span className="stat-hint">
+            {buffer.peakMonth ? `Picco ${buffer.peakMonth}` : "Ultimi 3 mesi CSV"}
+          </span>
+        </div>
+        {buffer.currentAvailable != null && (
+          <div className={`stat-card compact buffer-${buffer.status}`}>
+            <span className="stat-label">Disponibile ora</span>
+            <span className={`stat-value ${buffer.status === "ok" ? "pos" : "neg"}`}>
+              {formatEur(buffer.currentAvailable)}
+            </span>
+            <span className="stat-hint">{statusLabel}</span>
+          </div>
+        )}
+        {buffer.gap != null && buffer.gap > 0 && (
+          <div className="stat-card compact">
+            <span className="stat-label">Mancano al target</span>
+            <span className="stat-value neg">{formatEur(buffer.gap)}</span>
+            <span className="stat-hint">Prima degli addebiti fine mese</span>
+          </div>
+        )}
+      </div>
+      <ul className="mediolanum-buffer-lines">
+        {buffer.lines.map((line) => (
+          <li key={line.id}>
+            <span>{line.label}</span>
+            <span>{formatEur(line.monthly)}/m</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -391,6 +391,64 @@ body {
   font-size: 0.85rem;
 }
 
+.mediolanum-buffer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.mediolanum-buffer-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mediolanum-buffer-intro {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.stat-row.mediolanum-buffer-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.65rem;
+}
+
+.stat-card.compact.buffer-ok::before {
+  background: var(--teal);
+}
+
+.stat-card.compact.buffer-low::before,
+.stat-card.compact.buffer-critical::before {
+  background: var(--clay);
+}
+
+.mediolanum-buffer-lines {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.35rem 1rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.mediolanum-buffer-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mediolanum-buffer-lines li span:last-child {
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .stat-card.compact {
   padding: 0.85rem 1rem;
 }
