@@ -38,4 +38,21 @@ describe("categorize", () => {
     ).toBe("Finanziamento auto");
     expect(categorize("ALLIANZ SPA TRIESTE", "Addebiti")).toBe("Assicurazioni");
   });
+
+  it("maps expanded categories from real merchants", () => {
+    expect(categorize("Headout · Risparmi")).toBe("Vacanze");
+    expect(categorize("Five Guys · Risparmi")).toBe("Vacanze");
+    expect(categorize("Lefties · Risparmi")).toBe("Vacanze");
+    expect(categorize("Dia · Risparmi")).toBe("Vacanze");
+    expect(categorize("Uber · Risparmi")).toBe("Vacanze");
+    expect(categorize("gomining.com")).toBe("Investimenti");
+    expect(categorize("Casa BALDO · Risparmi")).toBe("Vacanze");
+    expect(categorize("BOLLETTINI POSTALI BOLLETTINO 896")).toBe("Regali e donazioni");
+    expect(categorize("IMPOSTA DI BOLLO DOSSIER TITOLI")).toBe("Investimenti");
+    expect(categorize("PAGAMENTO UTENZA PAGAMENTI SU RETE C-BILL")).toBe("Bollette");
+    expect(categorize("Magazzini Gabrielli SP A.")).toBe("Casa");
+    expect(categorize("Club Avolta · Risparmi")).toBe("Vacanze");
+    expect(categorize("La Tasqueta Valencia · Risparmi")).toBe("Vacanze");
+    expect(categorize("Bioparc Valencia · Risparmi")).toBe("Vacanze");
+  });
 });
