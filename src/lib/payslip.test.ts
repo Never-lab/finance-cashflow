@@ -30,8 +30,9 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.grossTotal).toBe(2615.5);
     expect(parsed!.netToAccount).toBe(700.08);
     expect(parsed!.payDate).toBe("2026-07-14");
-    expect(parsed!.leaveFest.residue).toBe(26.67);
-    expect(parsed!.leaveFerie.residue).toBe(0);
+    expect(parsed!.leaveFerie.residue).toBe(26.67);
+    expect(parsed!.leaveFerie.spettanti).toBe(80);
+    expect(parsed!.leaveFest.residue).toBe(0);
     expect(parsed!.leavePerm.residue).toBe(56);
   });
 
@@ -62,6 +63,16 @@ describe("parseOsraPayslipText", () => {
     }
 
     expect(ids.size).toBe(pdfs.length);
+  });
+
+  it("reads ferie from first leave column on Dec 2025 fixture", async () => {
+    const buffer = fs.readFileSync(path.join("fixtures", "12-2025.pdf"));
+    const parsed = parseOsraPayslipText(await extractPdfText(buffer), "12-2025.pdf");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.leaveFerie.spettanti).toBe(160);
+    expect(parsed!.leaveFerie.godute).toBe(136);
+    expect(parsed!.leaveFerie.residue).toBe(2.67);
+    expect(parsed!.leavePerm.residue).toBe(61.33);
   });
 });
 

@@ -116,21 +116,24 @@ export function parseOsraPayslipText(text: string, sourceFile?: string): Payslip
   let leaveFerie = leaveTriplet(undefined, undefined, undefined);
   let leavePerm = leaveTriplet(undefined, undefined, undefined);
 
-  const grid = text.match(
-    /(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s*\nCodice CNEL/i,
+  // OSRA footer: row after "Residuo : … Residuo : … Residuo : …" holds spett/god/res × 3 columns.
+  // In this employer template the first column (labelled FEST.) carries ferie; FERIE column is unused.
+  const gridLine = text.match(
+    /Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s*\n([\d.,\s]+)/i,
   );
-  if (grid) {
-    leaveFest = leaveTriplet(grid[1], grid[2], grid[3]);
-    leaveFerie = leaveTriplet(grid[4], grid[5], grid[6]);
-    leavePerm = leaveTriplet(grid[7], grid[8], grid[9]);
+  const gridNums = gridLine?.[1]?.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+  if (gridNums && gridNums.length >= 9) {
+    leaveFerie = leaveTriplet(gridNums[0], gridNums[1], gridNums[2]);
+    leaveFest = leaveTriplet(gridNums[3], gridNums[4], gridNums[5]);
+    leavePerm = leaveTriplet(gridNums[6], gridNums[7], gridNums[8]);
   }
 
   const residuo = text.match(
     /Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)/i,
   );
   if (residuo) {
-    leaveFest.residue = parseItalianAmount(residuo[1]!);
-    leaveFerie.residue = parseItalianAmount(residuo[2]!);
+    leaveFerie.residue = parseItalianAmount(residuo[1]!);
+    leaveFest.residue = parseItalianAmount(residuo[2]!);
     leavePerm.residue = parseItalianAmount(residuo[3]!);
   }
 
