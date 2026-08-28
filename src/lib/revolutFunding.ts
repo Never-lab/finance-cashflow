@@ -14,7 +14,7 @@ export function isMediolanumRevolutFunding(input: {
   );
 }
 
-/** Revolut incoming bank transfer (mirror leg — exclude from income KPI). */
+/** Revolut incoming bank transfer from Mediolanum (mirror leg). */
 export function isRevolutBankTopUp(input: {
   source: Transaction["source"];
   description: string;
@@ -24,5 +24,31 @@ export function isRevolutBankTopUp(input: {
   if (input.source !== "revolut") return false;
   const desc = `${input.description} ${input.rawDescription ?? ""}`;
   const tipo = (input.tipologia ?? "").toLowerCase();
-  return /^pagamento da\b/i.test(input.description.trim()) || /^pagamento da\b/i.test(desc) || tipo === "ricarica";
+  return (
+    /^pagamento da\b/i.test(input.description.trim()) ||
+    /^pagamento da\b/i.test(desc) ||
+    tipo === "ricarica"
+  );
+}
+
+/** Pocket / deposit moves on Revolut — not merchant spending. */
+export function isRevolutPocketTransfer(input: {
+  description: string;
+  rawDescription?: string;
+  tipologia?: string;
+}): boolean {
+  const desc = input.description.trim();
+  const hay = `${desc} ${input.rawDescription ?? ""}`;
+  const tipo = (input.tipologia ?? "").toLowerCase();
+
+  if (isRevolutBankTopUp({ source: "revolut", description: desc, rawDescription: input.rawDescription, tipologia: input.tipologia })) {
+    return true;
+  }
+  if (/^accredita eur/i.test(desc) || /^accredita eur/i.test(hay)) return true;
+  if (/^dal deposito/i.test(desc) || /^per i depositi/i.test(desc)) return true;
+  if (/^from instant access/i.test(desc)) return true;
+  if (/^prelievo da pocket/i.test(desc)) return true;
+  if (/^to [a-z]/i.test(desc)) return true;
+  if (tipo === "ricarica") return true;
+  return false;
 }

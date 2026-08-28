@@ -1,6 +1,9 @@
 import type { BankSource, Transaction } from "../types";
 import { matchKnownAccount } from "./knownAccounts";
-import { isMediolanumRevolutFunding, isRevolutBankTopUp } from "./revolutFunding";
+import {
+  isMediolanumRevolutFunding,
+  isRevolutPocketTransfer,
+} from "./revolutFunding";
 import { isInvestmentOutflow } from "./knownInvestments";
 
 /**
@@ -15,23 +18,12 @@ export function detectInternal(input: {
 }): boolean {
   const desc = `${input.description} ${input.rawDescription ?? ""}`;
   const tipo = (input.tipologia ?? "").toLowerCase();
-  const product = (input.product ?? "").toLowerCase();
 
   if (input.source === "revolut") {
     if (/interessi/i.test(tipo) || /interessi netti/i.test(desc)) return false;
 
     if (
-      product === "risparmi" ||
-      product === "deposito" ||
-      /·\s*risparmi\b/i.test(input.description) ||
-      /·\s*deposito\b/i.test(input.description)
-    ) {
-      return true;
-    }
-
-    if (
-      isRevolutBankTopUp({
-        source: "revolut",
+      isRevolutPocketTransfer({
         description: input.description,
         rawDescription: input.rawDescription,
         tipologia: input.tipologia,
@@ -40,13 +32,7 @@ export function detectInternal(input: {
       return true;
     }
 
-    return (
-      /accredita eur/i.test(desc) ||
-      /deposito senza vincoli/i.test(desc) ||
-      /^dal deposito/i.test(input.description) ||
-      /^per i depositi/i.test(input.description) ||
-      /^to [a-z]/i.test(input.description.trim())
-    );
+    return false;
   }
 
   if (/commissione.*prepagat/i.test(desc)) return false;

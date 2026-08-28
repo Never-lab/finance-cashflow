@@ -3,7 +3,7 @@ import { detectInternal, resolveInternal, forCashflow } from "./internal";
 import type { Transaction } from "../types";
 
 describe("detectInternal", () => {
-  it("marks Revolut pocket / deposit moves, not interest", () => {
+  it("marks Revolut pocket transfers, not pocket merchant spend or interest", () => {
     expect(
       detectInternal({
         source: "revolut",
@@ -12,6 +12,22 @@ describe("detectInternal", () => {
         product: "Risparmi",
       }),
     ).toBe(true);
+    expect(
+      detectInternal({
+        source: "revolut",
+        description: "Prelievo da Pocket",
+        rawDescription: "Prelievo da Pocket",
+        product: "Attuale",
+      }),
+    ).toBe(true);
+    expect(
+      detectInternal({
+        source: "revolut",
+        description: "Dia · Risparmi",
+        rawDescription: "Dia",
+        product: "Risparmi",
+      }),
+    ).toBe(false);
     expect(
       detectInternal({
         source: "revolut",

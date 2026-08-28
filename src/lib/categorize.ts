@@ -1,7 +1,7 @@
 import { isFuelPurchase } from "./fuel";
 
 const RULES: { category: string; patterns: RegExp[] }[] = [
-  { category: "Stipendio", patterns: [/stipendio/i, /salary/i, /accredito stipendio/i, /disposizione vs\.?\s*favore/i] },
+  { category: "Stipendio", patterns: [/stipendio/i, /salary/i, /accredito stipendio/i, /disposizione vs\.?\s*favore/i, /emolumenti/i] },
   { category: "Affitto", patterns: [/affitto/i, /rent/i, /locazione/i] },
   { category: "Mutuo", patterns: [/mutuo/i, /fin\.\s*vari/i, /pag\.\s*mutuo/i] },
   {
@@ -38,6 +38,10 @@ export function categorize(
 ): string {
   const hay = `${description} ${rawDescription}`;
   const tipo = tipologia.toLowerCase();
+
+  if (tipo.includes("stipendi") || tipo.includes("pensioni") || /emolumenti/i.test(hay)) {
+    return "Stipendio";
+  }
 
   if (tipo.includes("mutui") || tipo.includes("prestiti")) return "Mutuo";
   if (tipo.includes("carte") && /prelievo/i.test(hay)) return "Prelievi";
