@@ -11,6 +11,7 @@ import {
   spendingHeatmap,
 } from "../lib/stats";
 import { forCashflow } from "../lib/internal";
+import { sumEmergencyFundOutflows } from "../lib/knownAccounts";
 import { buildPaypalSummary } from "../lib/paypal";
 import { findRecurring } from "../lib/recurring";
 import {
@@ -29,6 +30,7 @@ type Props = {
   onUpload: () => void;
   onGoPaypal: () => void;
   onGoAbbonamenti: () => void;
+  onGoInvestimenti?: () => void;
 };
 
 export function Dashboard({
@@ -39,6 +41,7 @@ export function Dashboard({
   onUpload,
   onGoPaypal,
   onGoAbbonamenti,
+  onGoInvestimenti,
 }: Props) {
   const filtered = useMemo(() => {
     const byPeriod = filterByPeriod(transactions, period);
@@ -53,6 +56,13 @@ export function Dashboard({
   const hiddenInternal = useMemo(() => {
     return filterByPeriod(transactions, period).length - filtered.length;
   }, [transactions, period, filtered]);
+
+  const periodAll = useMemo(() => filterByPeriod(transactions, period), [transactions, period]);
+
+  const savings = useMemo(() => {
+    const emergencyOut = sumEmergencyFundOutflows(periodAll);
+    return { emergencyOut };
+  }, [periodAll]);
 
   const impegni = useMemo(() => {
     const paypal = buildPaypalSummary(transactions);
@@ -127,9 +137,40 @@ export function Dashboard({
       </div>
       {hiddenInternal > 0 && (
         <p className="muted kpi-note">
-          Esclusi {hiddenInternal} trasferimenti interni dai KPI.
+          Esclusi {hiddenInternal} trasferimenti interni dai KPI
+          {savings.emergencyOut > 0
+            ? ` (inclusi ${formatEur(savings.emergencyOut)} verso fondo emergenza deposito)`
+            : ""}
+          .
         </p>
       )}
+
+      <section className="stat-section">
+        <h3 className="stat-section-title">Risparmio programmato</h3>
+        <div className="stat-row impegni-row">
+          <div
+            className={`stat-card${onGoInvestimenti ? " interactive" : ""}`}
+            role={onGoInvestimenti ? "button" : undefined}
+            tabIndex={onGoInvestimenti ? 0 : undefined}
+            onClick={onGoInvestimenti}
+            onKeyDown={
+              onGoInvestimenti
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") onGoInvestimenti();
+                  }
+                : undefined
+            }
+          >
+            <span className="stat-label">Fondo emergenza (deposito)</span>
+            <span className={`stat-value ${savings.emergencyOut > 0 ? "pos" : ""}`}>
+              {formatEur(savings.emergencyOut)}
+            </span>
+            <span className="stat-hint">
+              Versato nel periodo · IBAN …14212 · escluso da uscite KPI
+            </span>
+          </div>
+        </div>
+      </section>
 
       <section className="stat-section">
         <h3 className="stat-section-title">Impegni</h3>

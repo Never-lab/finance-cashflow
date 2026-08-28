@@ -14,4 +14,11 @@ describe("categorize", () => {
       "Prelievi",
     );
   });
+
+  it("maps insurance SDD to Assicurazioni", () => {
+    expect(categorize("ADDEBITO DIRETTO CORE RCUR AVVERA S.P.A.", "Addebiti")).toBe(
+      "Assicurazioni",
+    );
+    expect(categorize("ALLIANZ SPA TRIESTE", "Addebiti")).toBe("Assicurazioni");
+  });
 });

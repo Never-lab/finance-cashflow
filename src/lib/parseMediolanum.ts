@@ -2,6 +2,7 @@ import type { Transaction } from "../types";
 import { categorize } from "./categorize";
 import { headerIndex, parseAmount, parseCsvTable, parseDate, transactionId } from "./csv";
 import { detectInternal } from "./internal";
+import { matchKnownAccount } from "./knownAccounts";
 
 /** Banca Mediolanum export: preamble + Operazione;Valuta;Tipologia;Descrizione;Uscite;Entrate */
 function isMediolanumHeader(headers: string[]): boolean {
@@ -29,6 +30,10 @@ export function cleanMediolanumDescription(raw: string): string {
 
   if (/POCKET REVOLUT|REVOITM/i.test(raw)) return "Bonifico Pocket Revolut";
   if (/RICARICA\/RIMBORSO CARTA.*PREPAGAT/i.test(raw)) return "Ricarica carta prepagata";
+
+  const known = matchKnownAccount(raw);
+  if (known) return known.label;
+
   if (/COMMISSIONE EMISSIONE\/RICARICA CARTA.*PREPAGAT/i.test(raw)) {
     return "Commissione ricarica prepagata";
   }

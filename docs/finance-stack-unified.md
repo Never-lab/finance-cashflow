@@ -89,7 +89,7 @@ Aggiornato: 2026-08-28.
 
 | Nodo | Metafora | Target | Deadline / note |
 |------|----------|--------|-----------------|
-| Fondo Emergenza (Mediolanum) | Disaster Recovery ufficiale | policy personale | Cronjob silente |
+| Fondo Emergenza (Mediolanum) | Disaster Recovery ufficiale | policy personale | Cronjob silente · IBAN deposito `IT02J0306234210000060114212` |
 | **Air-Gapped Backup** | Offline, non in CSV | riserva critica | Drain solo per incidenti major (es. auto 2,5k) |
 | **Vault Auto** (Revolut Pocket) | Hot storage assicurazione | **2.500 €** | **Nov 2026** — ~750 € ancora necessari |
 | **Vault Casa** (Revolut Pocket) | Bare Metal / mutuo futuro | **10.000 €** | Sandbox: stress test **380 €/mese** (rata simulata) |

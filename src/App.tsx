@@ -218,6 +218,7 @@ export default function App() {
             onUpload={() => setUploadOpen(true)}
             onGoPaypal={() => setTab("paypal")}
             onGoAbbonamenti={() => setTab("abbonamenti")}
+            onGoInvestimenti={() => setTab("investimenti")}
           />
         )}
         {tab === "movimenti" && (

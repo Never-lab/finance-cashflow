@@ -99,6 +99,14 @@ describe("cleanMediolanumDescription", () => {
       ),
     ).toBe("DECATHLON 00002992 TERNI");
   });
+
+  it("labels fondo emergenza deposito by IBAN", () => {
+    expect(
+      cleanMediolanumDescription(
+        "BONIFICO SEPA COOR.BENEF.: IT02 J030 6234 2100 0006 0114 212 NICHOLAS ANTINORI",
+      ),
+    ).toBe("Fondo emergenza Mediolanum");
+  });
 });
 
 describe("detectBank", () => {

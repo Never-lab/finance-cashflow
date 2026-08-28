@@ -48,6 +48,17 @@ describe("detectInternal", () => {
       }),
     ).toBe(true);
   });
+
+  it("marks bonifici verso conto deposito fondo emergenza (IBAN)", () => {
+    expect(
+      detectInternal({
+        source: "mediolanum",
+        description: "Fondo emergenza Mediolanum",
+        rawDescription:
+          "BONIFICO SEPA IT02J0306234210000060114212 NICHOLAS ANTINORI",
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("resolveInternal", () => {

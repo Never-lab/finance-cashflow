@@ -9,9 +9,21 @@ export type RecurringItem = {
   months: string[];
   count: number;
   lastDate: string;
-  /** Rough monthly burden */
+  /** Amortized monthly burden (not raw installment for semi-annual/quarterly) */
   monthlyEstimate: number;
 };
+
+const INSURANCE_RE =
+  /allianz|avvera|assicur|unipol|generali|\baxa\b|reale mutua|rcur|prg\.car|payment loan/i;
+
+const NON_SUBSCRIPTION_CATEGORIES = new Set([
+  "Assicurazioni",
+  "Mutuo",
+  "Affitto",
+  "Bollette",
+  "Stipendio",
+  "Trasferimenti",
+]);
 
 /** Normalize merchant-ish label for grouping. */
 export function recurringKey(description: string): string {
@@ -23,6 +35,36 @@ export function recurringKey(description: string): string {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 48);
+}
+
+/** True for cancellable subs (Netflix, gym) — not insurance, mutuo, bonifici SDD. */
+export function isSubscriptionLike(item: RecurringItem): boolean {
+  if (NON_SUBSCRIPTION_CATEGORIES.has(item.category)) return false;
+  const hay = `${item.label} ${item.key}`;
+  if (INSURANCE_RE.test(hay)) return false;
+  if (/bonifico|sepa ist|sepa instant|c\/o benef|disposizione vs/i.test(hay)) return false;
+  return true;
+}
+
+function medianGapDays(dates: string[]): number {
+  if (dates.length < 2) return 30;
+  const gaps: number[] = [];
+  for (let i = 1; i < dates.length; i++) {
+    const d0 = new Date(dates[i - 1]!);
+    const d1 = new Date(dates[i]!);
+    gaps.push(Math.max(1, (d1.getTime() - d0.getTime()) / 86_400_000));
+  }
+  gaps.sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)] ?? 30;
+}
+
+/** Spread installment amount over typical cadence (semi-annual ≠ full amount / month). */
+export function estimateMonthlyBurden(avgInstallment: number, dates: string[]): number {
+  if (avgInstallment <= 0) return 0;
+  const gap = medianGapDays(dates.sort());
+  if (gap <= 35) return avgInstallment;
+  const monthly = (avgInstallment * 30) / gap;
+  return Math.round(monthly * 100) / 100;
 }
 
 /**
@@ -59,9 +101,10 @@ export function findRecurring(txns: Transaction[]): RecurringItem[] {
 
     const avg =
       similar.reduce((s, t) => s + -t.amount, 0) / Math.max(similar.length, 1);
+    const dates = similar.map((t) => t.date);
     const label = similar[0]?.description ?? key;
     const category = similar[0]?.category ?? "Altro";
-    const lastDate = similar.map((t) => t.date).sort().at(-1) ?? "";
+    const lastDate = dates.sort().at(-1) ?? "";
 
     out.push({
       key,
@@ -71,7 +114,7 @@ export function findRecurring(txns: Transaction[]): RecurringItem[] {
       months: simMonths.sort(),
       count: similar.length,
       lastDate,
-      monthlyEstimate: Math.round(avg * 100) / 100,
+      monthlyEstimate: estimateMonthlyBurden(avg, dates),
     });
   }
 

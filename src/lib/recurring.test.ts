@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findRecurring, recurringKey } from "./recurring";
+import { findRecurring, isSubscriptionLike, recurringKey } from "./recurring";
 import type { Transaction } from "../types";
 
 function tx(
@@ -45,5 +45,44 @@ describe("findRecurring", () => {
       }),
     ];
     expect(findRecurring(rows)).toHaveLength(0);
+  });
+
+  it("amortizes semi-annual insurance and excludes from subscription-like", () => {
+    const rows = [
+      tx({
+        id: "1",
+        date: "2025-12-01",
+        description: "ALLIANZ SPA TRIESTE",
+        amount: -636,
+        category: "Assicurazioni",
+      }),
+      tx({
+        id: "2",
+        date: "2026-06-01",
+        description: "ALLIANZ SPA TRIESTE",
+        amount: -636,
+        category: "Assicurazioni",
+      }),
+    ];
+    const found = findRecurring(rows);
+    const allianz = found.find((f) => /allianz/i.test(f.label));
+    expect(allianz).toBeDefined();
+    expect(allianz!.monthlyEstimate).toBeLessThan(150);
+    expect(allianz!.monthlyEstimate).toBeGreaterThan(90);
+    expect(isSubscriptionLike(allianz!)).toBe(false);
+  });
+
+  it("excludes SEPA bonifici from subscription-like", () => {
+    const item = {
+      key: "bonifico sepa",
+      label: "BONIFICO - SEPA ISTANTANEO NICHOLAS ANTINORI",
+      category: "Trasferimenti",
+      avgAmount: 350,
+      months: ["2026-06", "2026-07"],
+      count: 2,
+      lastDate: "2026-07-01",
+      monthlyEstimate: 350,
+    };
+    expect(isSubscriptionLike(item)).toBe(false);
   });
 });

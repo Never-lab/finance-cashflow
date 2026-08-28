@@ -1,4 +1,5 @@
 import type { BankSource, Transaction } from "../types";
+import { matchKnownAccount } from "./knownAccounts";
 
 /**
  * Own-account moves: exclude from cash-flow KPIs/charts, keep in Movimenti.
@@ -38,6 +39,9 @@ export function detectInternal(input: {
 
   if (/commissione.*prepagat/i.test(desc)) return false;
   if (/imposta di bollo/i.test(desc)) return false;
+
+  if (matchKnownAccount(desc)) return true;
+  if (/fondo emergenza mediolanum/i.test(desc)) return true;
 
   if (/ricarica\/rimborso carta.*prepagat/i.test(desc)) return true;
   if (/carta\/e prepagata/i.test(desc) && /ricarica/i.test(desc) && !/commissione/i.test(desc)) {

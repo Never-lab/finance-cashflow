@@ -1,6 +1,6 @@
 import type { RecurringMark, Transaction } from "../types";
 import { forCashflow } from "./internal";
-import { findRecurring } from "./recurring";
+import { findRecurring, isSubscriptionLike } from "./recurring";
 import { buildPaypalSummary } from "./paypal";
 import { categoryBreakdown, computeKpis, formatEur, monthlySeries } from "./stats";
 
@@ -58,7 +58,8 @@ export function analyzeFinances(
 
   const recurring = findRecurring(cash);
   const activeRecurring = recurring.filter((r) => marks[r.key] !== "cancelled");
-  const recurringBurden = activeRecurring.reduce((s, r) => s + r.monthlyEstimate, 0);
+  const subscriptionLike = activeRecurring.filter(isSubscriptionLike);
+  const recurringBurden = subscriptionLike.reduce((s, r) => s + r.monthlyEstimate, 0);
   const couldCancel = activeRecurring.filter((r) => marks[r.key] === "could_cancel");
   const couldCancelSum = couldCancel.reduce((s, r) => s + r.monthlyEstimate, 0);
 
@@ -100,7 +101,7 @@ export function analyzeFinances(
     });
   }
 
-  const unmarkedHeavy = activeRecurring
+  const unmarkedHeavy = subscriptionLike
     .filter((r) => !marks[r.key] && r.monthlyEstimate >= 20)
     .slice(0, 3);
   if (unmarkedHeavy.length >= 2) {
