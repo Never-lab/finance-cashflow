@@ -73,8 +73,8 @@ Progetto **separato** da liquidazi. Piano Hobby: un servizio + volume SQLite su 
    | `FINANCE_SECRET` | stringa random 32+ byte (`openssl rand -hex 32`) |
    | `DATABASE_PATH` | `/data/finance.db` |
 
-5. Health: `GET https://<tuo-dominio>/api/health` → `{ "ok": true, "storage": "sqlite", "auth": … }`.
-6. Dopo il deploy F-deploy: login → ricarica CSV da zero (nessuna migrazione automatica).
+5. Health: `GET https://<tuo-dominio>/api/health` → `{ "ok": true, … }` (**senza `:8080`** — Railway espone solo HTTPS sulla porta 443).
+6. Apri `https://<tuo-dominio>/` per la UI (dopo build con `dist/`).
 
 Build/install: `nixpacks.toml` (Node 22, Python + gcc for `better-sqlite3`, `npm ci`, `npm run build`). Node **22** via `NIXPACKS_NODE_VERSION`.
 
