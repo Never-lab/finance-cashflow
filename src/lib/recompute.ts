@@ -7,6 +7,8 @@ export type RecomputeReport = {
   categoriesUpdated: number;
   internalUpdated: number;
   instrumentsRecalced: number;
+  investmentInstrumentsEnsured?: number;
+  investmentContributionsLinked?: number;
 };
 
 /** Re-apply categorize + internal heuristics; manual overrides are preserved. */

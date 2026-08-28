@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Contribution, Instrument, InstrumentType, Transaction } from "../types";
 import { api, type InstrumentWithHolding, type PortfolioSummary, type QuoteBar } from "../api";
 import { formatEur } from "../lib/stats";
+import { detectKnownInvestment, PAC_GLOBAL_BRANDS } from "../lib/knownInvestments";
 import {
   AllocationChart,
   InstrumentPriceChart,
@@ -202,8 +203,14 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
   const lineByInstrument = new Map((summary?.lines ?? []).map((l) => [l.instrumentId, l]));
   const linkedTxIds = new Set(contributions.map((c) => c.transactionId).filter(Boolean));
   const linkableTx = transactions
-    .filter((t) => t.internal && !linkedTxIds.has(t.id))
+    .filter(
+      (t) =>
+        t.amount < 0 &&
+        (t.internal || detectKnownInvestment(t) != null) &&
+        !linkedTxIds.has(t.id),
+    )
     .slice(0, 200);
+  const pacInstrument = instruments.find((i) => i.isin === PAC_GLOBAL_BRANDS.isin);
 
   if (loading) {
     return <div className="boot">Caricamento…</div>;
@@ -211,6 +218,13 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
 
   return (
     <div className="investimenti">
+      {pacInstrument && (
+        <p className="muted kpi-note">
+          PAC {PAC_GLOBAL_BRANDS.isin} ({pacInstrument.name}): i versamenti Mediolanum con questo
+          ISIN vengono collegati automaticamente all’import o con «Ricalcola tutto» in Dati.
+        </p>
+      )}
+
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
           <span className="stat-label">Patrimonio</span>

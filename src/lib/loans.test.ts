@@ -4,6 +4,7 @@ import {
   isLoanTransaction,
   loanKeyFromDescription,
 } from "./loans";
+import { defaultLoanTargets } from "./knownLoans";
 import type { Transaction } from "../types";
 
 function tx(
@@ -86,5 +87,32 @@ describe("loans", () => {
     const s = buildLoanSummary(rows, { "mutuo-740/00136196": { totalInstallments: 36 } });
     expect(s.plans[0]?.remainingEstimate).toBe(3726.4);
     expect(s.plans[0]?.remainingSource).toBe("estimate");
+  });
+
+  it("groups Avvera car loan by contract number", () => {
+    const avvera =
+      "Addebito Diretto Core Rcur Prg.car Avvera S.p.a. - Payment Loan N. 1076258 Installment N. 9";
+    const rows = [
+      tx({
+        id: "a1",
+        date: "2026-07-01",
+        description: avvera,
+        amount: -320,
+        category: "Finanziamento auto",
+      }),
+      tx({
+        id: "a2",
+        date: "2026-08-01",
+        description: avvera,
+        amount: -320,
+        category: "Finanziamento auto",
+      }),
+    ];
+    const s = buildLoanSummary(rows, defaultLoanTargets());
+    expect(s.plans[0]?.key).toBe("avvera-1076258");
+    expect(s.plans[0]?.label).toBe("Finanziamento auto Avvera");
+    expect(s.plans[0]?.remainingEstimate).toBe(23096.19);
+    expect(s.plans[0]?.remainingSource).toBe("bank");
+    expect(s.plans[0]?.principalAmount).toBe(24109);
   });
 });

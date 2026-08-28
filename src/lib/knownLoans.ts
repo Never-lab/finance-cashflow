@@ -12,6 +12,9 @@ export type KnownLoan = {
   remainingDebt?: number;
   totalRepaid?: number;
   nextPaymentDate?: string;
+  startDate?: string;
+  /** Indicative TAN % for UI — not contractual */
+  indicativeTan?: number;
 };
 
 /** Selfycredit Instant — contratto 00136196 (Nicholas Antinori). */
@@ -28,7 +31,23 @@ export const SELFYCREDIT_00136196: KnownLoan = {
   nextPaymentDate: "2026-08-31",
 };
 
-export const KNOWN_LOANS: KnownLoan[] = [SELFYCREDIT_00136196];
+/**
+ * Finanziamento auto Avvera — Payment Loan 1076258 (Nicholas Antinori).
+ * Rate ~96 (dic 2025 → nov 2033). TAN indicativo ~4%: ipotesi utente; mercato auto 2026 spesso 5–8% TAEG.
+ */
+export const AVVERA_AUTO_1076258: KnownLoan = {
+  key: "avvera-1076258",
+  contractRef: "1076258",
+  label: "Finanziamento auto Avvera",
+  totalInstallments: 96,
+  principalAmount: 24109,
+  startDate: "2025-10-24",
+  endDate: "2033-11-01",
+  remainingDebt: 23096.19,
+  indicativeTan: 4,
+};
+
+export const KNOWN_LOANS: KnownLoan[] = [SELFYCREDIT_00136196, AVVERA_AUTO_1076258];
 
 export function defaultLoanTargets(): Record<string, LoanTarget> {
   const out: Record<string, LoanTarget> = {};
@@ -41,6 +60,8 @@ export function defaultLoanTargets(): Record<string, LoanTarget> {
       remainingDebt: loan.remainingDebt,
       totalRepaid: loan.totalRepaid,
       nextPaymentDate: loan.nextPaymentDate,
+      startDate: loan.startDate,
+      indicativeTan: loan.indicativeTan,
     };
   }
   return out;

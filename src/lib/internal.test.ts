@@ -46,7 +46,7 @@ describe("detectInternal", () => {
         description: "Bonifico Pocket Revolut",
         rawDescription: "BONIFICO ... REVOITM2XXX NOTE: POCKET REVOLUT",
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("marks bonifici verso conto deposito fondo emergenza (IBAN)", () => {

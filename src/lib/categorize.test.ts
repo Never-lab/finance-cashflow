@@ -15,10 +15,13 @@ describe("categorize", () => {
     );
   });
 
-  it("maps insurance SDD to Assicurazioni", () => {
-    expect(categorize("ADDEBITO DIRETTO CORE RCUR AVVERA S.P.A.", "Addebiti")).toBe(
-      "Assicurazioni",
-    );
+  it("maps insurance and car finance SDD", () => {
+    expect(
+      categorize(
+        "Addebito Diretto Core Rcur Prg.car Avvera S.p.a. - Payment Loan N. 1076258 Installment N. 9",
+        "Addebiti",
+      ),
+    ).toBe("Finanziamento auto");
     expect(categorize("ALLIANZ SPA TRIESTE", "Addebiti")).toBe("Assicurazioni");
   });
 });

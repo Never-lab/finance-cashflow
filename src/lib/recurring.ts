@@ -14,11 +14,12 @@ export type RecurringItem = {
 };
 
 const INSURANCE_RE =
-  /allianz|avvera|assicur|unipol|generali|\baxa\b|reale mutua|rcur|prg\.car|payment loan/i;
+  /allianz|assicur|unipol|generali|\baxa\b|reale mutua|payment loan/i;
 
 const NON_SUBSCRIPTION_CATEGORIES = new Set([
   "Assicurazioni",
   "Mutuo",
+  "Finanziamento auto",
   "Affitto",
   "Bollette",
   "Stipendio",

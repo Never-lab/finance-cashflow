@@ -1,5 +1,7 @@
 import type { BankSource, Transaction } from "../types";
 import { matchKnownAccount } from "./knownAccounts";
+import { isMediolanumRevolutFunding, isRevolutBankTopUp } from "./revolutFunding";
+import { isInvestmentOutflow } from "./knownInvestments";
 
 /**
  * Own-account moves: exclude from cash-flow KPIs/charts, keep in Movimenti.
@@ -27,12 +29,22 @@ export function detectInternal(input: {
       return true;
     }
 
+    if (
+      isRevolutBankTopUp({
+        source: "revolut",
+        description: input.description,
+        rawDescription: input.rawDescription,
+        tipologia: input.tipologia,
+      })
+    ) {
+      return true;
+    }
+
     return (
       /accredita eur/i.test(desc) ||
       /deposito senza vincoli/i.test(desc) ||
       /^dal deposito/i.test(input.description) ||
       /^per i depositi/i.test(input.description) ||
-      /pagamento da /i.test(desc) ||
       /^to [a-z]/i.test(input.description.trim())
     );
   }
@@ -49,13 +61,18 @@ export function detectInternal(input: {
   }
   if (/ricarica carta prepagata/i.test(desc)) return true;
 
-  if (/revoitm|pocket revolut|banca destinataria:.*revolut/i.test(desc)) return true;
-  if (/bonifico pocket revolut/i.test(desc)) return true;
-  if (/bonifico/i.test(desc) && /revolut/i.test(desc) && !/koti revolution/i.test(desc)) {
-    return true;
-  }
+  if (isMediolanumRevolutFunding(input)) return false;
 
   if (
+    isInvestmentOutflow({
+      id: "",
+      date: "",
+      description: `${input.description} ${input.rawDescription ?? ""}`,
+      amount: -1,
+      currency: "EUR",
+      source: input.source,
+      category: "",
+    }) ||
     /versamento.*invest/i.test(desc) ||
     /sottoscrizione/i.test(desc) ||
     /\bsicav\b/i.test(desc) ||

@@ -48,6 +48,11 @@ loansRoutes.put("/loans/targets", async (c) => {
     }
     if (body.target.endDate?.trim()) next.endDate = body.target.endDate.trim();
     if (body.target.nextPaymentDate?.trim()) next.nextPaymentDate = body.target.nextPaymentDate.trim();
+    if (body.target.startDate?.trim()) next.startDate = body.target.startDate.trim();
+    if (body.target.indicativeTan != null) {
+      const tan = Number(body.target.indicativeTan);
+      if (Number.isFinite(tan) && tan >= 0) next.indicativeTan = round2(tan);
+    }
     if (body.target.remainingDebt != null) {
       const d = Number(body.target.remainingDebt);
       if (Number.isFinite(d) && d >= 0) next.remainingDebt = round2(d);

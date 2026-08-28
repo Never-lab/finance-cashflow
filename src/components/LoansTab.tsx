@@ -167,11 +167,16 @@ function LoanRow({
         {plan.contractRef && (
           <div className="muted tiny">Contratto {plan.contractRef}</div>
         )}
-        {(plan.principalAmount != null || plan.endDate) && (
+        {(plan.principalAmount != null || plan.startDate || plan.endDate) && (
           <div className="muted tiny">
-            {plan.principalAmount != null ? `Erogato ${formatEur(plan.principalAmount)}` : ""}
-            {plan.principalAmount != null && plan.endDate ? " · " : ""}
-            {plan.endDate ? `fine ${plan.endDate.slice(5)}/${plan.endDate.slice(0, 4)}` : ""}
+            {plan.principalAmount != null ? `Importo ${formatEur(plan.principalAmount)}` : ""}
+            {plan.startDate ? `${plan.principalAmount != null ? " · " : ""}inizio ${plan.startDate.slice(5)}/${plan.startDate.slice(0, 4)}` : ""}
+            {plan.endDate ? ` · fine ${plan.endDate.slice(5)}/${plan.endDate.slice(0, 4)}` : ""}
+          </div>
+        )}
+        {plan.indicativeTan != null && (
+          <div className="muted tiny" title="Non da estratto contratto — solo riferimento">
+            TAN indicativo ~{plan.indicativeTan.toFixed(1)}% (stima)
           </div>
         )}
         <div className="muted tiny">

@@ -1,6 +1,7 @@
 import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
 import { recurringKey } from "./recurring";
+import { carLoanKeyFromDescription, isCarLoanTransaction } from "./carLoan";
 
 export type LoanTarget = {
   /** Total scheduled installments (e.g. 36 for Selfycredit) */
@@ -17,6 +18,10 @@ export type LoanTarget = {
   totalRepaid?: number;
   /** Next installment YYYY-MM-DD */
   nextPaymentDate?: string;
+  /** Contract start YYYY-MM-DD */
+  startDate?: string;
+  /** Display-only reference TAN (not from contract PDF) */
+  indicativeTan?: number;
 };
 
 export type LoanPlan = {
@@ -39,6 +44,9 @@ export type LoanPlan = {
   endDate: string | null;
   totalRepaidBank: number | null;
   nextPaymentDate: string | null;
+  startDate: string | null;
+  /** Indicative TAN % — not from bank extract */
+  indicativeTan: number | null;
   transactions: Transaction[];
 };
 
@@ -55,6 +63,8 @@ function round2(n: number): number {
 
 /** Extract contract ref from Mediolanum mutuo lines (NUM. 740/00136196). */
 export function loanKeyFromDescription(description: string): string | null {
+  const carKey = carLoanKeyFromDescription(description);
+  if (carKey) return carKey;
   const numMatch = description.match(/NUM\.\s*([\d/]+)/i);
   if (numMatch) return `mutuo-${numMatch[1]}`;
   if (/pag\.\s*mutuo|fin\.\s*vari|prestito|mutui\s*-\s*prestiti/i.test(description)) {
@@ -65,7 +75,8 @@ export function loanKeyFromDescription(description: string): string | null {
 }
 
 export function isLoanTransaction(t: Transaction): boolean {
-  if (t.category === "Mutuo") return true;
+  if (isCarLoanTransaction(t)) return true;
+  if (t.category === "Mutuo" || t.category === "Finanziamento auto") return true;
   return /pag\.\s*mutuo|fin\.\s*vari|prestito/i.test(t.description);
 }
 
@@ -75,6 +86,10 @@ function contractRefFromDescription(description: string): string | null {
 }
 
 function defaultLabel(ref: string | null, description: string): string {
+  if (/avvera/i.test(description) && /payment loan/i.test(description)) {
+    const m = description.match(/payment loan\s+n\.?\s*(\d+)/i);
+    return m ? `Fin. auto Avvera ${m[1]}` : "Finanziamento auto Avvera";
+  }
   if (ref) return `Mutuo ${ref}`;
   const short = description.slice(0, 48).trim();
   return short || "Prestito";
@@ -151,6 +166,8 @@ export function buildLoanSummary(
       endDate: target?.endDate ?? null,
       totalRepaidBank: target?.totalRepaid != null ? round2(target.totalRepaid) : null,
       nextPaymentDate: target?.nextPaymentDate ?? null,
+      startDate: target?.startDate ?? null,
+      indicativeTan: target?.indicativeTan ?? null,
       transactions: sorted,
     });
   }

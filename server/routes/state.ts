@@ -10,6 +10,7 @@ import {
   setRecurringMarkDb,
 } from "../lib/stateRepo";
 import { recomputeDatabase } from "../lib/recomputeRepo";
+import { syncKnownInvestmentContributions } from "../lib/investmentSync";
 import { getSetting } from "../lib/settingsRepo";
 import { mergeLoanTargets } from "../../src/lib/knownLoans";
 import type { LoanTarget } from "../../src/lib/loans";
@@ -34,7 +35,8 @@ stateRoutes.post("/transactions/merge", async (c) => {
   const body = await c.req.json<{ transactions: Transaction[] }>();
   const db = getDb();
   const { added, updated } = mergeImportIntoDb(db, body.transactions ?? []);
-  return c.json({ added, updated, state: loadAppState(db) });
+  const investment = syncKnownInvestmentContributions(db);
+  return c.json({ added, updated, investment, state: loadAppState(db) });
 });
 
 stateRoutes.put("/overrides/category", async (c) => {

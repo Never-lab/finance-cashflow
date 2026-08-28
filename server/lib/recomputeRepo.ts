@@ -2,12 +2,15 @@ import type Database from "better-sqlite3";
 import { recomputeTransaction } from "../../src/lib/recompute";
 import { loadAppState } from "./stateRepo";
 import { recalcCostBasis } from "./instrumentsRepo";
+import { syncKnownInvestmentContributions } from "./investmentSync";
 
 export type RecomputeDbReport = {
   transactions: number;
   categoriesUpdated: number;
   internalUpdated: number;
   instrumentsRecalced: number;
+  investmentInstrumentsEnsured: number;
+  investmentContributionsLinked: number;
 };
 
 function toInternalCol(internal: boolean | undefined): number | null {
@@ -49,10 +52,14 @@ export function recomputeDatabase(db: Database.Database): RecomputeDbReport {
     recalcCostBasis(db, id);
   }
 
+  const investment = syncKnownInvestmentContributions(db);
+
   return {
     transactions: state.transactions.length,
     categoriesUpdated,
     internalUpdated,
     instrumentsRecalced: instrumentIds.length,
+    investmentInstrumentsEnsured: investment.instrumentsEnsured,
+    investmentContributionsLinked: investment.contributionsLinked,
   };
 }

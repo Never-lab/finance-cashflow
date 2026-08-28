@@ -149,7 +149,7 @@ export default function App() {
     setState(next);
     setLoanTargets(targets);
     setDataRefreshKey((k) => k + 1);
-    const msg = `Ricalcolo ok: ${report.categoriesUpdated} categorie, ${report.internalUpdated} interni, ${report.instrumentsRecalced} strumenti · ${report.transactions} movimenti`;
+    const msg = `Ricalcolo ok: ${report.categoriesUpdated} categorie, ${report.internalUpdated} interni, ${report.instrumentsRecalced} strumenti${report.investmentContributionsLinked ? `, +${report.investmentContributionsLinked} versamenti PAC` : ""} · ${report.transactions} movimenti`;
     showToast(msg);
     return msg;
   }
