@@ -14,16 +14,16 @@ import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { LoansTab } from "./components/LoansTab";
+import { AppShell, type AppTab } from "./components/AppShell";
 import type { LoanTarget } from "./lib/loans";
 
-type Tab = "dashboard" | "movimenti" | "abbonamenti" | "mutui" | "paypal" | "consigli" | "investimenti";
 type Gate = "loading" | "login" | "app";
 
 export default function App() {
   const [gate, setGate] = useState<Gate>("loading");
   const [authRequired, setAuthRequired] = useState(false);
   const [state, setState] = useState<AppState | null>(null);
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<AppTab>("dashboard");
   const [period, setPeriod] = useState<Period>("month");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -198,48 +198,13 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="top">
-        <div>
-          <p className="brand">Cash Flow</p>
-          <p className="tagline">Mediolanum + Revolut · monitoring plane</p>
-        </div>
-        <div className="top-right">
-          <nav className="tabs">
-            {(
-              [
-                ["dashboard", "Dashboard"],
-                ["movimenti", "Movimenti"],
-                ["abbonamenti", "Abbonamenti"],
-                ["mutui", "Mutui"],
-                ["paypal", "PayPal"],
-                ["consigli", "Consigli"],
-                ["investimenti", "Investimenti"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                className={tab === id ? "tab active" : "tab"}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-          <button
-            type="button"
-            className="btn"
-            title="Dati e backup"
-            onClick={() => setSettingsOpen(true)}
-          >
-            Dati
-          </button>
-        </div>
-      </header>
-
-      <main>
-        {tab === "dashboard" && (
+    <AppShell
+      tab={tab}
+      onTab={setTab}
+      onUpload={() => setUploadOpen(true)}
+      onSettings={() => setSettingsOpen(true)}
+    >
+      {tab === "dashboard" && (
           <Dashboard
             transactions={txns}
             period={period}
@@ -298,7 +263,6 @@ export default function App() {
         {tab === "investimenti" && (
           <Investimenti transactions={txns} refreshKey={dataRefreshKey} />
         )}
-      </main>
 
       <UploadModal
         open={uploadOpen}
@@ -324,6 +288,6 @@ export default function App() {
         </div>
       )}
       {toast && <div className="toast">{toast}</div>}
-    </div>
+    </AppShell>
   );
 }

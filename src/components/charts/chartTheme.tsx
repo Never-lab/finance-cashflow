@@ -1,11 +1,11 @@
 import { formatEur } from "../../lib/stats";
 
 export const CHART = {
-  teal: "#1d4e4a",
-  clay: "#c45c26",
-  muted: "#5c655f",
-  grid: "#ebe4d6",
-  panel: "#fffdf8",
+  teal: "#6ecfbc",
+  clay: "#e07a4a",
+  muted: "#8f9a94",
+  grid: "#3d4642",
+  panel: "#2a312e",
 };
 
 type TipPayload = {

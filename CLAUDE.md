@@ -12,7 +12,7 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 - **Architettura finanziaria personale (nod i Mediolanum/Revolut, Vault, waterfall):** [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md)  
 - **Lingua UI:** italiano  
 - **Privacy:** dati locali su disco (`data/finance.db`) + API Node su localhost (`:5174`). Nessun cloud, nessun multi-utente. IndexedDB resta solo per migrazione one-shot da installazioni precedenti.  
-- **Stile UI:** già approvato dall’utente — palette caldo/teal (`styles.css`), brand serif “Cash Flow”, niente tema purple/AI-slop. **Preservare questo look** in evoluzioni UI.
+- **Stile UI:** tema scuro caldo (charcoal `#1c211f`, teal `#6ecfbc`, clay `#e07a4a`), sidebar raggruppata. Brand serif “Cash Flow”.
 
 ## Obiettivo prodotto (roadmap)
 
