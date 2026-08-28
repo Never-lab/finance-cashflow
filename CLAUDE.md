@@ -9,6 +9,7 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 
 - **Owner:** Nicholas  
 - **Path:** `C:\Users\nicho\Documents\Finance`  
+- **Architettura finanziaria personale (nod i Mediolanum/Revolut, Vault, waterfall):** [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md)  
 - **Lingua UI:** italiano  
 - **Privacy:** dati locali su disco (`data/finance.db`) + API Node su localhost (`:5174`). Nessun cloud, nessun multi-utente. IndexedDB resta solo per migrazione one-shot da installazioni precedenti.  
 - **Stile UI:** già approvato dall’utente — palette caldo/teal (`styles.css`), brand serif “Cash Flow”, niente tema purple/AI-slop. **Preservare questo look** in evoluzioni UI.
@@ -23,10 +24,15 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 | **v1.3** | Mix D: backup/reset, upsert import, internal override, blocco Impegni | **Fatta** |
 | **v1.4** | Grafici Getquin-style: Sankey flusso, curva cumulata, barre, breakdown %, heatmap | **Fatta** |
 | **v1.5** | Tab Consigli: advisor locale leak/anomalie/cash flow + score | **Fatta** |
-| v2 | Budget per categoria | Non iniziata |
+| v2 | Budget per categoria + alert | Non iniziata — vedi stack unificato |
 | **v3 (parziale)** | Tab **Investimenti**: PAC/ETF/fondi/risparmi, KPI, allocation, P&L, quote Yahoo (+ Finnhub opzionale) | **Fatta** (F1–F3) |
+| **F-deploy** | Auth + Railway + volume SQLite | **In corso** |
+| v3.1 | Tier rendimento (T0/T1/T2) in Investimenti | Non iniziata |
+| v4 | Obiettivi Vault (Auto, Casa) + waterfall visuale | Non iniziata |
 
-Non anticipare v2/v3 senza richiesta esplicita (YAGNI / ponytail).
+Roadmap dettagliata e numeri di sistema: [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md).
+
+Non anticipare release non in tabella senza richiesta esplicita (YAGNI / ponytail).
 
 ## Stack
 
