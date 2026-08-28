@@ -46,7 +46,8 @@ portfolioRoutes.get("/portfolio/summary", (c) => {
         costBasis: 0,
         asOf: null,
       };
-    const price = instrument.ticker ? lastClose(db, instrument.ticker) : null;
+    const quoteKey = instrument.ticker ?? instrument.isin;
+    const price = quoteKey ? lastClose(db, quoteKey) : null;
     return { instrument, holding, price };
   });
   return c.json(buildSummary(rows));
@@ -67,7 +68,8 @@ portfolioRoutes.get("/portfolio/history", (c) => {
         costBasis: 0,
         asOf: null,
       };
-    const closes = instrument.ticker ? closesUpTo(db, instrument.ticker, to) : [];
+    const quoteKey = instrument.ticker ?? instrument.isin;
+    const closes = quoteKey ? closesUpTo(db, quoteKey, to) : [];
     return { quantity: holding.quantity, cashBalance: holding.cashBalance, closes };
   });
 

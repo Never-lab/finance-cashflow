@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Contribution, Instrument, InstrumentType, Transaction } from "../types";
 import { api, type InstrumentWithHolding, type PortfolioSummary, type QuoteBar } from "../api";
 import { formatEur } from "../lib/stats";
-import { detectKnownInvestment, PAC_GLOBAL_BRANDS } from "../lib/knownInvestments";
+import { detectKnownInvestment, PAC_MS_GLOBAL_OPPORTUNITY } from "../lib/knownInvestments";
 import {
   AllocationChart,
   InstrumentPriceChart,
@@ -210,7 +210,7 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
         !linkedTxIds.has(t.id),
     )
     .slice(0, 200);
-  const pacInstrument = instruments.find((i) => i.isin === PAC_GLOBAL_BRANDS.isin);
+  const pacInstrument = instruments.find((i) => i.isin === PAC_MS_GLOBAL_OPPORTUNITY.isin);
 
   if (loading) {
     return <div className="boot">Caricamento…</div>;
@@ -220,8 +220,9 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
     <div className="investimenti">
       {pacInstrument && (
         <p className="muted kpi-note">
-          PAC {PAC_GLOBAL_BRANDS.isin} ({pacInstrument.name}): i versamenti Mediolanum con questo
-          ISIN vengono collegati automaticamente all’import o con «Ricalcola tutto» in Dati.
+          PAC {PAC_MS_GLOBAL_OPPORTUNITY.isin} ({pacInstrument.name}): storico Mediolanum
+          precaricato (650 € versati, 4 versamenti fino a mar 2026). Nuovi versamenti: aggiungili
+          qui sotto o importa CSV — «Ricalcola tutto» in Dati collega anche i movimenti banca.
         </p>
       )}
 

@@ -140,6 +140,44 @@ export function listContributions(db: Database.Database, instrumentId: string): 
   return rows.map(rowToContribution);
 }
 
+export function insertContributionIfMissing(
+  db: Database.Database,
+  contribution: Contribution,
+): boolean {
+  const exists = db.prepare(`SELECT 1 FROM contributions WHERE id = ?`).get(contribution.id);
+  if (exists) return false;
+  db.prepare(
+    `INSERT INTO contributions (id, instrument_id, date, amount, transaction_id, note)
+     VALUES (@id, @instrumentId, @date, @amount, @transactionId, @note)`,
+  ).run({
+    id: contribution.id,
+    instrumentId: contribution.instrumentId,
+    date: contribution.date,
+    amount: contribution.amount,
+    transactionId: contribution.transactionId ?? null,
+    note: contribution.note ?? null,
+  });
+  return true;
+}
+
+/** Manual bank snapshot quote keyed by ISIN (no Yahoo ticker). */
+export function insertSeedQuoteIfMissing(
+  db: Database.Database,
+  isin: string,
+  asOf: string,
+  close: number,
+): boolean {
+  const exists = db
+    .prepare(`SELECT 1 FROM quotes_cache WHERE ticker = ? AND as_of = ?`)
+    .get(isin, asOf);
+  if (exists) return false;
+  db.prepare(
+    `INSERT INTO quotes_cache (ticker, as_of, open, high, low, close, source, fetched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(isin, asOf, close, close, close, close, "mediolanum", new Date().toISOString());
+  return true;
+}
+
 export function addContribution(db: Database.Database, contribution: Contribution): void {
   db.prepare(
     `INSERT INTO contributions (id, instrument_id, date, amount, transaction_id, note)
