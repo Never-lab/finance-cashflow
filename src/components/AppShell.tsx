@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 export type AppTab =
   | "dashboard"
+  | "bustepaga"
   | "movimenti"
   | "abbonamenti"
   | "mutui"
@@ -16,6 +17,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Panoramica",
     items: [
       { id: "dashboard", label: "Dashboard" },
+      { id: "bustepaga", label: "Buste paga" },
       { id: "consigli", label: "Consigli" },
     ],
   },
@@ -39,6 +41,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 
 const PAGE_TITLES: Record<AppTab, string> = {
   dashboard: "Dashboard",
+  bustepaga: "Buste paga",
   movimenti: "Movimenti",
   abbonamenti: "Abbonamenti",
   mutui: "Mutui",

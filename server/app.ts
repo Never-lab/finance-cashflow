@@ -12,6 +12,7 @@ import { portfolioRoutes } from "./routes/portfolio";
 import { quotesRoutes } from "./routes/quotes";
 import { settingsRoutes } from "./routes/settings";
 import { loansRoutes } from "./routes/loans";
+import { payslipsRoutes } from "./routes/payslips";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -38,6 +39,7 @@ export function createApp(): Hono {
   app.route("/api", quotesRoutes);
   app.route("/api", settingsRoutes);
   app.route("/api", loansRoutes);
+  app.route("/api", payslipsRoutes);
 
   if (fs.existsSync(path.join(DIST_DIR, "index.html"))) {
     app.use(

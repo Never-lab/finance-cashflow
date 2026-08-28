@@ -10,6 +10,7 @@ import type {
   Transaction,
 } from "./types";
 import type { LiquidityView, LiquiditySnapshots } from "./lib/liquidity";
+import type { PayslipSummary } from "./lib/payslip";
 import { apiFetch, setAuthToken } from "./lib/authToken";
 
 export type HealthResponse = { ok: boolean; storage: string; auth: boolean };
@@ -177,6 +178,29 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ key, target }),
     }).then((r) => json<Record<string, LoanTarget>>(r)),
+  getPayslips: () => apiFetch("/api/payslips").then((r) => json<PayslipSummary>(r)),
+  previewPayslip: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiFetch("/api/payslips/preview", { method: "POST", body: fd }).then((r) =>
+      json<{ payslip: PayslipSummary["payslips"][0] }>(r),
+    );
+  },
+  importPayslips: (files: File[]) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    return apiFetch("/api/payslips/import", { method: "POST", body: fd }).then((r) =>
+      json<{
+        imported: number;
+        errors: { file: string; error: string }[];
+        summary: PayslipSummary;
+      }>(r),
+    );
+  },
+  deletePayslip: (id: string) =>
+    apiFetch(`/api/payslips/${encodeURIComponent(id)}`, { method: "DELETE" }).then((r) =>
+      json<{ ok: boolean }>(r),
+    ),
   recompute: () =>
     apiFetch("/api/recompute", { method: "POST" }).then((r) =>
       json<{

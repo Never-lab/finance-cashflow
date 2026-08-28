@@ -1439,3 +1439,40 @@ select {
 .invest-spaced {
   margin-top: 1rem;
 }
+
+.payslip-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.payslip-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.payslip-errors {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--neg);
+  font-size: 0.88rem;
+}
+
+.stat-row.payslip-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.payslip-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 960px) {
+  .stat-row.payslip-kpis,
+  .payslip-charts {
+    grid-template-columns: 1fr;
+  }
+}

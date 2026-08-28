@@ -14,6 +14,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { LoansTab } from "./components/LoansTab";
+import { PayslipTab } from "./components/PayslipTab";
 import { AppShell, type AppTab } from "./components/AppShell";
 import type { LiquidityView } from "./lib/liquidity";
 import type { LoanTarget } from "./lib/loans";
@@ -232,6 +233,9 @@ export default function App() {
             onGoMutui={() => setTab("mutui")}
             onGoInvestimenti={() => setTab("investimenti")}
           />
+        )}
+        {tab === "bustepaga" && (
+          <PayslipTab refreshKey={dataRefreshKey} onToast={showToast} />
         )}
         {tab === "movimenti" && (
           <Transactions

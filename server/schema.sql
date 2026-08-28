@@ -76,3 +76,32 @@ CREATE TABLE IF NOT EXISTS auth_user (
   password_hash TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS payslips (
+  id TEXT PRIMARY KEY,
+  period_year INTEGER NOT NULL,
+  period_month INTEGER NOT NULL,
+  period_label TEXT NOT NULL,
+  pay_date TEXT,
+  gross_total REAL,
+  taxable_income REAL,
+  tax_withheld REAL,
+  tax_withheld_net REAL,
+  social_withheld REAL,
+  net_to_account REAL,
+  total_competenze REAL,
+  net_pay REAL,
+  bank_credit REAL,
+  leave_fest_s REAL,
+  leave_fest_g REAL,
+  leave_fest_r REAL,
+  leave_ferie_s REAL,
+  leave_ferie_g REAL,
+  leave_ferie_r REAL,
+  leave_perm_s REAL,
+  leave_perm_g REAL,
+  leave_perm_r REAL,
+  source_file TEXT,
+  imported_at TEXT NOT NULL,
+  parser_version TEXT NOT NULL
+);
