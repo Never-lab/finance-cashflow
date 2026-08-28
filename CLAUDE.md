@@ -172,7 +172,7 @@ Ordine di default (allineato a FABLE + Superpowers del parent):
 3. Fix parser/CSV → TDD sui fixture, poi UI.  
 4. Diff piccoli (ponytail). Niente dipendenze nuove se bastano poche righe.  
 5. Prima di “fatto”: `npm test` + `npm run build` (e smoke su `npm run dev` se UI — verifica che l’API risponda su `/api/health`).  
-6. **Niente commit/push** se non chiesto.  
+6. **Commit/push:** solo se Nicholas lo chiede — vedi **`ACTION.md`**: «**procedi**» / «vai» / «commit e push» ⇒ commit + push su `master`.  
 7. UI: verifica visuale se cambi layout (Playwright MCP ok).  
 8. Rispondi in italiano; codice/commenti in inglese.
 
