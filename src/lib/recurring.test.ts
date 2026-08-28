@@ -102,6 +102,39 @@ describe("findRecurring", () => {
     expect(isSubscriptionLike(fuel!)).toBe(false);
   });
 
+  it("excludes retail and grocery from subscription-like", () => {
+    const cases: Array<[string, string]> = [
+      ["MediaWorld", "Shopping"],
+      ["AMAZON EU", "Shopping"],
+      ["Esselunga", "Spesa"],
+      ["CONAD", "Spesa"],
+    ];
+    for (const [label, category] of cases) {
+      const item = {
+        key: recurringKey(label),
+        label,
+        category,
+        avgAmount: 80,
+        months: ["2026-06", "2026-07", "2026-08"],
+        count: 3,
+        lastDate: "2026-08-01",
+        monthlyEstimate: 80,
+      };
+      expect(isSubscriptionLike(item)).toBe(false);
+    }
+    const prime = {
+      key: "amazon prime",
+      label: "Amazon Prime",
+      category: "Abbonamenti",
+      avgAmount: 4.99,
+      months: ["2026-06", "2026-07"],
+      count: 2,
+      lastDate: "2026-07-01",
+      monthlyEstimate: 4.99,
+    };
+    expect(isSubscriptionLike(prime)).toBe(true);
+  });
+
   it("excludes SEPA bonifici from subscription-like", () => {
     const item = {
       key: "bonifico sepa",

@@ -26,7 +26,16 @@ const NON_SUBSCRIPTION_CATEGORIES = new Set([
   "Stipendio",
   "Trasferimenti",
   "Trasporti",
+  "Shopping",
+  "Spesa",
+  "Ristoranti",
+  "Salute",
+  "Prelievi",
 ]);
+
+/** One-off retail / grocery — recurring pattern ≠ subscription. */
+const RETAIL_RE =
+  /\bamazon\b(?! prime)|mediaworld|media world|zalando|ikea|decathlon|unieuro|trony|euronics|conad|esselunga|essellunga|coop\b|lidl|aldi|carrefour|eurospin|tigros|\biper\b|simply|pam\b|autodoc|steam games|prozis/i;
 
 /** Normalize merchant-ish label for grouping. */
 export function recurringKey(description: string): string {
@@ -46,6 +55,7 @@ export function isSubscriptionLike(item: RecurringItem): boolean {
   const hay = `${item.label} ${item.key}`;
   if (INSURANCE_RE.test(hay)) return false;
   if (isFuelPurchase(hay)) return false;
+  if (RETAIL_RE.test(hay)) return false;
   if (/bonifico|sepa ist|sepa instant|c\/o benef|disposizione vs/i.test(hay)) return false;
   return true;
 }
