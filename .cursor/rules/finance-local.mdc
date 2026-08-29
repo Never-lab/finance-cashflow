@@ -1,0 +1,11 @@
+---
+description: Finance / Cash Flow local agent entrypoint
+alwaysApply: true
+---
+
+# Finance local
+
+1. Read `AGENTS.md` → `CLAUDE.md`. Workflow: `ACTION.md` («procedi» → commit+push `master`).
+2. Chat Italian; code identifiers English.
+3. PR/issue English: skill **`no-ai-slop`**. Never `Co-authored-by: Cursor`.
+4. No default `docs/superpowers/specs|plans` MD — decisions in chat/claude-mem.

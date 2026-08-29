@@ -221,3 +221,10 @@ Non serve: Open Banking, sync cloud, auth, rewrite React Native.
 - Se parser: almeno un fixture (sample o file utente) importato senza throw  
 - Se UI: look coerente con `styles.css` esistente  
 - Forge Loop / nota `skipped: X, add when Y` se hai tagliato scope
+
+## Shared agent block (Never-lab)
+
+- Chat: Italian. Code/PR/issue text: English (Floatdesk player UI: Italian).
+- Before posting PR bodies or issue comments: skill **`no-ai-slop`**.
+- Never `Co-authored-by: Cursor`.
+- Prefer `ponytail` + Karpathy; Superpowers only when the slice is new/ambiguous. No default `docs/superpowers/specs|plans` MD — decisions in chat/claude-mem (liquidazi style).
