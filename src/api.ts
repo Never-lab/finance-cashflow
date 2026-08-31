@@ -65,6 +65,19 @@ export const api = {
     setAuthToken(data.token);
     return data;
   },
+  register: async (username: string, password: string) => {
+    const res = await apiFetch("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error ?? "Registrazione fallita");
+    }
+    const data = (await res.json()) as { token: string; username: string };
+    setAuthToken(data.token);
+    return data;
+  },
   authMe: async () => {
     const res = await apiFetch("/api/auth/me");
     if (!res.ok) throw new Error(await res.text());

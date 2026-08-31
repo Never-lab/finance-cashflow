@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { seedAuthUser } from "./lib/authUser";
+import { runMigrations } from "./lib/migrations";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -25,6 +26,7 @@ export function openDb(dbPath: string = DEFAULT_DB): Database.Database {
 export function migrate(db: Database.Database): void {
   const sql = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
   db.exec(sql);
+  runMigrations(db);
   seedAuthUser(db);
 }
 

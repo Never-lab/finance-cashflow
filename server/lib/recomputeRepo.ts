@@ -18,10 +18,11 @@ function toInternalCol(internal: boolean | undefined): number | null {
 }
 
 /** Persist refreshed categories/internal flags; recalc all instrument cost_basis. */
-export function recomputeDatabase(db: Database.Database): RecomputeDbReport {
-  const state = loadAppState(db);
+export function recomputeDatabase(db: Database.Database, userId: number): RecomputeDbReport {
+  const state = loadAppState(db, userId);
   const update = db.prepare(
-    `UPDATE transactions SET category = @category, internal = @internal WHERE id = @id`,
+    `UPDATE transactions SET category = @category, internal = @internal
+     WHERE user_id = @userId AND id = @id`,
   );
 
   let categoriesUpdated = 0;
@@ -36,6 +37,7 @@ export function recomputeDatabase(db: Database.Database): RecomputeDbReport {
       );
       if (categoryChanged || internalChanged) {
         update.run({
+          userId,
           id: t.id,
           category: transaction.category,
           internal: toInternalCol(transaction.internal),
@@ -47,12 +49,14 @@ export function recomputeDatabase(db: Database.Database): RecomputeDbReport {
   });
   applyTx();
 
-  const instrumentIds = db.prepare(`SELECT id FROM instruments`).all() as { id: string }[];
+  const instrumentIds = db
+    .prepare(`SELECT id FROM instruments WHERE user_id = ?`)
+    .all(userId) as { id: string }[];
   for (const { id } of instrumentIds) {
-    recalcCostBasis(db, id);
+    recalcCostBasis(db, userId, id);
   }
 
-  const investment = syncKnownInvestmentContributions(db);
+  const investment = syncKnownInvestmentContributions(db, userId);
 
   return {
     transactions: state.transactions.length,

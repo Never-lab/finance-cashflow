@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getDb } from "../db";
-import { verifyPassword } from "../lib/authPassword";
-import { getAuthUser } from "../lib/authUser";
+import { verifyPassword, MIN_PASSWORD_LEN } from "../lib/authPassword";
+import { createAuthUser, getAuthUserById, getAuthUserByUsername } from "../lib/authUser";
 import { checkLoginRateLimit } from "../lib/loginRateLimit";
 import {
   getSessionSecret,
@@ -13,6 +13,52 @@ import {
 
 export const authRoutes = new Hono();
 
+function clientIp(c: { req: { header: (name: string) => string | undefined } }): string {
+  return (
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+    c.req.header("x-real-ip") ??
+    "unknown"
+  );
+}
+
+authRoutes.post("/register", async (c) => {
+  if (!isAuthEnabled()) {
+    return c.json({ error: "Auth disabled" }, 400);
+  }
+  const secret = getSessionSecret();
+  if (!secret) {
+    return c.json({ error: "Auth misconfigured" }, 503);
+  }
+
+  const ip = clientIp(c);
+  if (!checkLoginRateLimit(ip)) {
+    return c.json({ error: "Troppi tentativi. Riprova tra qualche minuto." }, 429);
+  }
+
+  const body = await c.req.json<{ username?: string; password?: string }>();
+  const username = body.username?.trim() ?? "";
+  const password = body.password ?? "";
+
+  if (!username) {
+    return c.json({ error: "Username obbligatorio" }, 400);
+  }
+  if (password.length < MIN_PASSWORD_LEN) {
+    return c.json({ error: `Password minimo ${MIN_PASSWORD_LEN} caratteri` }, 400);
+  }
+
+  try {
+    const user = createAuthUser(getDb(), username, password);
+    const token = makeSessionToken(String(user.id), secret);
+    return c.json({ token, username: user.username }, 201);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Registrazione fallita";
+    if (msg.includes("already taken")) {
+      return c.json({ error: "Username già in uso" }, 409);
+    }
+    return c.json({ error: msg }, 400);
+  }
+});
+
 authRoutes.post("/login", async (c) => {
   if (!isAuthEnabled()) {
     return c.json({ error: "Auth disabled" }, 400);
@@ -22,10 +68,7 @@ authRoutes.post("/login", async (c) => {
     return c.json({ error: "Auth misconfigured" }, 503);
   }
 
-  const ip =
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-    c.req.header("x-real-ip") ??
-    "unknown";
+  const ip = clientIp(c);
   if (!checkLoginRateLimit(ip)) {
     return c.json({ error: "Troppi tentativi. Riprova tra qualche minuto." }, 429);
   }
@@ -33,9 +76,9 @@ authRoutes.post("/login", async (c) => {
   const body = await c.req.json<{ username?: string; password?: string }>();
   const username = body.username?.trim() ?? "";
   const password = body.password ?? "";
-  const user = getAuthUser(getDb());
+  const user = getAuthUserByUsername(getDb(), username);
 
-  if (!user || user.username !== username || !verifyPassword(password, user.password_hash)) {
+  if (!user || !verifyPassword(password, user.password_hash)) {
     return c.json({ error: "Credenziali non valide" }, 401);
   }
 
@@ -59,8 +102,8 @@ authRoutes.get("/me", (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const user = getAuthUser(getDb());
-  if (!user || String(user.id) !== session.userId) {
+  const user = getAuthUserById(getDb(), Number(session.userId));
+  if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 

@@ -61,7 +61,7 @@ function rowToRecord(row: Row): PayslipRecord {
 
 const UPSERT = `
 INSERT INTO payslips (
-  id, period_year, period_month, period_label, pay_date,
+  user_id, id, period_year, period_month, period_label, pay_date,
   gross_total, taxable_income, tax_withheld, tax_withheld_net, social_withheld,
   net_to_account, total_competenze, net_pay, bank_credit,
   leave_fest_s, leave_fest_g, leave_fest_r,
@@ -69,7 +69,7 @@ INSERT INTO payslips (
   leave_perm_s, leave_perm_g, leave_perm_r,
   source_file, imported_at, parser_version
 ) VALUES (
-  @id, @period_year, @period_month, @period_label, @pay_date,
+  @user_id, @id, @period_year, @period_month, @period_label, @pay_date,
   @gross_total, @taxable_income, @tax_withheld, @tax_withheld_net, @social_withheld,
   @net_to_account, @total_competenze, @net_pay, @bank_credit,
   @leave_fest_s, @leave_fest_g, @leave_fest_r,
@@ -77,7 +77,7 @@ INSERT INTO payslips (
   @leave_perm_s, @leave_perm_g, @leave_perm_r,
   @source_file, @imported_at, @parser_version
 )
-ON CONFLICT(id) DO UPDATE SET
+ON CONFLICT(user_id, id) DO UPDATE SET
   pay_date = excluded.pay_date,
   gross_total = excluded.gross_total,
   taxable_income = excluded.taxable_income,
@@ -102,8 +102,9 @@ ON CONFLICT(id) DO UPDATE SET
   parser_version = excluded.parser_version
 `;
 
-function toParams(p: PayslipRecord) {
+function toParams(userId: number, p: PayslipRecord) {
   return {
+    user_id: userId,
     id: p.id,
     period_year: p.periodYear,
     period_month: p.periodMonth,
@@ -133,20 +134,18 @@ function toParams(p: PayslipRecord) {
   };
 }
 
-export function listPayslips(db: Database.Database): PayslipRecord[] {
+export function listPayslips(db: Database.Database, userId: number): PayslipRecord[] {
   const rows = db
-    .prepare(
-      `SELECT * FROM payslips ORDER BY period_year, period_month, period_label`,
-    )
-    .all() as Row[];
+    .prepare(`SELECT * FROM payslips WHERE user_id = ? ORDER BY period_year, period_month, period_label`)
+    .all(userId) as Row[];
   return rows.map(rowToRecord);
 }
 
-export function upsertPayslip(db: Database.Database, payslip: PayslipRecord): void {
-  db.prepare(UPSERT).run(toParams(payslip));
+export function upsertPayslip(db: Database.Database, userId: number, payslip: PayslipRecord): void {
+  db.prepare(UPSERT).run(toParams(userId, payslip));
 }
 
-export function deletePayslip(db: Database.Database, id: string): boolean {
-  const r = db.prepare(`DELETE FROM payslips WHERE id = ?`).run(id);
+export function deletePayslip(db: Database.Database, userId: number, id: string): boolean {
+  const r = db.prepare(`DELETE FROM payslips WHERE user_id = ? AND id = ?`).run(userId, id);
   return r.changes > 0;
 }

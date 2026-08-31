@@ -16,7 +16,10 @@ export const authMiddleware = createMiddleware(async (c, next) => {
     await next();
     return;
   }
-  if (path === "/api/auth/login" && c.req.method === "POST") {
+  if (
+    (path === "/api/auth/login" || path === "/api/auth/register") &&
+    c.req.method === "POST"
+  ) {
     await next();
     return;
   }

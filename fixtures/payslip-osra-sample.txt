@@ -1,0 +1,17 @@
+OSRA — Cedolino di prova (anonimizzato)
+Wolters Kluwer OLUIT
+
+06/2026 - Giugno
+
+999 TOT.LORDO SOGG.CONTR 2.615,50
+Imponibile Fiscale 2.407,43
+Rit. Fis. mese lorda 550,00
+Rit. Fis. mese netta 500,00
+Tot. rit. sociali 350,00
+
+Acc. c.c. n.: 12345678901 BANCA MEDIOLANUM 700,08 2.615,50
+Data valuta : 14/07/2026
+
+FEST. FERIE PERM.
+Residuo : 26,67 Residuo : 0,00 Residuo : 56,00
+80,00 53,33 26,67 0,00 0,00 0,00 0,00 0,00 56,00

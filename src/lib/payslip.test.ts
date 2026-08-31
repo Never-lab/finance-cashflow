@@ -8,6 +8,7 @@ import {
   parseItalianAmount,
   parseOsraPayslipText,
 } from "./payslip";
+import { hasPayslipPdfs, PAYSLIP_TEXT_SAMPLE, readUtf8 } from "../test/fixtures";
 
 describe("parseItalianAmount", () => {
   it("parses Italian decimal format", () => {
@@ -18,7 +19,23 @@ describe("parseItalianAmount", () => {
 });
 
 describe("parseOsraPayslipText", () => {
-  it("parses June 2026 fixture PDF", async () => {
+  it("parses anonymized OSRA text fixture", () => {
+    const parsed = parseOsraPayslipText(readUtf8(PAYSLIP_TEXT_SAMPLE), "payslip-osra-sample.txt");
+
+    expect(parsed).not.toBeNull();
+    expect(parsed!.periodYear).toBe(2026);
+    expect(parsed!.periodMonth).toBe(6);
+    expect(parsed!.periodLabel).toMatch(/Giugno/i);
+    expect(parsed!.grossTotal).toBe(2615.5);
+    expect(parsed!.netToAccount).toBe(700.08);
+    expect(parsed!.payDate).toBe("2026-07-14");
+    expect(parsed!.leaveFerie.residue).toBe(26.67);
+    expect(parsed!.leaveFerie.spettanti).toBe(80);
+    expect(parsed!.leaveFest.residue).toBe(0);
+    expect(parsed!.leavePerm.residue).toBe(56);
+  });
+
+  it.skipIf(!hasPayslipPdfs())("parses June 2026 fixture PDF", async () => {
     const buffer = fs.readFileSync(path.join("fixtures", "06-2026.pdf"));
     const text = await extractPdfText(buffer);
     const parsed = parseOsraPayslipText(text, "06-2026.pdf");
@@ -36,7 +53,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leavePerm.residue).toBe(56);
   });
 
-  it("parses tredicesima fixture", async () => {
+  it.skipIf(!hasPayslipPdfs())("parses tredicesima fixture", async () => {
     const buffer = fs.readFileSync(path.join("fixtures", "13-2025.pdf"));
     const text = await extractPdfText(buffer);
     const parsed = parseOsraPayslipText(text, "13-2025.pdf");
@@ -46,7 +63,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.grossTotal).toBeGreaterThan(0);
   });
 
-  it("parses all fixture PDFs with unique periods", async () => {
+  it.skipIf(!hasPayslipPdfs())("parses all fixture PDFs with unique periods", async () => {
     const pdfs = fs
       .readdirSync("fixtures")
       .filter((f) => f.endsWith(".pdf"))
@@ -65,7 +82,7 @@ describe("parseOsraPayslipText", () => {
     expect(ids.size).toBe(pdfs.length);
   });
 
-  it("reads ferie from first leave column on Dec 2025 fixture", async () => {
+  it.skipIf(!hasPayslipPdfs())("reads ferie from first leave column on Dec 2025 fixture", async () => {
     const buffer = fs.readFileSync(path.join("fixtures", "12-2025.pdf"));
     const parsed = parseOsraPayslipText(await extractPdfText(buffer), "12-2025.pdf");
     expect(parsed).not.toBeNull();
@@ -107,9 +124,8 @@ describe("matchBankCredit", () => {
 });
 
 describe("buildPayslipSummary", () => {
-  it("prefers bank credit for net pay", async () => {
-    const buffer = fs.readFileSync(path.join("fixtures", "06-2026.pdf"));
-    const parsed = parseOsraPayslipText(await extractPdfText(buffer), "06-2026.pdf");
+  it("prefers bank credit for net pay", () => {
+    const parsed = parseOsraPayslipText(readUtf8(PAYSLIP_TEXT_SAMPLE), "payslip-osra-sample.txt");
     expect(parsed).not.toBeNull();
 
     const summary = buildPayslipSummary([parsed!], [

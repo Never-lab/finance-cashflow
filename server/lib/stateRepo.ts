@@ -30,32 +30,32 @@ function toInternalCol(internal: boolean | undefined): number | null {
   return internal === undefined ? null : internal ? 1 : 0;
 }
 
-export function loadAppState(db: Database.Database): AppState {
+export function loadAppState(db: Database.Database, userId: number): AppState {
   const rows = db
     .prepare(
       `SELECT id, date, description, amount, currency, source, category, internal
-       FROM transactions ORDER BY date DESC`,
+       FROM transactions WHERE user_id = ? ORDER BY date DESC`,
     )
-    .all() as TxRow[];
+    .all(userId) as TxRow[];
 
   const categoryOverrides: Record<string, string> = {};
   for (const r of db
-    .prepare(`SELECT transaction_id, category FROM category_overrides`)
-    .all() as { transaction_id: string; category: string }[]) {
+    .prepare(`SELECT transaction_id, category FROM category_overrides WHERE user_id = ?`)
+    .all(userId) as { transaction_id: string; category: string }[]) {
     categoryOverrides[r.transaction_id] = r.category;
   }
 
   const recurringMarks: Record<string, RecurringMark> = {};
   for (const r of db
-    .prepare(`SELECT transaction_id, mark FROM recurring_marks`)
-    .all() as { transaction_id: string; mark: string }[]) {
+    .prepare(`SELECT transaction_id, mark FROM recurring_marks WHERE user_id = ?`)
+    .all(userId) as { transaction_id: string; mark: string }[]) {
     recurringMarks[r.transaction_id] = r.mark as RecurringMark;
   }
 
   const internalOverrides: Record<string, boolean> = {};
   for (const r of db
-    .prepare(`SELECT transaction_id, internal FROM internal_overrides`)
-    .all() as { transaction_id: string; internal: number }[]) {
+    .prepare(`SELECT transaction_id, internal FROM internal_overrides WHERE user_id = ?`)
+    .all(userId) as { transaction_id: string; internal: number }[]) {
     internalOverrides[r.transaction_id] = r.internal === 1;
   }
 
@@ -68,28 +68,30 @@ export function loadAppState(db: Database.Database): AppState {
 }
 
 /** Clears and re-inserts every state table inside one transaction. */
-export function replaceAppState(db: Database.Database, state: AppState): void {
+export function replaceAppState(db: Database.Database, userId: number, state: AppState): void {
   const insertTx = db.prepare(
-    `INSERT INTO transactions (id, date, description, amount, currency, source, category, internal)
-     VALUES (@id, @date, @description, @amount, @currency, @source, @category, @internal)`,
+    `INSERT INTO transactions (user_id, id, date, description, amount, currency, source, category, internal)
+     VALUES (@userId, @id, @date, @description, @amount, @currency, @source, @category, @internal)`,
   );
   const insertCat = db.prepare(
-    `INSERT INTO category_overrides (transaction_id, category) VALUES (?, ?)`,
+    `INSERT INTO category_overrides (user_id, transaction_id, category) VALUES (?, ?, ?)`,
   );
   const insertMark = db.prepare(
-    `INSERT INTO recurring_marks (transaction_id, mark) VALUES (?, ?)`,
+    `INSERT INTO recurring_marks (user_id, transaction_id, mark) VALUES (?, ?, ?)`,
   );
   const insertInternal = db.prepare(
-    `INSERT INTO internal_overrides (transaction_id, internal) VALUES (?, ?)`,
+    `INSERT INTO internal_overrides (user_id, transaction_id, internal) VALUES (?, ?, ?)`,
   );
 
   const run = db.transaction((s: AppState) => {
-    db.exec(
-      `DELETE FROM transactions; DELETE FROM category_overrides; DELETE FROM recurring_marks; DELETE FROM internal_overrides;`,
-    );
+    db.prepare(`DELETE FROM category_overrides WHERE user_id = ?`).run(userId);
+    db.prepare(`DELETE FROM recurring_marks WHERE user_id = ?`).run(userId);
+    db.prepare(`DELETE FROM internal_overrides WHERE user_id = ?`).run(userId);
+    db.prepare(`DELETE FROM transactions WHERE user_id = ?`).run(userId);
 
     for (const t of s.transactions) {
       insertTx.run({
+        userId,
         id: t.id,
         date: t.date,
         description: t.description,
@@ -101,13 +103,13 @@ export function replaceAppState(db: Database.Database, state: AppState): void {
       });
     }
     for (const [id, category] of Object.entries(s.categoryOverrides)) {
-      insertCat.run(id, category);
+      insertCat.run(userId, id, category);
     }
     for (const [key, mark] of Object.entries(s.recurringMarks)) {
-      if (mark) insertMark.run(key, mark);
+      if (mark) insertMark.run(userId, key, mark);
     }
     for (const [id, internal] of Object.entries(s.internalOverrides)) {
-      insertInternal.run(id, internal ? 1 : 0);
+      insertInternal.run(userId, id, internal ? 1 : 0);
     }
   });
 
@@ -117,18 +119,19 @@ export function replaceAppState(db: Database.Database, state: AppState): void {
 /** Upsert by id, mirroring src/lib/appState mergeImport semantics. Overrides untouched. */
 export function mergeImportIntoDb(
   db: Database.Database,
+  userId: number,
   rows: Transaction[],
 ): { added: number; updated: number } {
-  const existing = db.prepare(`SELECT 1 FROM transactions WHERE id = ?`);
+  const existing = db.prepare(`SELECT 1 FROM transactions WHERE user_id = ? AND id = ?`);
   const insert = db.prepare(
-    `INSERT INTO transactions (id, date, description, amount, currency, source, category, internal)
-     VALUES (@id, @date, @description, @amount, @currency, @source, @category, @internal)`,
+    `INSERT INTO transactions (user_id, id, date, description, amount, currency, source, category, internal)
+     VALUES (@userId, @id, @date, @description, @amount, @currency, @source, @category, @internal)`,
   );
   const update = db.prepare(
     `UPDATE transactions
      SET date=@date, description=@description, amount=@amount, currency=@currency,
          source=@source, category=@category, internal=@internal
-     WHERE id=@id`,
+     WHERE user_id=@userId AND id=@id`,
   );
 
   let added = 0;
@@ -137,6 +140,7 @@ export function mergeImportIntoDb(
   const run = db.transaction((incoming: Transaction[]) => {
     for (const row of incoming) {
       const params = {
+        userId,
         id: row.id,
         date: row.date,
         description: row.description,
@@ -146,7 +150,7 @@ export function mergeImportIntoDb(
         category: row.category,
         internal: toInternalCol(row.internal),
       };
-      if (existing.get(row.id)) {
+      if (existing.get(userId, row.id)) {
         update.run(params);
         updated++;
       } else {
@@ -160,46 +164,61 @@ export function mergeImportIntoDb(
   return { added, updated };
 }
 
-export function setCategoryOverrideDb(db: Database.Database, id: string, category: string): void {
+export function setCategoryOverrideDb(
+  db: Database.Database,
+  userId: number,
+  id: string,
+  category: string,
+): void {
   db.prepare(
-    `INSERT INTO category_overrides (transaction_id, category) VALUES (?, ?)
-     ON CONFLICT(transaction_id) DO UPDATE SET category = excluded.category`,
-  ).run(id, category);
+    `INSERT INTO category_overrides (user_id, transaction_id, category) VALUES (?, ?, ?)
+     ON CONFLICT(user_id, transaction_id) DO UPDATE SET category = excluded.category`,
+  ).run(userId, id, category);
 }
 
 export function setCategoryOverridesBulkDb(
   db: Database.Database,
+  userId: number,
   ids: string[],
   category: string,
 ): void {
   const stmt = db.prepare(
-    `INSERT INTO category_overrides (transaction_id, category) VALUES (?, ?)
-     ON CONFLICT(transaction_id) DO UPDATE SET category = excluded.category`,
+    `INSERT INTO category_overrides (user_id, transaction_id, category) VALUES (?, ?, ?)
+     ON CONFLICT(user_id, transaction_id) DO UPDATE SET category = excluded.category`,
   );
   const run = db.transaction((rows: string[]) => {
-    for (const id of rows) stmt.run(id, category);
+    for (const id of rows) stmt.run(userId, id, category);
   });
   run(ids);
 }
 
 export function setInternalOverrideDb(
   db: Database.Database,
+  userId: number,
   id: string,
   internal: boolean,
 ): void {
   db.prepare(
-    `INSERT INTO internal_overrides (transaction_id, internal) VALUES (?, ?)
-     ON CONFLICT(transaction_id) DO UPDATE SET internal = excluded.internal`,
-  ).run(id, internal ? 1 : 0);
+    `INSERT INTO internal_overrides (user_id, transaction_id, internal) VALUES (?, ?, ?)
+     ON CONFLICT(user_id, transaction_id) DO UPDATE SET internal = excluded.internal`,
+  ).run(userId, id, internal ? 1 : 0);
 }
 
-export function setRecurringMarkDb(db: Database.Database, key: string, mark: RecurringMark): void {
+export function setRecurringMarkDb(
+  db: Database.Database,
+  userId: number,
+  key: string,
+  mark: RecurringMark,
+): void {
   if (!mark) {
-    db.prepare(`DELETE FROM recurring_marks WHERE transaction_id = ?`).run(key);
+    db.prepare(`DELETE FROM recurring_marks WHERE user_id = ? AND transaction_id = ?`).run(
+      userId,
+      key,
+    );
     return;
   }
   db.prepare(
-    `INSERT INTO recurring_marks (transaction_id, mark) VALUES (?, ?)
-     ON CONFLICT(transaction_id) DO UPDATE SET mark = excluded.mark`,
-  ).run(key, mark);
+    `INSERT INTO recurring_marks (user_id, transaction_id, mark) VALUES (?, ?, ?)
+     ON CONFLICT(user_id, transaction_id) DO UPDATE SET mark = excluded.mark`,
+  ).run(userId, key, mark);
 }

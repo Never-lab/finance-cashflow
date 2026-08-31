@@ -4,19 +4,22 @@ import { getDb } from "../db";
 import { getSetting } from "../lib/settingsRepo";
 import { listInstruments } from "../lib/instrumentsRepo";
 import { fetchHistory, getOrFetchQuote, upsertBars } from "../lib/quotes";
+import { getUserId } from "../lib/requestContext";
+import type { AppEnv } from "../lib/honoTypes";
 
-function apiKeyFor(db: Database.Database): string | null {
-  const key = getSetting(db, "market_api_key");
+function apiKeyFor(db: Database.Database, userId: number): string | null {
+  const key = getSetting(db, userId, "market_api_key");
   return key && key.trim() !== "" ? key : null;
 }
 
-export const quotesRoutes = new Hono();
+export const quotesRoutes = new Hono<AppEnv>();
 
 quotesRoutes.get("/quotes/:ticker", async (c) => {
+  const userId = getUserId(c);
   const ticker = c.req.param("ticker");
   const db = getDb();
   try {
-    const bar = await getOrFetchQuote(db, ticker, apiKeyFor(db));
+    const bar = await getOrFetchQuote(db, ticker, apiKeyFor(db, userId));
     return c.json(bar);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 502);
@@ -24,12 +27,13 @@ quotesRoutes.get("/quotes/:ticker", async (c) => {
 });
 
 quotesRoutes.get("/quotes/:ticker/history", async (c) => {
+  const userId = getUserId(c);
   const ticker = c.req.param("ticker");
   const from = c.req.query("from") ?? "1900-01-01";
   const to = c.req.query("to") ?? new Date().toISOString().slice(0, 10);
   const db = getDb();
   try {
-    const bars = await fetchHistory(ticker, from, to, apiKeyFor(db));
+    const bars = await fetchHistory(ticker, from, to, apiKeyFor(db, userId));
     upsertBars(db, ticker, bars);
     return c.json(bars);
   } catch (e) {
@@ -38,13 +42,14 @@ quotesRoutes.get("/quotes/:ticker/history", async (c) => {
 });
 
 quotesRoutes.post("/quotes/refresh", async (c) => {
+  const userId = getUserId(c);
   const body = await c.req.json<{ tickers?: string[] }>().catch(() => ({}) as { tickers?: string[] });
   const db = getDb();
-  const key = apiKeyFor(db);
+  const key = apiKeyFor(db, userId);
   const tickers =
     body.tickers && body.tickers.length > 0
       ? body.tickers
-      : listInstruments(db)
+      : listInstruments(db, userId)
           .map((i) => i.ticker)
           .filter((t): t is string => !!t);
 
