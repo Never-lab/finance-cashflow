@@ -248,5 +248,41 @@ export function ensureBootstrapUser(db: Database.Database): void {
 
 export function runMigrations(db: Database.Database): void {
   migrateToMultiUser(db);
+  migratePayslipLeaveApAc(db);
   ensureBootstrapUser(db);
+}
+
+function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  const cols = db.pragma(`table_info(${table})`) as { name: string }[];
+  return cols.some((c) => c.name === column);
+}
+
+function migratePayslipLeaveApAc(db: Database.Database): void {
+  const table = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='payslips'`)
+    .get();
+  if (!table) return;
+
+  const add = (col: string) => {
+    if (!hasColumn(db, "payslips", col)) {
+      db.exec(`ALTER TABLE payslips ADD COLUMN ${col} REAL`);
+    }
+  };
+
+  for (const col of [
+    "leave_ferie_ap_s",
+    "leave_ferie_ap_g",
+    "leave_ferie_ap_r",
+    "leave_ferie_ac_s",
+    "leave_ferie_ac_g",
+    "leave_ferie_ac_r",
+    "leave_perm_ap_s",
+    "leave_perm_ap_g",
+    "leave_perm_ap_r",
+    "leave_perm_ac_s",
+    "leave_perm_ac_g",
+    "leave_perm_ac_r",
+  ]) {
+    add(col);
+  }
 }

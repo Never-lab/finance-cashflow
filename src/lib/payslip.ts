@@ -1,11 +1,16 @@
 import type { Transaction } from "../types";
 
-export const PAYSLIP_PARSER_VERSION = "osra-oluit-1";
+export const PAYSLIP_PARSER_VERSION = "osra-oluit-2";
 
-export type PayslipLeave = {
+export type PayslipLeaveSlice = {
   spettanti: number | null;
   godute: number | null;
   residue: number | null;
+};
+
+export type PayslipLeave = PayslipLeaveSlice & {
+  ap: PayslipLeaveSlice;
+  ac: PayslipLeaveSlice;
 };
 
 export type PayslipRecord = {
@@ -39,8 +44,10 @@ export type PayslipSummary = {
   chartNet: { period: string; netPay: number; grossTotal: number | null; bankCredit: number | null }[];
   chartLeave: {
     period: string;
-    ferieResidue: number | null;
-    permResidui: number | null;
+    ferieResidueAp: number | null;
+    ferieResidueAc: number | null;
+    permResidueAp: number | null;
+    permResidueAc: number | null;
   }[];
 };
 
@@ -76,11 +83,119 @@ function amt(text: string, pattern: RegExp): number | null {
   return m?.[1] ? parseItalianAmount(m[1]) : null;
 }
 
-function leaveTriplet(a: string | undefined, b: string | undefined, c: string | undefined): PayslipLeave {
+const emptySlice = (): PayslipLeaveSlice => ({
+  spettanti: null,
+  godute: null,
+  residue: null,
+});
+
+function sumLeave(a: number | null, b: number | null): number | null {
+  if (a == null && b == null) return null;
+  return round2((a ?? 0) + (b ?? 0));
+}
+
+export function buildLeave(ap: PayslipLeaveSlice, ac: PayslipLeaveSlice = emptySlice()): PayslipLeave {
   return {
-    spettanti: a ? parseItalianAmount(a) : null,
-    godute: b ? parseItalianAmount(b) : null,
-    residue: c ? parseItalianAmount(c) : null,
+    ap,
+    ac,
+    spettanti: sumLeave(ap.spettanti, ac.spettanti),
+    godute: sumLeave(ap.godute, ac.godute),
+    residue: sumLeave(ap.residue, ac.residue),
+  };
+}
+
+function near(a: number, b: number, eps = 0.02): boolean {
+  return Math.abs(a - b) <= eps;
+}
+
+/** OSRA footer grid: 3×(AP/AC spett, god, res) packed in 9 numbers + residuo/godute rows. */
+function parseLeaveGrid(text: string): {
+  leaveFerie: PayslipLeave;
+  leaveFest: PayslipLeave;
+  leavePerm: PayslipLeave;
+} {
+  const empty = buildLeave(emptySlice());
+
+  const gridLine = text.match(
+    /Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s*\n([\d.,\s]+)/i,
+  );
+  const gridNums = gridLine?.[1]?.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+  if (!gridNums || gridNums.length < 9) {
+    return { leaveFerie: empty, leaveFest: empty, leavePerm: empty };
+  }
+
+  const n = gridNums.map((raw) => parseItalianAmount(raw)!);
+  const g0 = n.slice(0, 3);
+  const g2 = n.slice(6, 9);
+
+  const residuo = text.match(
+    /Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)/i,
+  );
+  const resCols = residuo
+    ? [
+        parseItalianAmount(residuo[1]!),
+        parseItalianAmount(residuo[2]!),
+        parseItalianAmount(residuo[3]!),
+      ]
+    : [null, null, null];
+
+  const godute = text.match(
+    /\d{1,2}\/\d{1,2}\/\d{4}\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*\n\s*Ore/i,
+  );
+  const godCols = godute
+    ? [
+        parseItalianAmount(godute[1]!),
+        parseItalianAmount(godute[2]!),
+        parseItalianAmount(godute[3]!),
+      ]
+    : [null, null, null];
+
+  const julyStyle =
+    g0[0] > 90 && g0[2] >= 100 && g2[0] > 0 && g2[0] < g0[0] && (g2[1] ?? 0) > 0;
+  const ferieTriple = julyStyle ? g2 : g0;
+  const permTriple = julyStyle ? g0 : g2;
+  const ferieResAp = julyStyle ? resCols[2] : resCols[0];
+  const permResAp = julyStyle ? resCols[0] : resCols[2];
+  const ferieGodAp = godCols[1];
+  const permGodAp = godCols[0];
+
+  function splitTriple(
+    triple: number[],
+    apResidue: number | null,
+    apGodute: number | null,
+  ): PayslipLeave {
+    const [a, b, c] = triple;
+    if (a === 0 && b === 0 && c === 0) return buildLeave(emptySlice());
+
+    if (b > 0 && near(a - b, c)) {
+      return buildLeave({ spettanti: a, godute: b, residue: apResidue ?? c });
+    }
+
+    if (b > 0 && b < a && !near(a - b, c)) {
+      return buildLeave(
+        { spettanti: a, godute: apGodute, residue: apResidue },
+        { spettanti: b, godute: null, residue: c },
+      );
+    }
+
+    if (a > 0 && c > 0 && b === 0) {
+      return buildLeave(
+        { spettanti: a, godute: apGodute, residue: apResidue },
+        { spettanti: c, godute: null, residue: null },
+      );
+    }
+
+    if (a === 0 && b === 0 && c > 0) {
+      return buildLeave({ spettanti: null, godute: apGodute, residue: apResidue ?? c });
+    }
+
+    return buildLeave({ spettanti: a, godute: b || apGodute, residue: apResidue ?? c });
+  }
+
+  return {
+    leaveFerie: splitTriple(ferieTriple, ferieResAp, ferieGodAp),
+    leaveFest: empty,
+    leavePerm: splitTriple(permTriple, permResAp, permGodAp),
   };
 }
 
@@ -112,30 +227,7 @@ export function parseOsraPayslipText(text: string, sourceFile?: string): Payslip
 
   const payDate = parseItDate(text.match(/Data valuta\s*:\s*(\d{2}\/\d{2}\/\d{4})/i)?.[1] ?? "");
 
-  let leaveFest = leaveTriplet(undefined, undefined, undefined);
-  let leaveFerie = leaveTriplet(undefined, undefined, undefined);
-  let leavePerm = leaveTriplet(undefined, undefined, undefined);
-
-  // OSRA footer: row after "Residuo : … Residuo : … Residuo : …" holds spett/god/res × 3 columns.
-  // In this employer template the first column (labelled FEST.) carries ferie; FERIE column is unused.
-  const gridLine = text.match(
-    /Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s*\n([\d.,\s]+)/i,
-  );
-  const gridNums = gridLine?.[1]?.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
-  if (gridNums && gridNums.length >= 9) {
-    leaveFerie = leaveTriplet(gridNums[0], gridNums[1], gridNums[2]);
-    leaveFest = leaveTriplet(gridNums[3], gridNums[4], gridNums[5]);
-    leavePerm = leaveTriplet(gridNums[6], gridNums[7], gridNums[8]);
-  }
-
-  const residuo = text.match(
-    /Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)/i,
-  );
-  if (residuo) {
-    leaveFerie.residue = parseItalianAmount(residuo[1]!);
-    leaveFest.residue = parseItalianAmount(residuo[2]!);
-    leavePerm.residue = parseItalianAmount(residuo[3]!);
-  }
+  const { leaveFest, leaveFerie, leavePerm } = parseLeaveGrid(text);
 
   let netPay: number | null = netToAccount;
   if (netPay == null && taxableIncome != null && taxWithheld != null && socialWithheld != null) {
@@ -227,8 +319,10 @@ export function buildPayslipSummary(
     })),
     chartLeave: enriched.map((p) => ({
       period: `${String(p.periodMonth).padStart(2, "0")}/${p.periodYear}`,
-      ferieResidue: p.leaveFerie.residue ?? p.leaveFerie.spettanti,
-      permResidui: p.leavePerm.residue ?? p.leavePerm.spettanti,
+      ferieResidueAp: p.leaveFerie.ap.residue,
+      ferieResidueAc: p.leaveFerie.ac.residue,
+      permResidueAp: p.leavePerm.ap.residue,
+      permResidueAc: p.leavePerm.ac.residue,
     })),
   };
 }
