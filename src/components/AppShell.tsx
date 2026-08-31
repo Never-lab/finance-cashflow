@@ -55,10 +55,20 @@ type Props = {
   onTab: (tab: AppTab) => void;
   onUpload: () => void;
   onSettings: () => void;
+  authRequired?: boolean;
+  onLogout?: () => void;
   children: ReactNode;
 };
 
-export function AppShell({ tab, onTab, onUpload, onSettings, children }: Props) {
+export function AppShell({
+  tab,
+  onTab,
+  onUpload,
+  onSettings,
+  authRequired = false,
+  onLogout,
+  children,
+}: Props) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -101,6 +111,11 @@ export function AppShell({ tab, onTab, onUpload, onSettings, children }: Props) 
       <div className="main-shell">
         <header className="main-head">
           <h1 className="page-title">{PAGE_TITLES[tab]}</h1>
+          {authRequired && onLogout && (
+            <button type="button" className="btn danger header-logout" onClick={onLogout}>
+              Esci
+            </button>
+          )}
         </header>
         <main className="main-content">{children}</main>
       </div>

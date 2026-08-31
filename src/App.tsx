@@ -218,6 +218,8 @@ export default function App() {
       onTab={setTab}
       onUpload={() => setUploadOpen(true)}
       onSettings={() => setSettingsOpen(true)}
+      authRequired={authRequired}
+      onLogout={onLogout}
     >
       {tab === "dashboard" && (
           <Dashboard
