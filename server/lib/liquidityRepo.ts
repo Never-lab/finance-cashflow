@@ -10,8 +10,8 @@ import { getSetting, setSetting } from "./settingsRepo";
 
 const KEY = "liquidity_snapshots";
 
-export function loadLiquiditySnapshots(db: Database.Database): LiquiditySnapshots {
-  const raw = getSetting(db, KEY);
+export function loadLiquiditySnapshots(db: Database.Database, userId: number): LiquiditySnapshots {
+  const raw = getSetting(db, userId, KEY);
   if (!raw) return {};
   try {
     return JSON.parse(raw) as LiquiditySnapshots;
@@ -20,16 +20,28 @@ export function loadLiquiditySnapshots(db: Database.Database): LiquiditySnapshot
   }
 }
 
-export function saveLiquiditySnapshots(db: Database.Database, snapshots: LiquiditySnapshots): void {
-  setSetting(db, KEY, JSON.stringify(snapshots));
+export function saveLiquiditySnapshots(
+  db: Database.Database,
+  userId: number,
+  snapshots: LiquiditySnapshots,
+): void {
+  setSetting(db, userId, KEY, JSON.stringify(snapshots));
 }
 
-export function mergeLiquidityPatch(db: Database.Database, patch: Partial<LiquiditySnapshots>): LiquiditySnapshots {
-  const merged = mergeLiquiditySnapshots(loadLiquiditySnapshots(db), patch);
-  saveLiquiditySnapshots(db, merged);
+export function mergeLiquidityPatch(
+  db: Database.Database,
+  userId: number,
+  patch: Partial<LiquiditySnapshots>,
+): LiquiditySnapshots {
+  const merged = mergeLiquiditySnapshots(loadLiquiditySnapshots(db, userId), patch);
+  saveLiquiditySnapshots(db, userId, merged);
   return merged;
 }
 
-export function loadLiquidityView(db: Database.Database, transactions: Transaction[]): LiquidityView {
-  return buildLiquidityView(loadLiquiditySnapshots(db), transactions);
+export function loadLiquidityView(
+  db: Database.Database,
+  userId: number,
+  transactions: Transaction[],
+): LiquidityView {
+  return buildLiquidityView(loadLiquiditySnapshots(db, userId), transactions);
 }

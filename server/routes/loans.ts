@@ -3,6 +3,8 @@ import { getDb } from "../db";
 import { deleteSetting, getSetting, setSetting } from "../lib/settingsRepo";
 import type { LoanTarget } from "../../src/lib/loans";
 import { mergeLoanTargets } from "../../src/lib/knownLoans";
+import { getUserId } from "../lib/requestContext";
+import type { AppEnv } from "../lib/honoTypes";
 
 const LOAN_TARGETS_KEY = "loan_targets";
 
@@ -10,8 +12,11 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function readTargets(db: ReturnType<typeof getDb>): Record<string, LoanTarget> {
-  const raw = getSetting(db, LOAN_TARGETS_KEY);
+function readTargets(
+  db: ReturnType<typeof getDb>,
+  userId: number,
+): Record<string, LoanTarget> {
+  const raw = getSetting(db, userId, LOAN_TARGETS_KEY);
   if (!raw) return {};
   try {
     return JSON.parse(raw) as Record<string, LoanTarget>;
@@ -20,19 +25,21 @@ function readTargets(db: ReturnType<typeof getDb>): Record<string, LoanTarget> {
   }
 }
 
-export const loansRoutes = new Hono();
+export const loansRoutes = new Hono<AppEnv>();
 
 loansRoutes.get("/loans/targets", (c) => {
-  return c.json(mergeLoanTargets(readTargets(getDb())));
+  const userId = getUserId(c);
+  return c.json(mergeLoanTargets(readTargets(getDb(), userId)));
 });
 
 loansRoutes.put("/loans/targets", async (c) => {
+  const userId = getUserId(c);
   const body = await c.req.json<{ key: string; target: LoanTarget | null }>();
   const key = body.key?.trim();
   if (!key) return c.json({ error: "key required" }, 400);
 
   const db = getDb();
-  const targets = readTargets(db);
+  const targets = readTargets(db, userId);
   if (body.target == null || Object.keys(body.target).length === 0) {
     delete targets[key];
   } else {
@@ -65,8 +72,8 @@ loansRoutes.put("/loans/targets", async (c) => {
     else targets[key] = next;
   }
 
-  if (Object.keys(targets).length === 0) deleteSetting(db, LOAN_TARGETS_KEY);
-  else setSetting(db, LOAN_TARGETS_KEY, JSON.stringify(targets));
+  if (Object.keys(targets).length === 0) deleteSetting(db, userId, LOAN_TARGETS_KEY);
+  else setSetting(db, userId, LOAN_TARGETS_KEY, JSON.stringify(targets));
 
   return c.json(mergeLoanTargets(targets));
 });

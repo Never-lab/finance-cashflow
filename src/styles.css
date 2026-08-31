@@ -896,6 +896,26 @@ select {
   margin-top: 0.25rem;
 }
 
+.login-toggle {
+  text-align: center;
+  margin: 1rem 0 0;
+  font-size: 0.88rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  opacity: 0.85;
+}
+
 .tiny {
   font-size: 0.78rem;
   margin-top: 0.15rem;

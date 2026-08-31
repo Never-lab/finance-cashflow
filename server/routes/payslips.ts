@@ -9,8 +9,10 @@ import {
   parseOsraPayslipText,
   type PayslipRecord,
 } from "../../src/lib/payslip";
+import { getUserId } from "../lib/requestContext";
+import type { AppEnv } from "../lib/honoTypes";
 
-export const payslipsRoutes = new Hono();
+export const payslipsRoutes = new Hono<AppEnv>();
 
 function filesFromBody(body: Record<string, unknown>): File[] {
   const files: File[] = [];
@@ -26,13 +28,15 @@ function filesFromBody(body: Record<string, unknown>): File[] {
 }
 
 payslipsRoutes.get("/payslips", (c) => {
+  const userId = getUserId(c);
   const db = getDb();
-  const payslips = listPayslips(db);
-  const transactions = loadAppState(db).transactions;
+  const payslips = listPayslips(db, userId);
+  const transactions = loadAppState(db, userId).transactions;
   return c.json(buildPayslipSummary(payslips, transactions));
 });
 
 payslipsRoutes.post("/payslips/preview", async (c) => {
+  const userId = getUserId(c);
   const body = await c.req.parseBody();
   const file = body.file;
   if (!(file instanceof File)) return c.json({ error: "file required" }, 400);
@@ -42,14 +46,15 @@ payslipsRoutes.post("/payslips/preview", async (c) => {
   const parsed = parseOsraPayslipText(text, file.name);
   if (!parsed) return c.json({ error: "Formato cedolino non riconosciuto (atteso OSRA/OLUIT)" }, 422);
 
-  const transactions = loadAppState(getDb()).transactions;
+  const transactions = loadAppState(getDb(), userId).transactions;
   return c.json({ payslip: enrichPayslipWithBank(parsed, transactions) });
 });
 
 payslipsRoutes.post("/payslips/import", async (c) => {
+  const userId = getUserId(c);
   const body = await c.req.parseBody({ all: true });
   const db = getDb();
-  const transactions = loadAppState(db).transactions;
+  const transactions = loadAppState(db, userId).transactions;
 
   const files = filesFromBody(body);
   if (files.length === 0) return c.json({ error: "Nessun file PDF" }, 400);
@@ -70,7 +75,7 @@ payslipsRoutes.post("/payslips/import", async (c) => {
         { ...parsed, importedAt: new Date().toISOString() },
         transactions,
       );
-      upsertPayslip(db, enriched);
+      upsertPayslip(db, userId, enriched);
       imported.push(enriched);
     } catch (e) {
       errors.push({
@@ -80,7 +85,7 @@ payslipsRoutes.post("/payslips/import", async (c) => {
     }
   }
 
-  const payslips = listPayslips(db);
+  const payslips = listPayslips(db, userId);
   return c.json({
     imported: imported.length,
     errors,
@@ -89,8 +94,9 @@ payslipsRoutes.post("/payslips/import", async (c) => {
 });
 
 payslipsRoutes.delete("/payslips/:id", (c) => {
+  const userId = getUserId(c);
   const id = c.req.param("id");
-  const ok = deletePayslip(getDb(), id);
+  const ok = deletePayslip(getDb(), userId, id);
   if (!ok) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
 });

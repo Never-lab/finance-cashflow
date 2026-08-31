@@ -1,31 +1,51 @@
+CREATE TABLE IF NOT EXISTS auth_user (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS transactions (
-  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  id TEXT NOT NULL,
   date TEXT NOT NULL,
   description TEXT NOT NULL,
   amount REAL NOT NULL,
   currency TEXT NOT NULL DEFAULT 'EUR',
   source TEXT NOT NULL,
   category TEXT NOT NULL,
-  internal INTEGER
+  internal INTEGER,
+  PRIMARY KEY (user_id, id),
+  FOREIGN KEY (user_id) REFERENCES auth_user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS category_overrides (
-  transaction_id TEXT PRIMARY KEY,
-  category TEXT NOT NULL
+  user_id INTEGER NOT NULL,
+  transaction_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  PRIMARY KEY (user_id, transaction_id),
+  FOREIGN KEY (user_id, transaction_id) REFERENCES transactions(user_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS recurring_marks (
-  transaction_id TEXT PRIMARY KEY,
-  mark TEXT NOT NULL
+  user_id INTEGER NOT NULL,
+  transaction_id TEXT NOT NULL,
+  mark TEXT NOT NULL,
+  PRIMARY KEY (user_id, transaction_id),
+  FOREIGN KEY (user_id, transaction_id) REFERENCES transactions(user_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS internal_overrides (
-  transaction_id TEXT PRIMARY KEY,
-  internal INTEGER NOT NULL
+  user_id INTEGER NOT NULL,
+  transaction_id TEXT NOT NULL,
+  internal INTEGER NOT NULL,
+  PRIMARY KEY (user_id, transaction_id),
+  FOREIGN KEY (user_id, transaction_id) REFERENCES transactions(user_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS instruments (
-  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  id TEXT NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   ticker TEXT,
@@ -33,24 +53,32 @@ CREATE TABLE IF NOT EXISTS instruments (
   currency TEXT NOT NULL DEFAULT 'EUR',
   notes TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, id),
+  FOREIGN KEY (user_id) REFERENCES auth_user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS holdings (
-  instrument_id TEXT PRIMARY KEY REFERENCES instruments(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  instrument_id TEXT NOT NULL,
   quantity REAL,
   cash_balance REAL,
   cost_basis REAL NOT NULL DEFAULT 0,
-  as_of TEXT
+  as_of TEXT,
+  PRIMARY KEY (user_id, instrument_id),
+  FOREIGN KEY (user_id, instrument_id) REFERENCES instruments(user_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS contributions (
-  id TEXT PRIMARY KEY,
-  instrument_id TEXT NOT NULL REFERENCES instruments(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  id TEXT NOT NULL,
+  instrument_id TEXT NOT NULL,
   date TEXT NOT NULL,
   amount REAL NOT NULL,
   transaction_id TEXT,
-  note TEXT
+  note TEXT,
+  PRIMARY KEY (user_id, id),
+  FOREIGN KEY (user_id, instrument_id) REFERENCES instruments(user_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS quotes_cache (
@@ -66,19 +94,16 @@ CREATE TABLE IF NOT EXISTS quotes_cache (
 );
 
 CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS auth_user (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  username TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  user_id INTEGER NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  PRIMARY KEY (user_id, key),
+  FOREIGN KEY (user_id) REFERENCES auth_user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS payslips (
-  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  id TEXT NOT NULL,
   period_year INTEGER NOT NULL,
   period_month INTEGER NOT NULL,
   period_label TEXT NOT NULL,
@@ -103,5 +128,7 @@ CREATE TABLE IF NOT EXISTS payslips (
   leave_perm_r REAL,
   source_file TEXT,
   imported_at TEXT NOT NULL,
-  parser_version TEXT NOT NULL
+  parser_version TEXT NOT NULL,
+  PRIMARY KEY (user_id, id),
+  FOREIGN KEY (user_id) REFERENCES auth_user(id) ON DELETE CASCADE
 );

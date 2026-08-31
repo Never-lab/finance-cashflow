@@ -31,6 +31,7 @@ function seedNotes(known: (typeof KNOWN_INVESTMENTS)[number]): string {
 
 function applySeedContributions(
   db: Database.Database,
+  userId: number,
   instrumentId: string,
   known: (typeof KNOWN_INVESTMENTS)[number],
 ): number {
@@ -38,7 +39,7 @@ function applySeedContributions(
   let seeded = 0;
   for (const c of known.seedContributions) {
     if (
-      insertContributionIfMissing(db, {
+      insertContributionIfMissing(db, userId, {
         id: c.id,
         instrumentId,
         date: c.date,
@@ -50,30 +51,31 @@ function applySeedContributions(
       seeded++;
     }
   }
-  if (seeded > 0) recalcCostBasis(db, instrumentId);
+  if (seeded > 0) recalcCostBasis(db, userId, instrumentId);
   return seeded;
 }
 
 function applySeedHolding(
   db: Database.Database,
+  userId: number,
   instrumentId: string,
   known: (typeof KNOWN_INVESTMENTS)[number],
   contributionsSeeded: number,
 ): void {
   const seed = known.seed;
   if (!seed) return;
-  const holding = getHolding(db, instrumentId);
+  const holding = getHolding(db, userId, instrumentId);
   const shouldApply =
     contributionsSeeded > 0 || holding == null || holding.quantity == null;
   if (!shouldApply) return;
-  upsertHolding(db, {
+  upsertHolding(db, userId, {
     instrumentId,
     quantity: seed.quantity,
     cashBalance: null,
     costBasis: holding?.costBasis ?? 0,
     asOf: seed.asOf,
   });
-  recalcCostBasis(db, instrumentId);
+  recalcCostBasis(db, userId, instrumentId);
 }
 
 function applySeedQuote(
@@ -87,9 +89,14 @@ function applySeedQuote(
 }
 
 /** Ensure known PAC/fondo instruments exist, seed Mediolanum snapshot, link CSV outflows. */
-export function syncKnownInvestmentContributions(db: Database.Database): InvestmentSyncReport {
-  const state = loadAppState(db);
-  const existingLink = db.prepare(`SELECT 1 FROM contributions WHERE transaction_id = ?`);
+export function syncKnownInvestmentContributions(
+  db: Database.Database,
+  userId: number,
+): InvestmentSyncReport {
+  const state = loadAppState(db, userId);
+  const existingLink = db.prepare(
+    `SELECT 1 FROM contributions WHERE user_id = ? AND transaction_id = ?`,
+  );
   let instrumentsEnsured = 0;
   let contributionsSeeded = 0;
   let contributionsLinked = 0;
@@ -97,12 +104,12 @@ export function syncKnownInvestmentContributions(db: Database.Database): Investm
 
   for (const known of KNOWN_INVESTMENTS) {
     let instrument =
-      listInstruments(db).find((i) => i.isin === known.isin) ??
-      getInstrument(db, known.id);
+      listInstruments(db, userId).find((i) => i.isin === known.isin) ??
+      getInstrument(db, userId, known.id);
 
     const notes = seedNotes(known);
     if (!instrument) {
-      upsertInstrument(db, {
+      upsertInstrument(db, userId, {
         id: known.id,
         name: known.name,
         type: known.type,
@@ -113,17 +120,17 @@ export function syncKnownInvestmentContributions(db: Database.Database): Investm
         createdAt: now,
         updatedAt: now,
       });
-      upsertHolding(db, {
+      upsertHolding(db, userId, {
         instrumentId: known.id,
         quantity: null,
         cashBalance: null,
         costBasis: 0,
         asOf: null,
       });
-      instrument = getInstrument(db, known.id)!;
+      instrument = getInstrument(db, userId, known.id)!;
       instrumentsEnsured++;
     } else {
-      upsertInstrument(db, {
+      upsertInstrument(db, userId, {
         ...instrument,
         name: known.name,
         notes,
@@ -131,33 +138,33 @@ export function syncKnownInvestmentContributions(db: Database.Database): Investm
       });
     }
 
-    const seeded = applySeedContributions(db, instrument.id, known);
+    const seeded = applySeedContributions(db, userId, instrument.id, known);
     contributionsSeeded += seeded;
-    applySeedHolding(db, instrument.id, known, seeded);
+    applySeedHolding(db, userId, instrument.id, known, seeded);
     applySeedQuote(db, known);
 
     for (const t of state.transactions) {
       if (!matchesKnownInvestment(t, known)) continue;
-      if (existingLink.get(t.id)) continue;
+      if (existingLink.get(userId, t.id)) continue;
 
-      const amt = Math.abs(t.amount);
       const seedRow = db
         .prepare(
           `SELECT id FROM contributions
-           WHERE instrument_id = ? AND date = ? AND amount = ? AND transaction_id IS NULL`,
+           WHERE user_id = ? AND instrument_id = ? AND date = ? AND amount = ? AND transaction_id IS NULL`,
         )
-        .get(instrument.id, t.date, amt) as { id: string } | undefined;
+        .get(userId, instrument.id, t.date, Math.abs(t.amount)) as { id: string } | undefined;
 
       if (seedRow) {
-        db.prepare(`UPDATE contributions SET transaction_id = ? WHERE id = ?`).run(
+        db.prepare(`UPDATE contributions SET transaction_id = ? WHERE user_id = ? AND id = ?`).run(
           t.id,
+          userId,
           seedRow.id,
         );
         contributionsLinked++;
         continue;
       }
 
-      linkTransaction(db, instrument.id, t.id);
+      linkTransaction(db, userId, instrument.id, t.id);
       contributionsLinked++;
     }
   }

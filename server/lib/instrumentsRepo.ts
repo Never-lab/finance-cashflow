@@ -65,25 +65,33 @@ function rowToContribution(row: ContributionRow): Contribution {
   };
 }
 
-export function listInstruments(db: Database.Database): Instrument[] {
+export function listInstruments(db: Database.Database, userId: number): Instrument[] {
   const rows = db
-    .prepare(`SELECT * FROM instruments ORDER BY name`)
-    .all() as InstrumentRow[];
+    .prepare(`SELECT * FROM instruments WHERE user_id = ? ORDER BY name`)
+    .all(userId) as InstrumentRow[];
   return rows.map(rowToInstrument);
 }
 
-export function getInstrument(db: Database.Database, id: string): Instrument | undefined {
-  const row = db.prepare(`SELECT * FROM instruments WHERE id = ?`).get(id) as
-    | InstrumentRow
-    | undefined;
+export function getInstrument(
+  db: Database.Database,
+  userId: number,
+  id: string,
+): Instrument | undefined {
+  const row = db
+    .prepare(`SELECT * FROM instruments WHERE user_id = ? AND id = ?`)
+    .get(userId, id) as InstrumentRow | undefined;
   return row ? rowToInstrument(row) : undefined;
 }
 
-export function upsertInstrument(db: Database.Database, instrument: Instrument): void {
+export function upsertInstrument(
+  db: Database.Database,
+  userId: number,
+  instrument: Instrument,
+): void {
   db.prepare(
-    `INSERT INTO instruments (id, name, type, ticker, isin, currency, notes, created_at, updated_at)
-     VALUES (@id, @name, @type, @ticker, @isin, @currency, @notes, @createdAt, @updatedAt)
-     ON CONFLICT(id) DO UPDATE SET
+    `INSERT INTO instruments (user_id, id, name, type, ticker, isin, currency, notes, created_at, updated_at)
+     VALUES (@userId, @id, @name, @type, @ticker, @isin, @currency, @notes, @createdAt, @updatedAt)
+     ON CONFLICT(user_id, id) DO UPDATE SET
        name = excluded.name,
        type = excluded.type,
        ticker = excluded.ticker,
@@ -92,6 +100,7 @@ export function upsertInstrument(db: Database.Database, instrument: Instrument):
        notes = excluded.notes,
        updated_at = excluded.updated_at`,
   ).run({
+    userId,
     id: instrument.id,
     name: instrument.name,
     type: instrument.type,
@@ -104,27 +113,32 @@ export function upsertInstrument(db: Database.Database, instrument: Instrument):
   });
 }
 
-export function deleteInstrument(db: Database.Database, id: string): void {
-  db.prepare(`DELETE FROM instruments WHERE id = ?`).run(id);
+export function deleteInstrument(db: Database.Database, userId: number, id: string): void {
+  db.prepare(`DELETE FROM instruments WHERE user_id = ? AND id = ?`).run(userId, id);
 }
 
-export function getHolding(db: Database.Database, instrumentId: string): Holding | undefined {
-  const row = db.prepare(`SELECT * FROM holdings WHERE instrument_id = ?`).get(instrumentId) as
-    | HoldingRow
-    | undefined;
+export function getHolding(
+  db: Database.Database,
+  userId: number,
+  instrumentId: string,
+): Holding | undefined {
+  const row = db
+    .prepare(`SELECT * FROM holdings WHERE user_id = ? AND instrument_id = ?`)
+    .get(userId, instrumentId) as HoldingRow | undefined;
   return row ? rowToHolding(row) : undefined;
 }
 
-export function upsertHolding(db: Database.Database, holding: Holding): void {
+export function upsertHolding(db: Database.Database, userId: number, holding: Holding): void {
   db.prepare(
-    `INSERT INTO holdings (instrument_id, quantity, cash_balance, cost_basis, as_of)
-     VALUES (@instrumentId, @quantity, @cashBalance, @costBasis, @asOf)
-     ON CONFLICT(instrument_id) DO UPDATE SET
+    `INSERT INTO holdings (user_id, instrument_id, quantity, cash_balance, cost_basis, as_of)
+     VALUES (@userId, @instrumentId, @quantity, @cashBalance, @costBasis, @asOf)
+     ON CONFLICT(user_id, instrument_id) DO UPDATE SET
        quantity = excluded.quantity,
        cash_balance = excluded.cash_balance,
        cost_basis = excluded.cost_basis,
        as_of = excluded.as_of`,
   ).run({
+    userId,
     instrumentId: holding.instrumentId,
     quantity: holding.quantity,
     cashBalance: holding.cashBalance,
@@ -133,23 +147,31 @@ export function upsertHolding(db: Database.Database, holding: Holding): void {
   });
 }
 
-export function listContributions(db: Database.Database, instrumentId: string): Contribution[] {
+export function listContributions(
+  db: Database.Database,
+  userId: number,
+  instrumentId: string,
+): Contribution[] {
   const rows = db
-    .prepare(`SELECT * FROM contributions WHERE instrument_id = ? ORDER BY date`)
-    .all(instrumentId) as ContributionRow[];
+    .prepare(`SELECT * FROM contributions WHERE user_id = ? AND instrument_id = ? ORDER BY date`)
+    .all(userId, instrumentId) as ContributionRow[];
   return rows.map(rowToContribution);
 }
 
 export function insertContributionIfMissing(
   db: Database.Database,
+  userId: number,
   contribution: Contribution,
 ): boolean {
-  const exists = db.prepare(`SELECT 1 FROM contributions WHERE id = ?`).get(contribution.id);
+  const exists = db
+    .prepare(`SELECT 1 FROM contributions WHERE user_id = ? AND id = ?`)
+    .get(userId, contribution.id);
   if (exists) return false;
   db.prepare(
-    `INSERT INTO contributions (id, instrument_id, date, amount, transaction_id, note)
-     VALUES (@id, @instrumentId, @date, @amount, @transactionId, @note)`,
+    `INSERT INTO contributions (user_id, id, instrument_id, date, amount, transaction_id, note)
+     VALUES (@userId, @id, @instrumentId, @date, @amount, @transactionId, @note)`,
   ).run({
+    userId,
     id: contribution.id,
     instrumentId: contribution.instrumentId,
     date: contribution.date,
@@ -178,11 +200,16 @@ export function insertSeedQuoteIfMissing(
   return true;
 }
 
-export function addContribution(db: Database.Database, contribution: Contribution): void {
+export function addContribution(
+  db: Database.Database,
+  userId: number,
+  contribution: Contribution,
+): void {
   db.prepare(
-    `INSERT INTO contributions (id, instrument_id, date, amount, transaction_id, note)
-     VALUES (@id, @instrumentId, @date, @amount, @transactionId, @note)`,
+    `INSERT INTO contributions (user_id, id, instrument_id, date, amount, transaction_id, note)
+     VALUES (@userId, @id, @instrumentId, @date, @amount, @transactionId, @note)`,
   ).run({
+    userId,
     id: contribution.id,
     instrumentId: contribution.instrumentId,
     date: contribution.date,
@@ -190,34 +217,40 @@ export function addContribution(db: Database.Database, contribution: Contributio
     transactionId: contribution.transactionId ?? null,
     note: contribution.note ?? null,
   });
-  recalcCostBasis(db, contribution.instrumentId);
+  recalcCostBasis(db, userId, contribution.instrumentId);
 }
 
-export function deleteContribution(db: Database.Database, id: string): void {
-  const row = db.prepare(`SELECT instrument_id FROM contributions WHERE id = ?`).get(id) as
-    | { instrument_id: string }
-    | undefined;
-  db.prepare(`DELETE FROM contributions WHERE id = ?`).run(id);
-  if (row) recalcCostBasis(db, row.instrument_id);
+export function deleteContribution(db: Database.Database, userId: number, id: string): void {
+  const row = db
+    .prepare(`SELECT instrument_id FROM contributions WHERE user_id = ? AND id = ?`)
+    .get(userId, id) as { instrument_id: string } | undefined;
+  db.prepare(`DELETE FROM contributions WHERE user_id = ? AND id = ?`).run(userId, id);
+  if (row) recalcCostBasis(db, userId, row.instrument_id);
 }
 
 /** cost_basis = SUM(contributions.amount) when contributions exist, else keep the current (manual) value. */
-export function recalcCostBasis(db: Database.Database, instrumentId: string): void {
+export function recalcCostBasis(
+  db: Database.Database,
+  userId: number,
+  instrumentId: string,
+): void {
   const { total, cnt } = db
     .prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt
-       FROM contributions WHERE instrument_id = ?`,
+       FROM contributions WHERE user_id = ? AND instrument_id = ?`,
     )
-    .get(instrumentId) as { total: number; cnt: number };
+    .get(userId, instrumentId) as { total: number; cnt: number };
   if (cnt === 0) return;
-  db.prepare(`UPDATE holdings SET cost_basis = ? WHERE instrument_id = ?`).run(
+  db.prepare(`UPDATE holdings SET cost_basis = ? WHERE user_id = ? AND instrument_id = ?`).run(
     total,
+    userId,
     instrumentId,
   );
 }
 
 export function linkTransaction(
   db: Database.Database,
+  userId: number,
   instrumentId: string,
   transactionId: string,
   amount?: number,
@@ -226,9 +259,9 @@ export function linkTransaction(
   let amt = amount;
   let dt = date;
   if (amt === undefined || dt === undefined) {
-    const tx = db.prepare(`SELECT date, amount FROM transactions WHERE id = ?`).get(
-      transactionId,
-    ) as { date: string; amount: number } | undefined;
+    const tx = db
+      .prepare(`SELECT date, amount FROM transactions WHERE user_id = ? AND id = ?`)
+      .get(userId, transactionId) as { date: string; amount: number } | undefined;
     if (!tx) throw new Error(`Transaction not found: ${transactionId}`);
     if (amt === undefined) amt = Math.abs(tx.amount);
     if (dt === undefined) dt = tx.date;
@@ -241,6 +274,6 @@ export function linkTransaction(
     transactionId,
     note: null,
   };
-  addContribution(db, contribution);
+  addContribution(db, userId, contribution);
   return contribution;
 }

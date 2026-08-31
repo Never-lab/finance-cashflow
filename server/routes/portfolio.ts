@@ -4,6 +4,8 @@ import { getDb } from "../db";
 import { getHolding, listInstruments } from "../lib/instrumentsRepo";
 import { buildSummary, buildHistory, type HistoryLine } from "../lib/portfolioMath";
 import type { Holding } from "../../src/types";
+import { getUserId } from "../lib/requestContext";
+import type { AppEnv } from "../lib/honoTypes";
 
 function lastClose(db: Database.Database, ticker: string): number | null {
   const row = db
@@ -32,14 +34,15 @@ function defaultFrom(to: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-export const portfolioRoutes = new Hono();
+export const portfolioRoutes = new Hono<AppEnv>();
 
 portfolioRoutes.get("/portfolio/summary", (c) => {
+  const userId = getUserId(c);
   const db = getDb();
-  const instruments = listInstruments(db);
+  const instruments = listInstruments(db, userId);
   const rows = instruments.map((instrument) => {
     const holding: Holding =
-      getHolding(db, instrument.id) ?? {
+      getHolding(db, userId, instrument.id) ?? {
         instrumentId: instrument.id,
         quantity: null,
         cashBalance: null,
@@ -54,14 +57,15 @@ portfolioRoutes.get("/portfolio/summary", (c) => {
 });
 
 portfolioRoutes.get("/portfolio/history", (c) => {
+  const userId = getUserId(c);
   const db = getDb();
   const to = c.req.query("to") ?? new Date().toISOString().slice(0, 10);
   const from = c.req.query("from") ?? defaultFrom(to);
 
-  const instruments = listInstruments(db);
+  const instruments = listInstruments(db, userId);
   const lines: HistoryLine[] = instruments.map((instrument) => {
     const holding: Holding =
-      getHolding(db, instrument.id) ?? {
+      getHolding(db, userId, instrument.id) ?? {
         instrumentId: instrument.id,
         quantity: null,
         cashBalance: null,

@@ -69,4 +69,56 @@ describe("auth API", () => {
     const meBody = (await me.json()) as { username: string };
     expect(meBody.username).toBe("nicholas");
   });
+
+  it("register creates a new user with isolated data", async () => {
+    resetDbForTests();
+    resetLoginRateLimitForTests();
+    const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), "fin-reg-"));
+    process.env.DATABASE_PATH = path.join(freshDir, "t.db");
+    delete process.env.FINANCE_USERNAME;
+    delete process.env.FINANCE_PASSWORD;
+
+    const db = openDb(process.env.DATABASE_PATH);
+    migrate(db);
+    db.close();
+
+    const app = createApp();
+
+    const register = await app.request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "alice", password: "password123" }),
+    });
+    expect(register.status).toBe(201);
+    const { token: aliceToken } = (await register.json()) as { token: string };
+
+    const registerBob = await app.request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "bob", password: "password456" }),
+    });
+    expect(registerBob.status).toBe(201);
+    const { token: bobToken } = (await registerBob.json()) as { token: string };
+
+    const dup = await app.request("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "alice", password: "password123" }),
+    });
+    expect(dup.status).toBe(409);
+
+    const aliceState = await app.request("/api/state", {
+      headers: { Authorization: `Bearer ${aliceToken}` },
+    });
+    expect(aliceState.status).toBe(200);
+    const aliceBody = (await aliceState.json()) as { transactions: unknown[] };
+    expect(aliceBody.transactions).toHaveLength(0);
+
+    const bobState = await app.request("/api/state", {
+      headers: { Authorization: `Bearer ${bobToken}` },
+    });
+    expect(bobState.status).toBe(200);
+
+    fs.rmSync(freshDir, { recursive: true, force: true });
+  });
 });

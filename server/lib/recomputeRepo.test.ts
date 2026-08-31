@@ -1,29 +1,18 @@
 import { describe, expect, it } from "vitest";
-import Database from "better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { openDb, migrate } from "../db";
+import { DEFAULT_USER_ID } from "./requestContext";
 import { recomputeDatabase } from "./recomputeRepo";
 import { loadAppState } from "./stateRepo";
 
-const schema = fs.readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "../schema.sql"),
-  "utf8",
-);
-
-function openTestDb(): Database.Database {
-  const db = new Database(":memory:");
-  db.exec(schema);
-  return db;
-}
-
 describe("recomputeDatabase", () => {
   it("updates stale categories in sqlite", () => {
-    const db = openTestDb();
+    const db = openDb(":memory:");
+    migrate(db);
     db.prepare(
-      `INSERT INTO transactions (id, date, description, amount, currency, source, category, internal)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions (user_id, id, date, description, amount, currency, source, category, internal)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
+      DEFAULT_USER_ID,
       "t1",
       "2026-07-31",
       "PAG. MUTUO/FIN. VARI NUM. 740/00136196",
@@ -34,8 +23,8 @@ describe("recomputeDatabase", () => {
       0,
     );
 
-    const report = recomputeDatabase(db);
+    const report = recomputeDatabase(db, DEFAULT_USER_ID);
     expect(report.categoriesUpdated).toBe(1);
-    expect(loadAppState(db).transactions[0]?.category).toBe("Mutuo");
+    expect(loadAppState(db, DEFAULT_USER_ID).transactions[0]?.category).toBe("Mutuo");
   });
 });
