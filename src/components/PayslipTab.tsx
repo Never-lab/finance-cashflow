@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../api";
-import type { PayslipSummary } from "../lib/payslip";
+import type { PayslipLeave, PayslipSummary } from "../lib/payslip";
 import { formatEur } from "../lib/stats";
 import { ChartTooltip, CHART } from "./charts/chartTheme";
 
@@ -29,6 +29,48 @@ function formatItDate(iso: string | null): string {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function formatLeaveHours(v: number | null): string {
+  return v != null ? `${v} h` : "—";
+}
+
+function formatLeaveApAc(leave: PayslipLeave): string {
+  const ap = leave.ap.residue ?? leave.ap.spettanti;
+  const ac = leave.ac.residue ?? leave.ac.spettanti;
+  if (ap == null && ac == null) return "—";
+  return `AP ${formatLeaveHours(ap)} · AC ${formatLeaveHours(ac)}`;
+}
+
+function LeaveApAcTable({ title, leave }: { title: string; leave: PayslipLeave }) {
+  const rows = [
+    { label: "Spett.", ap: leave.ap.spettanti, ac: leave.ac.spettanti },
+    { label: "Godute", ap: leave.ap.godute, ac: leave.ac.godute },
+    { label: "Residue", ap: leave.ap.residue, ac: leave.ac.residue },
+  ];
+  return (
+    <div className="payslip-leave-block">
+      <h4>{title}</h4>
+      <table className="payslip-leave-grid">
+        <thead>
+          <tr>
+            <th />
+            <th className="num">AP</th>
+            <th className="num">AC</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <td>{row.label}</td>
+              <td className="num">{formatLeaveHours(row.ap)}</td>
+              <td className="num">{formatLeaveHours(row.ac)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export function PayslipTab({ refreshKey = 0, onToast }: Props) {
@@ -156,16 +198,32 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
             <div className="stat-card">
               <span className="stat-label">Ferie residue</span>
               <span className="stat-value">
-                {latest?.leaveFerie.residue != null ? `${latest.leaveFerie.residue} h` : "—"}
+                {latest ? formatLeaveApAc(latest.leaveFerie) : "—"}
+              </span>
+              <span className="stat-hint">
+                Tot. {formatLeaveHours(latest?.leaveFerie.residue ?? null)}
               </span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Permessi residui</span>
               <span className="stat-value">
-                {latest?.leavePerm.residue != null ? `${latest.leavePerm.residue} h` : "—"}
+                {latest ? formatLeaveApAc(latest.leavePerm) : "—"}
+              </span>
+              <span className="stat-hint">
+                Tot. {formatLeaveHours(latest?.leavePerm.residue ?? null)}
               </span>
             </div>
           </div>
+
+          {latest && (
+            <section className="panel payslip-leave-panel">
+              <h3>Ferie e permessi · AP / AC ({periodLabel(latest)})</h3>
+              <div className="payslip-leave-split">
+                <LeaveApAcTable title="Ferie" leave={latest.leaveFerie} />
+                <LeaveApAcTable title="Permessi" leave={latest.leavePerm} />
+              </div>
+            </section>
+          )}
 
           <div className="chart-grid payslip-charts">
             <section className="panel">
@@ -207,7 +265,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
             </section>
 
             <section className="panel">
-              <h3>Ferie e permessi (residui)</h3>
+              <h3>Ferie e permessi (residui AP / AC)</h3>
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={260}>
                   <LineChart data={summary!.chartLeave} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -244,18 +302,36 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                     <Legend wrapperStyle={{ fontSize: 12, color: CHART.muted }} />
                     <Line
                       type="monotone"
-                      dataKey="ferieResidue"
-                      name="Ferie"
+                      dataKey="ferieResidueAp"
+                      name="Ferie AP"
                       stroke={CHART.teal}
                       strokeWidth={2}
                       dot={{ r: 3 }}
                     />
                     <Line
                       type="monotone"
-                      dataKey="permResidui"
-                      name="Permessi"
+                      dataKey="ferieResidueAc"
+                      name="Ferie AC"
+                      stroke="#4a9e8c"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={{ r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="permResidueAp"
+                      name="Perm AP"
                       stroke={CHART.clay}
                       strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="permResidueAc"
+                      name="Perm AC"
+                      stroke="#d4956a"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
                       dot={{ r: 3 }}
                     />
                   </LineChart>
@@ -275,8 +351,8 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                     <th className="num">Netto</th>
                     <th className="num">Acc. c.c.</th>
                     <th className="num">Δ banca</th>
-                    <th className="num">Ferie R</th>
-                    <th className="num">Perm R</th>
+                    <th className="num">Ferie AP/AC</th>
+                    <th className="num">Perm AP/AC</th>
                     <th>Valuta</th>
                     <th>File</th>
                     <th />
@@ -306,12 +382,8 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                             "—"
                           )}
                         </td>
-                        <td className="num">
-                          {p.leaveFerie.residue != null ? `${p.leaveFerie.residue} h` : "—"}
-                        </td>
-                        <td className="num">
-                          {p.leavePerm.residue != null ? `${p.leavePerm.residue} h` : "—"}
-                        </td>
+                        <td className="num leave-ap-ac">{formatLeaveApAc(p.leaveFerie)}</td>
+                        <td className="num leave-ap-ac">{formatLeaveApAc(p.leavePerm)}</td>
                         <td>{formatItDate(p.payDate)}</td>
                         <td className="muted tiny">{p.sourceFile ?? "—"}</td>
                         <td>

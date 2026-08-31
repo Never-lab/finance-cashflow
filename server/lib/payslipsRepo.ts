@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import type { PayslipLeave, PayslipRecord } from "../../src/lib/payslip";
+import { buildLeave } from "../../src/lib/payslip";
 
 type Row = {
   id: string;
@@ -19,9 +20,21 @@ type Row = {
   leave_fest_s: number | null;
   leave_fest_g: number | null;
   leave_fest_r: number | null;
+  leave_ferie_ap_s: number | null;
+  leave_ferie_ap_g: number | null;
+  leave_ferie_ap_r: number | null;
+  leave_ferie_ac_s: number | null;
+  leave_ferie_ac_g: number | null;
+  leave_ferie_ac_r: number | null;
   leave_ferie_s: number | null;
   leave_ferie_g: number | null;
   leave_ferie_r: number | null;
+  leave_perm_ap_s: number | null;
+  leave_perm_ap_g: number | null;
+  leave_perm_ap_r: number | null;
+  leave_perm_ac_s: number | null;
+  leave_perm_ac_g: number | null;
+  leave_perm_ac_r: number | null;
   leave_perm_s: number | null;
   leave_perm_g: number | null;
   leave_perm_r: number | null;
@@ -30,8 +43,39 @@ type Row = {
   parser_version: string;
 };
 
-function leaveFromRow(s: number | null, g: number | null, r: number | null): PayslipLeave {
-  return { spettanti: s, godute: g, residue: r };
+function sliceFromRow(
+  apS: number | null,
+  apG: number | null,
+  apR: number | null,
+  acS: number | null,
+  acG: number | null,
+  acR: number | null,
+  totalS: number | null,
+  totalG: number | null,
+  totalR: number | null,
+): PayslipLeave {
+  const hasApAc = apS != null || apG != null || apR != null || acS != null || acG != null || acR != null;
+  if (hasApAc) {
+    return buildLeave(
+      { spettanti: apS, godute: apG, residue: apR },
+      { spettanti: acS, godute: acG, residue: acR },
+    );
+  }
+  return buildLeave({ spettanti: totalS, godute: totalG, residue: totalR });
+}
+
+function leaveFromRow(
+  apS: number | null,
+  apG: number | null,
+  apR: number | null,
+  acS: number | null,
+  acG: number | null,
+  acR: number | null,
+  totalS: number | null,
+  totalG: number | null,
+  totalR: number | null,
+): PayslipLeave {
+  return sliceFromRow(apS, apG, apR, acS, acG, acR, totalS, totalG, totalR);
 }
 
 function rowToRecord(row: Row): PayslipRecord {
@@ -50,12 +94,46 @@ function rowToRecord(row: Row): PayslipRecord {
     totalCompetenze: row.total_competenze,
     netPay: row.net_pay,
     bankCredit: row.bank_credit,
-    leaveFest: leaveFromRow(row.leave_fest_s, row.leave_fest_g, row.leave_fest_r),
-    leaveFerie: leaveFromRow(row.leave_ferie_s, row.leave_ferie_g, row.leave_ferie_r),
-    leavePerm: leaveFromRow(row.leave_perm_s, row.leave_perm_g, row.leave_perm_r),
+    leaveFest: leaveFromRow(null, null, null, null, null, null, row.leave_fest_s, row.leave_fest_g, row.leave_fest_r),
+    leaveFerie: leaveFromRow(
+      row.leave_ferie_ap_s,
+      row.leave_ferie_ap_g,
+      row.leave_ferie_ap_r,
+      row.leave_ferie_ac_s,
+      row.leave_ferie_ac_g,
+      row.leave_ferie_ac_r,
+      row.leave_ferie_s,
+      row.leave_ferie_g,
+      row.leave_ferie_r,
+    ),
+    leavePerm: leaveFromRow(
+      row.leave_perm_ap_s,
+      row.leave_perm_ap_g,
+      row.leave_perm_ap_r,
+      row.leave_perm_ac_s,
+      row.leave_perm_ac_g,
+      row.leave_perm_ac_r,
+      row.leave_perm_s,
+      row.leave_perm_g,
+      row.leave_perm_r,
+    ),
     sourceFile: row.source_file,
     importedAt: row.imported_at,
     parserVersion: row.parser_version,
+  };
+}
+
+function leaveParams(prefix: "leave_ferie" | "leave_perm", leave: PayslipLeave): Record<string, number | null> {
+  return {
+    [`${prefix}_ap_s`]: leave.ap.spettanti,
+    [`${prefix}_ap_g`]: leave.ap.godute,
+    [`${prefix}_ap_r`]: leave.ap.residue,
+    [`${prefix}_ac_s`]: leave.ac.spettanti,
+    [`${prefix}_ac_g`]: leave.ac.godute,
+    [`${prefix}_ac_r`]: leave.ac.residue,
+    [`${prefix}_s`]: leave.spettanti,
+    [`${prefix}_g`]: leave.godute,
+    [`${prefix}_r`]: leave.residue,
   };
 }
 
@@ -65,7 +143,11 @@ INSERT INTO payslips (
   gross_total, taxable_income, tax_withheld, tax_withheld_net, social_withheld,
   net_to_account, total_competenze, net_pay, bank_credit,
   leave_fest_s, leave_fest_g, leave_fest_r,
+  leave_ferie_ap_s, leave_ferie_ap_g, leave_ferie_ap_r,
+  leave_ferie_ac_s, leave_ferie_ac_g, leave_ferie_ac_r,
   leave_ferie_s, leave_ferie_g, leave_ferie_r,
+  leave_perm_ap_s, leave_perm_ap_g, leave_perm_ap_r,
+  leave_perm_ac_s, leave_perm_ac_g, leave_perm_ac_r,
   leave_perm_s, leave_perm_g, leave_perm_r,
   source_file, imported_at, parser_version
 ) VALUES (
@@ -73,7 +155,11 @@ INSERT INTO payslips (
   @gross_total, @taxable_income, @tax_withheld, @tax_withheld_net, @social_withheld,
   @net_to_account, @total_competenze, @net_pay, @bank_credit,
   @leave_fest_s, @leave_fest_g, @leave_fest_r,
+  @leave_ferie_ap_s, @leave_ferie_ap_g, @leave_ferie_ap_r,
+  @leave_ferie_ac_s, @leave_ferie_ac_g, @leave_ferie_ac_r,
   @leave_ferie_s, @leave_ferie_g, @leave_ferie_r,
+  @leave_perm_ap_s, @leave_perm_ap_g, @leave_perm_ap_r,
+  @leave_perm_ac_s, @leave_perm_ac_g, @leave_perm_ac_r,
   @leave_perm_s, @leave_perm_g, @leave_perm_r,
   @source_file, @imported_at, @parser_version
 )
@@ -91,9 +177,21 @@ ON CONFLICT(user_id, id) DO UPDATE SET
   leave_fest_s = excluded.leave_fest_s,
   leave_fest_g = excluded.leave_fest_g,
   leave_fest_r = excluded.leave_fest_r,
+  leave_ferie_ap_s = excluded.leave_ferie_ap_s,
+  leave_ferie_ap_g = excluded.leave_ferie_ap_g,
+  leave_ferie_ap_r = excluded.leave_ferie_ap_r,
+  leave_ferie_ac_s = excluded.leave_ferie_ac_s,
+  leave_ferie_ac_g = excluded.leave_ferie_ac_g,
+  leave_ferie_ac_r = excluded.leave_ferie_ac_r,
   leave_ferie_s = excluded.leave_ferie_s,
   leave_ferie_g = excluded.leave_ferie_g,
   leave_ferie_r = excluded.leave_ferie_r,
+  leave_perm_ap_s = excluded.leave_perm_ap_s,
+  leave_perm_ap_g = excluded.leave_perm_ap_g,
+  leave_perm_ap_r = excluded.leave_perm_ap_r,
+  leave_perm_ac_s = excluded.leave_perm_ac_s,
+  leave_perm_ac_g = excluded.leave_perm_ac_g,
+  leave_perm_ac_r = excluded.leave_perm_ac_r,
   leave_perm_s = excluded.leave_perm_s,
   leave_perm_g = excluded.leave_perm_g,
   leave_perm_r = excluded.leave_perm_r,
@@ -122,12 +220,8 @@ function toParams(userId: number, p: PayslipRecord) {
     leave_fest_s: p.leaveFest.spettanti,
     leave_fest_g: p.leaveFest.godute,
     leave_fest_r: p.leaveFest.residue,
-    leave_ferie_s: p.leaveFerie.spettanti,
-    leave_ferie_g: p.leaveFerie.godute,
-    leave_ferie_r: p.leaveFerie.residue,
-    leave_perm_s: p.leavePerm.spettanti,
-    leave_perm_g: p.leavePerm.godute,
-    leave_perm_r: p.leavePerm.residue,
+    ...leaveParams("leave_ferie", p.leaveFerie),
+    ...leaveParams("leave_perm", p.leavePerm),
     source_file: p.sourceFile,
     imported_at: p.importedAt,
     parser_version: p.parserVersion,
