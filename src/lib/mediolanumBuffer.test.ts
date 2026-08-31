@@ -1,29 +1,26 @@
-import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseMediolanum } from "./parseMediolanum";
 import { parseRevolut } from "./parseRevolut";
 import { withResolvedInternal } from "./internal";
 import { buildLiquidityView, parseMediolanumBalances, parseRevolutBalances } from "./liquidity";
 import { buildMediolanumBuffer, MEDIOLANUM_BUFFER_OVERSHOOT } from "./mediolanumBuffer";
-
-const medPath = "fixtures/Elenco movimenti dal 28-08-2025 al 28-08-2026.csv";
-const revPath = "fixtures/account-statement_2025-07-29_2026-08-28_it-it_50d25d.csv";
+import { hasRealBankFixtures, readUtf8, REAL_MED, REAL_REV } from "../test/fixtures";
 
 function fixtureTransactions() {
   return [
-    ...parseMediolanum(fs.readFileSync(medPath, "utf8")),
-    ...parseRevolut(fs.readFileSync(revPath, "utf8")),
+    ...parseMediolanum(readUtf8(REAL_MED)),
+    ...parseRevolut(readUtf8(REAL_REV)),
   ].map((t) => withResolvedInternal(t, {}));
 }
 
 describe("mediolanumBuffer", () => {
-  it("computes recommended buffer from Mediolanum SDD history", () => {
+  it.skipIf(!hasRealBankFixtures())("computes recommended buffer from Mediolanum SDD history", () => {
     const tx = fixtureTransactions();
-    const rev = parseRevolut(fs.readFileSync(revPath, "utf8"));
+    const rev = parseRevolut(readUtf8(REAL_REV));
     const liquidity = buildLiquidityView(
       {
-        mediolanum: parseMediolanumBalances(fs.readFileSync(medPath, "utf8"))!,
-        revolut: parseRevolutBalances(fs.readFileSync(revPath, "utf8"))!,
+        mediolanum: parseMediolanumBalances(readUtf8(REAL_MED))!,
+        revolut: parseRevolutBalances(readUtf8(REAL_REV))!,
       },
       rev,
     );
@@ -37,22 +34,35 @@ describe("mediolanumBuffer", () => {
   });
 
   it("flags low balance when available is below target", () => {
-    const tx = fixtureTransactions();
+    const tx = hasRealBankFixtures()
+      ? fixtureTransactions()
+      : [
+          {
+            id: "med-1",
+            date: "2026-08-28",
+            description: "ADDEBITO DIRETTO CORE SKY",
+            amount: -24.9,
+            currency: "EUR",
+            source: "mediolanum" as const,
+            category: "Abbonamenti",
+          },
+        ];
+    const available = hasRealBankFixtures() ? 468 : 50;
     const buf = buildMediolanumBuffer(tx, {
       mediolanum: {
-        ledger: 468,
-        available: 468,
+        ledger: available,
+        available,
         asOf: "2026-08-28",
         importedAt: "2026-08-28",
       },
       revolut: null,
       revolutAttualeEffective: null,
       pockets: null,
-      totalEur: 468,
+      totalEur: available,
       note: null,
     })!;
 
-    expect(buf.currentAvailable).toBe(468);
+    expect(buf.currentAvailable).toBe(available);
     expect(buf.gap).toBeGreaterThan(0);
     expect(buf.status).not.toBe("ok");
   });

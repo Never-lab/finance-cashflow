@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildLiquidityView,
@@ -8,46 +7,55 @@ import {
   parseRevolutBalances,
 } from "./liquidity";
 import { parseRevolut } from "./parseRevolut";
-
-const medPath = "fixtures/Elenco movimenti dal 28-08-2025 al 28-08-2026.csv";
-const revPath = "fixtures/account-statement_2025-07-29_2026-08-28_it-it_50d25d.csv";
+import { hasRealBankFixtures, readUtf8, REAL_MED, REAL_REV, SAMPLE_MED, SAMPLE_REV } from "../test/fixtures";
 
 describe("liquidity", () => {
-  it("parses Mediolanum preamble balances", () => {
-    const med = parseMediolanumBalances(fs.readFileSync(medPath, "utf8"));
-    expect(med?.ledger).toBe(474.74);
-    expect(med?.available).toBe(467.76);
+  it("parses Mediolanum preamble balances from sample CSV", () => {
+    const med = parseMediolanumBalances(readUtf8(SAMPLE_MED));
+    expect(med?.ledger).toBe(100);
+    expect(med?.available).toBe(100);
   });
 
-  it("parses Revolut product balances and pending Attuale", () => {
-    const rev = parseRevolutBalances(fs.readFileSync(revPath, "utf8"));
-    expect(rev?.attuale).toBe(346.4);
-    expect(rev?.risparmi).toBe(90);
-    expect(rev?.deposito).toBe(0.35);
-    expect(rev?.pendingAttuale).toBe(57.84);
+  it("parses Revolut product balances from sample CSV", () => {
+    const rev = parseRevolutBalances(readUtf8(SAMPLE_REV));
+    expect(rev?.attuale).toBe(254.8);
+    expect(rev?.risparmi).toBe(200);
+    expect(rev?.deposito).toBe(430.05);
+    expect(rev?.pendingAttuale).toBe(0);
   });
 
-  it("computes effective Attuale matching live app balance", () => {
-    const rev = parseRevolutBalances(fs.readFileSync(revPath, "utf8"))!;
-    expect(rev.attuale - rev.pendingAttuale).toBeCloseTo(288.56, 2);
+  it("computes effective Attuale from sample export", () => {
+    const rev = parseRevolutBalances(readUtf8(SAMPLE_REV))!;
+    expect(rev.attuale - rev.pendingAttuale).toBeCloseTo(254.8, 2);
   });
 
-  it("estimates Manutenzione Auto ~90 and Viaggio ~0 after Valencia", () => {
-    const tx = parseRevolut(fs.readFileSync(revPath, "utf8"));
+  it("estimates pocket balances from sample Revolut movements", () => {
+    const tx = parseRevolut(readUtf8(SAMPLE_REV));
     const pockets = estimateRevolutPockets(tx);
-    expect(pockets.manutenzioneAuto).toBeCloseTo(90, 0);
-    expect(pockets.viaggio).toBeCloseTo(0, 0);
+    expect(pockets.manutenzioneAuto).toBe(0);
+    expect(pockets.viaggio).toBe(0);
   });
 
-  it("builds total liquidity across Mediolanum + Revolut", () => {
-    const med = parseMediolanumBalances(fs.readFileSync(medPath, "utf8"))!;
-    const rev = parseRevolutBalances(fs.readFileSync(revPath, "utf8"))!;
-    const view = buildLiquidityView({ mediolanum: med, revolut: rev }, parseRevolut(fs.readFileSync(revPath, "utf8")));
-    expect(view.totalEur).toBeCloseTo(467.76 + 288.56 + 90 + 0.35, 1);
+  it("builds total liquidity across Mediolanum + Revolut samples", () => {
+    const med = parseMediolanumBalances(readUtf8(SAMPLE_MED))!;
+    const rev = parseRevolutBalances(readUtf8(SAMPLE_REV))!;
+    const view = buildLiquidityView({ mediolanum: med, revolut: rev }, parseRevolut(readUtf8(SAMPLE_REV)));
+    expect(view.totalEur).toBeCloseTo(100 + 254.8 + 200 + 430.05, 1);
   });
 
   it("extractLiquidityFromCsv returns patch by source", () => {
-    expect(extractLiquidityFromCsv(fs.readFileSync(medPath, "utf8"), "mediolanum").mediolanum?.available).toBe(467.76);
-    expect(extractLiquidityFromCsv(fs.readFileSync(revPath, "utf8"), "revolut").revolut?.risparmi).toBe(90);
+    expect(extractLiquidityFromCsv(readUtf8(SAMPLE_MED), "mediolanum").mediolanum?.available).toBe(100);
+    expect(extractLiquidityFromCsv(readUtf8(SAMPLE_REV), "revolut").revolut?.risparmi).toBe(200);
+  });
+
+  it.skipIf(!hasRealBankFixtures())("parses real bank export balances when fixtures are present", () => {
+    const med = parseMediolanumBalances(readUtf8(REAL_MED));
+    expect(med?.ledger).toBe(474.74);
+    expect(med?.available).toBe(467.76);
+
+    const rev = parseRevolutBalances(readUtf8(REAL_REV));
+    expect(rev?.attuale).toBe(346.4);
+    expect(rev?.risparmi).toBe(90);
+    expect(rev?.pendingAttuale).toBe(57.84);
   });
 });
