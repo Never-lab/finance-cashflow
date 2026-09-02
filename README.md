@@ -38,6 +38,12 @@ Dopo la migrazione i dati vivono in SQLite; IndexedDB non è più la fonte di ve
 4. Tab **Investimenti** — strumenti, versamenti, KPI, allocation, P&L; ticker opzionale (Yahoo); fondi senza ticker a saldo manuale.
 5. **Impostazioni** — backup/restore JSON, svuota dati, chiave API mercato opzionale.
 
+## Assistente finanziario (Cursor skills)
+
+In `.cursor/skills/`: pack **openaccountant** (spese, abbonamenti, digest, goal, net worth…) + **ai-finance-claude** (budget, portfolio, FIRE, compare…).
+
+Guida, prompt e use case: **[docs/skills-finance-assistant.md](docs/skills-finance-assistant.md)**.
+
 ### Quotazioni (Finnhub opzionale)
 
 Default: **Yahoo Finance**, nessuna chiave.

@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "skills": {
+    "cash-flow-forecast": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "business/cash-flow-forecast/SKILL.md",
+      "computedHash": "39afefcf5cd0b8f0b838159870857156a2497538efa4af2fe3f3036d187fa97c"
+    },
+    "emergency-fund": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/emergency-fund/SKILL.md",
+      "computedHash": "806155fd6237627da57ac1c5bd7f5ee4b9c344779e1d04f867a0d4d60e357acc"
+    },
+    "expense-optimizer": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "shared/expense-optimizer/SKILL.md",
+      "computedHash": "43c8c17697979b4a79b0cc0c7e02176d5af6c7664a1e8843312f6510c4a1a412"
+    },
+    "finance-analyze": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-analyze/SKILL.md",
+      "computedHash": "66417e7309a32c1edd31c35f52f89444f3fcc085c03e2bfc3be73738262e2ccc"
+    },
+    "finance-budget": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-budget/SKILL.md",
+      "computedHash": "8a34dee76a57ee4675ea7cac900b95b8abd2deb293a0aa2e047423068a205088"
+    },
+    "finance-compare": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-compare/SKILL.md",
+      "computedHash": "9005219f6d57079eba0b5f47d6c4228c1ed38e61151a8968f51bd8d2e9024115"
+    },
+    "finance-debt": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-debt/SKILL.md",
+      "computedHash": "3d78417a26a661f191ec8360bf0c3ba0c2d43ece720dbbba2219d7170b2466d6"
+    },
+    "finance-emergency": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-emergency/SKILL.md",
+      "computedHash": "7597c0b70db0321591e3a326e533f2e83b9a7672a92f74a067e330e4502c151f"
+    },
+    "finance-fire": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-fire/SKILL.md",
+      "computedHash": "2dc68ac24fa190b24981655ea9717e66b102dcdb1c8f3116b008121fbe3e9fec"
+    },
+    "finance-goals": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-goals/SKILL.md",
+      "computedHash": "733dd1c6923179a7b8f6fbd9423047d846bc3f11936661eaf18a638554dc04f6"
+    },
+    "finance-networth": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-networth/SKILL.md",
+      "computedHash": "741c67d45822b5a5e4a142c4007eb55c7e45ee05ef669ce77eac731445815b1a"
+    },
+    "finance-portfolio": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-portfolio/SKILL.md",
+      "computedHash": "6576f8c994cf8058fa51eeb5fa73469437709ce61ba26b8e359554cf81f443c0"
+    },
+    "finance-quick": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-quick/SKILL.md",
+      "computedHash": "e36006cff31d3cf08958edbc90b0006cd2d9127ac65303a537d4a59cbe48340c"
+    },
+    "finance-retirement": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-retirement/SKILL.md",
+      "computedHash": "e3fb0f2dccc7d2cfadd62784241fb00aaf3192357dbad692b446844546c4ceeb"
+    },
+    "finance-screen": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-screen/SKILL.md",
+      "computedHash": "c43005a324612205ffb847d7c691736f5cdcdd6915f03ab58537296bdf1a17b8"
+    },
+    "finance-taxes": {
+      "source": "zubair-trabzada/ai-finance-claude",
+      "sourceType": "github",
+      "skillPath": "skills/finance-taxes/SKILL.md",
+      "computedHash": "6129ae3484d32afd7b8d9c36cea45ab2faf63b4a9db3851f52001d18aae1fd26"
+    },
+    "financial-goals": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/financial-goals/SKILL.md",
+      "computedHash": "ca1aa3255abe4f9a77e72c3a126e4f65250aec70ef114b5a1de66f64adfa8ae5"
+    },
+    "lifestyle-creep": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/lifestyle-creep/SKILL.md",
+      "computedHash": "5aea1d63084eb2e72ebb7460ee7f3d7e51b6df3eba6daa7828b69185856240ae"
+    },
+    "monthly-digest": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "shared/monthly-digest/SKILL.md",
+      "computedHash": "9d4658a81f113b45f1e9473e1e33df13899c223a7b34a3c8fe708b4af962bc1e"
+    },
+    "net-worth": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/net-worth/SKILL.md",
+      "computedHash": "33309e33c5539091dea198f437b64b20429c18e7c7afed4d262332a87c1444dc"
+    },
+    "smart-categorize": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "shared/smart-categorize/SKILL.md",
+      "computedHash": "256638cc1347c42058b13eef55cef129fb36bca91c499ac5b4a85e79ddae5ba8"
+    },
+    "spending-review": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/spending-review/SKILL.md",
+      "computedHash": "0184e089349c2bed4a2e00dedade0d953a8a84fe698a6c1acc2ff3e4b8fce4df"
+    },
+    "subscription-audit": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/subscription-audit/SKILL.md",
+      "computedHash": "8a7280b19c2e0ee695dcc3b1a1e3f17804aab7bef86daf777bf15905eec3f6f9"
+    },
+    "zero-based-budget": {
+      "source": "openaccountant/skills",
+      "sourceType": "github",
+      "skillPath": "personal/zero-based-budget/SKILL.md",
+      "computedHash": "a1b821afb77c113115e3d5cbeebdcf7ecbf77f1291e4610f52e975aabcb22b88"
+    }
+  }
+}

@@ -188,7 +188,12 @@ Ordine di default (allineato a FABLE + Superpowers del parent):
 | Playwright MCP | Smoke UI |
 | Excel MCP | Solo se serve ispezionare xlsx (v1 è CSV) |
 
-### Skill finance-* in `~/.cursor/skills`
+### Assistente finanziario (progetto)
+
+Skill in **`.cursor/skills/`**: openaccountant (spese, abbonamenti, digest…) + ai-finance-claude (budget, portfolio, FIRE…).  
+Guida e use case: **`docs/skills-finance-assistant.md`**.
+
+### Skill finance-* globali (non questo stack)
 
 Esistono `finance-dashboard-setup`, `finance-new-month-dashboard`, `finance-customization-dashboard`: sono il flusso **Cowork / HTML artifact / overrides.json**, **non** questa app Vite.  
 **Non usarle** su questo repo salvo richiesta esplicita di allineamento o migrazione.
