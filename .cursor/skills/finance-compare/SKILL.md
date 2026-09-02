@@ -1,11 +1,17 @@
 ---
 name: finance-compare
-description: Side-by-side comparison of two financial scenarios (buy vs rent, new job vs stay, payoff house vs invest, Roth vs Traditional, lease vs buy car, etc). Projects each scenario over 10 years, compares total cost, opportunity cost, risk profile, and produces a structured recommendation. Output saved as FINANCE-COMPARE.md.
+description: >
+  Confronta due scenari ITALIA in € (affitto vs mutuo, fondo pensione vs ETF,
+  surroga, auto). Usa per "/finance compare", "conviene X o Y". Contesto IT.
+  Prima leggi _shared/italy-finance-context.md.
 ---
 
-# /finance compare — Side-by-Side Scenario Comparison
+# /finance compare — Italia
 
-**DISCLAIMER: For educational/informational purposes only. Not financial advice.**
+**Obbligo:** `_shared/italy-finance-context.md`. Orizzonte tipico 10 anni, cashflow in €.  
+Esempi: affitto vs mutuo; versare fondo pensione vs PAC; surroga sì/no; no “Roth vs Traditional”.
+
+**DISCLAIMER:** informativo.
 
 ## Purpose
 

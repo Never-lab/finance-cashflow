@@ -1,11 +1,18 @@
 ---
 name: finance-screen
-description: Investment screener with pre-built strategies (Dividend Growth, 3-Fund Index, Bond Allocation, REITs, International Diversification, ESG) and custom criteria support. Returns curated ticker lists, allocation models, expected returns, expense ratios, and a recommended portfolio with rebalancing notes. Output saved as FINANCE-SCREEN.md.
+description: >
+  Screener portafoglio ITALIA: ETF UCITS (mondo, EU, bond EUR), PIR opzionale,
+  TER bassi. Usa per "/finance screen", "che ETF". Contesto IT.
+  Prima leggi _shared/italy-finance-context.md.
 ---
 
-# /finance screen — Investment Screener
+# /finance screen — Italia (UCITS)
 
-**DISCLAIMER: For educational/informational purposes only. Not financial advice. This is not a recommendation to buy any specific security.**
+**Obbligo:** `_shared/italy-finance-context.md`.  
+Preferisci ETF **UCITS** (IE/LU) acquistabili da broker IT/EU. Ticker USA non-UCITS solo se l’utente li ha già (W-8BEN, fiscalità).  
+Fiscalità: 26% / 12,5% titoli Stato — ricordalo nel report. Esempi ticker = illustrativi, non raccomandazione.
+
+**DISCLAIMER:** informativo. Non è sollecitazione al pubblico risparmio.
 
 ## Purpose
 

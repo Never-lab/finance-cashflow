@@ -4,6 +4,29 @@ Skill pack per lavorare su **finance-cashflow** come assistente personale: anali
 
 > Non è consulenza finanziaria professionale. Usa i numeri del tuo SQLite / CSV locali.
 
+## Locale: Italia
+
+Tutte le skill `finance-*` e openaccountant in questo repo sono **adattate all’Italia**.
+
+Contesto obbligatorio: [`.cursor/skills/_shared/italy-finance-context.md`](../.cursor/skills/_shared/italy-finance-context.md)
+
+| Tema | Usa (IT) | Non usare (USA) |
+|------|----------|-----------------|
+| Reddito | Netto busta / P.IVA forfettario o ordinario | W-2 / 1099 |
+| Previdenza | INPS + fondo pensione (deduzione) | Social Security / 401k / Roth |
+| Imposte | IRPEF + addizionali; plusvalenze 26%/12,5% | Federal brackets / LTCG 0% |
+| Sanità | SSN + fondi/polizze | Medicare / HSA / ACA |
+| Investimenti | ETF UCITS, BTP, PIR | Ticker non-UCITS come default |
+| Valuta | **€** | $ |
+
+`finance-taxes` è riscritto per IRPEF/fondi pensione/forfettario.  
+`finance-retirement`, `finance-emergency`, `finance-portfolio`, `finance-fire`, `finance-quick`, `finance-analyze` sono versioni IT.  
+Le altre `finance-*` hanno override IT in testa.
+
+**Stime fiscali = orientative** → CAF / commercialista.
+
+---
+
 ## Installazione (già nel repo)
 
 Le skill sono in **`.cursor/skills/`**. Cursor le carica automaticamente aprendo questo progetto.
@@ -128,9 +151,10 @@ Sorgente: [zubair-trabzada/ai-finance-claude](https://github.com/zubair-trabzada
 5. **Analisi completa**  
    `finance-analyze` con: reddito netto, spese medie 3 mesi, debiti, età, obiettivo.
 
-### Attenzione Italia
+### Attenzione fiscale
 
-`finance-taxes`, Social Security, 401(k)/HSA/Roth sono **contesto USA**. Per te: interpreta come IRPEF, fondo pensione, PIR, ecc., oppure salta `finance-taxes` e resta su budget/cashflow/portfolio.
+Le skill sono **localizzate Italia** (vedi `_shared/italy-finance-context.md`).  
+Non applicare scaglioni IRS / 401k / Roth. Per dichiarativo reale: CAF/commercialista.
 
 ---
 

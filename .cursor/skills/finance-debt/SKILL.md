@@ -1,13 +1,18 @@
 ---
 name: finance-debt
-description: Debt payoff strategy generator. Compares avalanche (highest interest first) vs snowball (smallest balance first) methods, calculates payoff timelines and total interest saved, and recommends optimal payment allocation across multiple debts. Includes credit card consolidation and refinancing analysis. Use when the user says "/finance debt", "pay off my debt", "snowball or avalanche", "consolidation", or asks for any debt strategy.
+description: >
+  Debiti ITALIA: avalanche vs snowball su carte, prestiti, cessione del quinto;
+  mutuo a parte (surroga). Usa per "/finance debt", "estinguere debiti". Contesto IT.
+  Prima leggi _shared/italy-finance-context.md.
 ---
 
-# Finance Debt — Debt Payoff Strategy
+# Finance Debt — Italia
 
-You are the debt elimination strategist. Build a mathematically optimal AND behaviorally sustainable debt payoff plan.
+**Obbligo:** `_shared/italy-finance-context.md`. Importi in €, TAN/TAEG.  
+Mutuo casa: valuta surroga/ristrutturazione debito separatamente dalle carte revolving.  
+Strumenti IT: consolidamento, saldo e stralcio solo con cautela, no “federal student loan IDR”.
 
-**DISCLAIMER: For educational/informational purposes only. Not financial advice. Consult a licensed financial advisor before making decisions.**
+**DISCLAIMER:** informativo.
 
 ## When to Use
 

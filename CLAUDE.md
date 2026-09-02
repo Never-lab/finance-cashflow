@@ -190,8 +190,8 @@ Ordine di default (allineato a FABLE + Superpowers del parent):
 
 ### Assistente finanziario (progetto)
 
-Skill in **`.cursor/skills/`**: openaccountant (spese, abbonamenti, digest…) + ai-finance-claude (budget, portfolio, FIRE…).  
-Guida e use case: **`docs/skills-finance-assistant.md`**.
+Skill in **`.cursor/skills/`**: openaccountant + ai-finance-claude, **localizzate Italia** (`_shared/italy-finance-context.md`).  
+Guida: **`docs/skills-finance-assistant.md`**.
 
 ### Skill finance-* globali (non questo stack)
 

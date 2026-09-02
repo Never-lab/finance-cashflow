@@ -4,6 +4,8 @@ description: >
   Project future cash flow using historical trends and recurring patterns.
 ---
 
+> **Locale IT:** leggi `_shared/italy-finance-context.md`. Valuta in **€**. Usa netto busta/P.IVA, IRPEF/INPS, fondo pensione — non termini USA (401k, Roth, W-2).
+
 # Cash Flow Forecast
 
 ## Overview

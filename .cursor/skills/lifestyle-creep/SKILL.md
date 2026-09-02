@@ -4,6 +4,8 @@ description: >
   Detect spending increases across categories over 6-12 months.
 ---
 
+> **Locale IT:** leggi `_shared/italy-finance-context.md`. Valuta in **€**. Usa netto busta/P.IVA, IRPEF/INPS, fondo pensione — non termini USA (401k, Roth, W-2).
+
 # Lifestyle Creep Detector
 
 ## Overview

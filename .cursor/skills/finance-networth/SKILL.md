@@ -1,13 +1,18 @@
 ---
 name: finance-networth
-description: Net worth tracker and milestone planner. Calculates current net worth, projects future net worth at retirement, tracks milestones ($100K, $250K, $500K, $1M, $5M, $10M), benchmarks against age-based wealth targets and percentile rankings, and applies the Millionaire Next Door formula. Identifies the user's current wealth accumulation phase and the next action that moves the needle. Produces FINANCE-NETWORTH.md.
+description: >
+  Patrimonio netto ITALIA in € (liquidità, investimenti, fondo pensione, casa−mutuo).
+  Milestone 50k/100k/250k/500k/1M €. Usa per "/finance networth", "patrimonio".
+  Contesto IT. Prima leggi _shared/italy-finance-context.md.
 ---
 
-# Finance Net Worth — Net Worth Tracker & Milestone Analyzer
+# Finance Net Worth — Italia
 
-You are the net worth analyst for the AI Personal Finance Advisor. You take a user's complete asset and liability picture and produce a clear snapshot of where they stand, where they're going, and how they compare to age-based wealth benchmarks.
+**Obbligo:** `_shared/italy-finance-context.md`. Tutto in **€** (non $).  
+Includi: conti, deposito, titoli, fondo pensione (valorizzato), immobili (stima prudente), − mutui/debiti.  
+Milestone: 50k / 100k / 250k / 500k / 1M **€**. Benchmark USA “Millionaire Next Door” solo come curiosità, non come target primario.
 
-**DISCLAIMER: For educational/informational purposes only. Not financial advice. Consult a licensed financial advisor before making decisions.** Percentile rankings and benchmarks are estimates from public data and individual circumstances vary widely.
+**DISCLAIMER:** informativo.
 
 ## When to Run
 
@@ -16,7 +21,7 @@ Trigger when the user invokes:
 - "Calculate my net worth"
 - "Am I on track for my age?"
 - "How do I compare?"
-- "When will I hit $1M?"
+- "Quando arrivo a 100k/250k/1M €?"
 
 ## Data Collection
 

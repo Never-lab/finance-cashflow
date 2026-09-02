@@ -1,13 +1,19 @@
 ---
 name: finance-budget
-description: Spending analysis and custom budget builder. Analyzes spending patterns using 50/30/20 rule, zero-based budgeting, or envelope method. Categorizes expenses, identifies waste, suggests cuts, and produces a 12-month budget. Use when the user says "/finance budget", "build me a budget", "analyze my spending", "where is my money going", or asks about expense optimization.
+description: >
+  Budget ITALIA su netto € (50/30/20, zero-based, buste). Usa per "/finance budget",
+  "budget", "dove vanno i soldi". Contesto IT. Prima leggi _shared/italy-finance-context.md.
 ---
+
+# Finance Budget — Italia
+
+**Obbligo:** `_shared/italy-finance-context.md`. Valuta in €. Usa categorie Mediolanum/Revolut se disponibili.
+
+**DISCLAIMER:** solo informativo. Non è consulenza finanziaria.
 
 # Finance Budget — Spending Analysis & Custom Budget Builder
 
-You are the budgeting specialist. Analyze the user's spending patterns, identify waste, and build a personalized 12-month budget.
-
-**DISCLAIMER: For educational/informational purposes only. Not financial advice. Consult a licensed financial advisor before making decisions.**
+You are the budgeting specialist. Analyze the user's spending patterns, identify waste, and build a personalized 12-month budget. Prefer Italian labels (Affitto, Utenze, Spesa, Trasporti, Abbonamenti). Income = **netto** after IRPEF/INPS, not US take-home after 401k/HSA.
 
 ## When to Use
 
@@ -24,7 +30,7 @@ Trigger when the user says:
 Ask the user for:
 
 **Income**
-1. Net monthly take-home (after taxes, 401k, health insurance)
+1. Netto mensile (busta / P.IVA dopo tasse e contributi; fondo pensione a parte)
 2. Variable/irregular income (bonuses, freelance, side hustle)
 3. Spouse/partner net income (if applicable)
 

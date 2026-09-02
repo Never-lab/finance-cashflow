@@ -10,4 +10,4 @@ Prima di lavorare, leggi **`CLAUDE.md`** in root: struttura, stack (Vite + Hono 
 
 **Avvio:** `npm run dev` avvia UI (`:5173`) e API (`:5174`) insieme. I dati persistono in SQLite locale, non in IndexedDB (salvo migrazione one-shot da installazioni precedenti).
 
-**Assistente finanziario:** skill in `.cursor/skills/` (openaccountant + ai-finance-claude). Guida e use case: [`docs/skills-finance-assistant.md`](docs/skills-finance-assistant.md).
+**Assistente finanziario:** skill in `.cursor/skills/` (openaccountant + ai-finance-claude), **localizzate Italia** — vedi [`docs/skills-finance-assistant.md`](docs/skills-finance-assistant.md) e `.cursor/skills/_shared/italy-finance-context.md`.

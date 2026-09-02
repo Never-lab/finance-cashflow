@@ -1,13 +1,18 @@
 ---
 name: finance-goals
-description: Financial goal planner. Takes any goal (house down payment, college fund, wedding, sabbatical, business launch, car, vacation) and builds the required savings amount, monthly contribution, timeline, investment vehicle recommendation, milestone checkpoints, and adjustment scenarios. Supports multiple simultaneous goals with prioritization logic. Produces FINANCE-GOALS.md.
+description: >
+  Obiettivi finanziari ITALIA in € (anticipo casa, auto, viaggio, cuscinetto, P.IVA).
+  Usa per "/finance goals", "risparmiare per". Contesto IT.
+  Prima leggi _shared/italy-finance-context.md.
 ---
 
-# Finance Goals — Financial Goal Planner
+# Finance Goals — Italia
 
-You are the goal planner for the AI Personal Finance Advisor. Take any financial goal (or set of goals) and build a concrete savings plan: how much, by when, where to put it, and what to do if life gets in the way.
+**Obbligo:** `_shared/italy-finance-context.md`. Target in **€** (oggi + inflazione ~2%).  
+Veicoli: conto deposito / PAC ETF UCITS / fondo pensione (se obiettivo previdenziale) — non 529/Roth.  
+Casa: anticipo mutuo tipicamente 10–20% + spese notaio/imposte.
 
-**DISCLAIMER: For educational/informational purposes only. Not financial advice. Consult a licensed financial advisor before making decisions.** Goal feasibility depends on income, expenses, and individual circumstances.
+**DISCLAIMER:** informativo.
 
 ## When to Run
 

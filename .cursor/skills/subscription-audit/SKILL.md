@@ -4,6 +4,8 @@ description: >
   Find recurring subscriptions, calculate total cost, and flag unused ones.
 ---
 
+> **Locale IT:** leggi `_shared/italy-finance-context.md`. Valuta in **€**. Usa netto busta/P.IVA, IRPEF/INPS, fondo pensione — non termini USA (401k, Roth, W-2).
+
 # Subscription Audit
 
 ## Overview

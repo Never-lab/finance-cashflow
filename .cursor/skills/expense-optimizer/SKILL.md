@@ -4,6 +4,8 @@ description: >
   Find recurring expenses and subscriptions to cut or reduce.
 ---
 
+> **Locale IT:** leggi `_shared/italy-finance-context.md`. Valuta in **€**. Usa netto busta/P.IVA, IRPEF/INPS, fondo pensione — non termini USA (401k, Roth, W-2).
+
 # Expense Optimizer
 
 ## Overview

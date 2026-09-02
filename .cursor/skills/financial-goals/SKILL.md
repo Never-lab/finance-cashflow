@@ -4,6 +4,8 @@ description: >
   Set savings goals with timelines and track monthly progress toward them.
 ---
 
+> **Locale IT:** leggi `_shared/italy-finance-context.md`. Valuta in **€**. Usa netto busta/P.IVA, IRPEF/INPS, fondo pensione — non termini USA (401k, Roth, W-2).
+
 # Financial Goals Tracker
 
 ## Overview

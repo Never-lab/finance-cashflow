@@ -4,6 +4,8 @@ description: >
   Calculate emergency fund target and track savings progress toward it.
 ---
 
+> **Locale IT:** leggi `_shared/italy-finance-context.md`. Valuta in **€**. Usa netto busta/P.IVA, IRPEF/INPS, fondo pensione — non termini USA (401k, Roth, W-2).
+
 # Emergency Fund Calculator
 
 ## Overview
