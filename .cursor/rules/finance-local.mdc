@@ -6,6 +6,8 @@ alwaysApply: true
 # Finance local
 
 1. Read `AGENTS.md` → `CLAUDE.md`. Workflow: `ACTION.md` («procedi» → commit+push `master`).
-2. Chat Italian; code identifiers English.
+2. Chat Italian; code identifiers English. Tone: `caveman.mdc` (off: `stop caveman` | `normal mode`).
 3. PR/issue English: skill **`no-ai-slop`**. Never `Co-authored-by: Cursor`.
 4. No default `docs/superpowers/specs|plans` MD — decisions in chat/claude-mem.
+5. Quality stack (from Glowroot / Kudu / SteelMC): `token-thrift`, `code-quality`, `fable-powers`, `finance-post-impl-review` → skill **`finance-code-review`** before done / procedi.
+6. Assistente €: `.cursor/skills/finance-*` + `_shared/italy-finance-context.md` (see `docs/skills-finance-assistant.md`).

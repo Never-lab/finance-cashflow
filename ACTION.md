@@ -6,10 +6,11 @@ Regole operative brevi per Cursor / agent su questo repo.
 
 Quando Nicholas dice **`procedi`**, **`vai`**, **`commit e push`**, o equivalente esplicito dopo un task completato:
 
-1. Verifica `npm test` e `npm run build` (se il task ha toccato codice).
-2. **`git add`** solo file pertinenti (mai `.env`, PII, `data/*.db`, `.superpowers/`).
-3. **`git commit`** con messaggio chiaro (why, non solo what).
-4. **`git push origin master`** (autodeploy Railway).
+1. Se il task ha toccato codice: skill **`finance-code-review`** → serve `GATE: READY` (fix Critical/Important prima).
+2. Verifica `npm test` e `npm run build` (se il task ha toccato codice).
+3. **`git add`** solo file pertinenti (mai `.env`, PII, `data/*.db`, `.superpowers/`).
+4. **`git commit`** con messaggio chiaro (why, non solo what).
+5. **`git push origin master`** (autodeploy Railway).
 
 Non fare commit/push **senza** quella parola d’ordine — salvo che Nicholas chieda esplicitamente solo commit o solo push.
 

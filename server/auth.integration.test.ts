@@ -119,6 +119,11 @@ describe("auth API", () => {
     });
     expect(bobState.status).toBe(200);
 
-    fs.rmSync(freshDir, { recursive: true, force: true });
+    resetDbForTests();
+    try {
+      fs.rmSync(freshDir, { recursive: true, force: true });
+    } catch {
+      /* Windows may keep a brief lock on temp dirs */
+    }
   });
 });

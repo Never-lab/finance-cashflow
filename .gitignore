@@ -10,6 +10,9 @@ fixtures/*-real.csv
 fixtures/*.pdf
 data/*.db
 data/*.db-*
+# Local prod session / exports (PII + tokens)
+scripts/.prod-*
+scripts/*.out.txt
 # Local mirrors / npx skills sprawl (canonical skills live in .cursor/skills/)
 .agents/
 .claude/skills/

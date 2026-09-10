@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Period, RecurringMark, Transaction } from "../types";
 import type { LoanTarget } from "../lib/loans";
+import type { CategoryBudgets } from "../lib/budget";
 import { api, type PortfolioSummary } from "../api";
 import {
   analyzeFinances,
@@ -14,12 +15,14 @@ type Props = {
   transactions: Transaction[];
   recurringMarks: Record<string, RecurringMark>;
   loanTargets: Record<string, LoanTarget>;
+  categoryBudgets?: CategoryBudgets;
   onGoAbbonamenti: () => void;
   onGoPaypal: () => void;
   onGoMovimenti: () => void;
   onGoMutui: () => void;
   onGoInvestimenti: () => void;
   onGoDashboard: () => void;
+  onGoBudget?: () => void;
   onUpload: () => void;
 };
 
@@ -41,12 +44,14 @@ export function Advisor({
   transactions,
   recurringMarks,
   loanTargets,
+  categoryBudgets = {},
   onGoAbbonamenti,
   onGoPaypal,
   onGoMovimenti,
   onGoMutui,
   onGoInvestimenti,
   onGoDashboard,
+  onGoBudget,
   onUpload,
 }: Props) {
   const [period, setPeriod] = useState<Period>("3m");
@@ -74,10 +79,11 @@ export function Advisor({
       analyzeFinances(transactions, {
         recurringMarks,
         loanTargets,
+        categoryBudgets,
         period,
         portfolio: portfolioSnap,
       }),
-    [transactions, recurringMarks, loanTargets, period, portfolioSnap],
+    [transactions, recurringMarks, loanTargets, categoryBudgets, period, portfolioSnap],
   );
 
   const visibleInsights = useMemo(
@@ -176,6 +182,7 @@ export function Advisor({
                   onGoMutui={onGoMutui}
                   onGoInvestimenti={onGoInvestimenti}
                   onGoDashboard={onGoDashboard}
+                  onGoBudget={onGoBudget}
                   compact
                 />
               </div>
@@ -218,6 +225,7 @@ export function Advisor({
               onGoMutui={onGoMutui}
               onGoInvestimenti={onGoInvestimenti}
               onGoDashboard={onGoDashboard}
+              onGoBudget={onGoBudget}
             />
           ))}
         </div>
@@ -240,6 +248,7 @@ function InsightCard({
   onGoMutui,
   onGoInvestimenti,
   onGoDashboard,
+  onGoBudget,
 }: {
   insight: Insight;
   onGoAbbonamenti: () => void;
@@ -248,6 +257,7 @@ function InsightCard({
   onGoMutui: () => void;
   onGoInvestimenti: () => void;
   onGoDashboard: () => void;
+  onGoBudget?: () => void;
 }) {
   return (
     <article className={`insight-card sev-${insight.severity}`}>
@@ -271,6 +281,7 @@ function InsightCard({
         onGoMutui={onGoMutui}
         onGoInvestimenti={onGoInvestimenti}
         onGoDashboard={onGoDashboard}
+        onGoBudget={onGoBudget}
       />
     </article>
   );
@@ -284,6 +295,7 @@ function InsightLinks({
   onGoMutui,
   onGoInvestimenti,
   onGoDashboard,
+  onGoBudget,
   compact = false,
 }: {
   insight: Insight;
@@ -293,6 +305,7 @@ function InsightLinks({
   onGoMutui: () => void;
   onGoInvestimenti: () => void;
   onGoDashboard: () => void;
+  onGoBudget?: () => void;
   compact?: boolean;
 }) {
   const cls = compact ? "btn sm" : "btn";
@@ -323,6 +336,11 @@ function InsightLinks({
       {(insight.kind === "anomaly" || insight.id.includes("uncategorized")) && (
         <button type="button" className={cls} onClick={onGoMovimenti}>
           Movimenti
+        </button>
+      )}
+      {insight.id.startsWith("budget-") && onGoBudget && (
+        <button type="button" className={cls} onClick={onGoBudget}>
+          Budget
         </button>
       )}
       {(insight.kind === "cashflow" &&

@@ -1,0 +1,50 @@
+---
+description: Ask don't guess, verify blockers, testing + UI quality (SteelMC/Kudu style)
+alwaysApply: true
+---
+
+# Code quality (Finance)
+
+Distilled from SteelMC / Kudu / Glowroot agent standards. Stack here: Vite + React + Hono + SQLite.
+
+## Ask, don't guess
+
+Ambiguity is a stop signal. If CSV format, category rules, KPI math, auth/deploy, or schema intent is unclear: ask. No speculative coding.
+
+## Honest blockers
+
+Don't hide uncertainty behind workarounds. State what you verified, what is missing, why guessing risks wrong money numbers / PII leaks / broken import, and the exact file/log/decision needed.
+
+## Verify before asking
+
+Inspect relevant parsers, `server/` routes, SQLite schema, fixtures, and tests first. If still blocked, say what you checked.
+
+## Foundations
+
+Don't land stubs or fake financial data in shared paths (`src/lib/*`, `server/lib/*`, schema) unless explicitly prototyping and labeled. Partial work must not break import/dedup/KPI for the rest of the app.
+
+## Code standard
+
+- Prefer small diffs; no new deps if a few lines suffice (`ponytail` + Karpathy).
+- Guard clauses over deep nesting.
+- Identifiers/comments English; UI strings Italian.
+- After a fix, don't leave comments that only narrate the old bug.
+- Don't multithread/async unless I/O needs it (API/quotes already async where required).
+
+## Testing
+
+- Test meaningful behavior (parser edge cases, stats/KPI, merge/dedup, portfolio math) — not coverage theater.
+- After changes: narrowest check (`npm test` filter or full) that exercises touched code; then `npm run build` before done.
+- Parser/CSV work: TDD on fixtures first.
+
+## UI quality
+
+- Preserve existing design system in `styles.css` (charcoal / teal / clay). No new UI kit.
+- Layout changes: keep sidebar + tab patterns; visual smoke (Playwright MCP ok) when structure changes.
+- Do not invent a second visual language (no purple gradients, cream-serif marketing look, or card spam) unless the user asks for a redesign.
+- User-visible copy stays Italian and consistent with neighboring screens.
+
+## Privacy / secrets
+
+- Never commit real bank CSV, `data/*.db`, `.env`, Finnhub keys, or PII exports.
+- Quote API keys stay server-side only (Settings → server), never in the Vite bundle.

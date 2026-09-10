@@ -1,0 +1,24 @@
+---
+description: Force Finance code review before declaring done or commit+push
+alwaysApply: true
+---
+
+# Post-implementation review gate
+
+After non-trivial **implementation / bugfix / refactor** in this repo:
+
+1. Before saying the work is done, ready, or “tests pass” as a closing claim, run skill **`finance-code-review`**.
+2. Before **`procedi`** commit+push (or any PR create/update), run **`finance-code-review`** on the dirty/branch diff.
+3. Honor the skill gate:
+   - `GATE: BLOCKED` → fix Critical/Important (or re-review after fixes); do not declare done or commit/push.
+   - `GATE: READY` → you may declare done / proceed to commit or push if the user asked.
+4. Do not apply review fixes automatically unless the user asks after the report.
+
+## Skip (do not force review)
+
+- Read-only questions, exploration, or triage with no code edits
+- Docs-only under `docs/` that do not change runtime behavior
+- User explicitly skips for typo/comment-only changes
+- Same-turn review already completed on the same diff with `GATE: READY`
+
+Complements `finance-local.mdc` and `ACTION.md`. This rule is only the quality gate after code changes.

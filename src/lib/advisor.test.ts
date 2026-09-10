@@ -111,4 +111,19 @@ describe("analyzeFinances", () => {
     expect(r.score).toBeGreaterThanOrEqual(0);
     expect(r.score).toBeLessThanOrEqual(100);
   });
+
+  it("flags category budget warn/over for current month", () => {
+    const rows: Transaction[] = [
+      tx({ id: "1", date: "2026-09-01", description: "Shop", amount: -90, category: "Shopping" }),
+      tx({ id: "2", date: "2026-09-02", description: "Food", amount: -150, category: "Ristoranti" }),
+    ];
+    const r = analyzeFinances(rows, {
+      now: new Date(2026, 8, 15),
+      period: "month",
+      categoryBudgets: { Shopping: 100, Ristoranti: 100 },
+      skipScoreDelta: true,
+    });
+    expect(r.insights.some((i) => i.id === "budget-Shopping" && i.severity === "warn")).toBe(true);
+    expect(r.insights.some((i) => i.id === "budget-Ristoranti" && i.severity === "leak")).toBe(true);
+  });
 });

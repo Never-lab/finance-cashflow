@@ -5,6 +5,8 @@ import { withOverrides } from "./lib/appState";
 import { clearAuthToken, getAuthToken } from "./lib/authToken";
 import { api } from "./api";
 import { Dashboard } from "./components/Dashboard";
+import { PianoTab } from "./components/PianoTab";
+import { BudgetTab } from "./components/BudgetTab";
 import { Transactions } from "./components/Transactions";
 import { Recurring } from "./components/Recurring";
 import { PaypalTab } from "./components/PaypalTab";
@@ -18,6 +20,8 @@ import { PayslipTab } from "./components/PayslipTab";
 import { AppShell, type AppTab } from "./components/AppShell";
 import type { LiquidityView } from "./lib/liquidity";
 import type { LoanTarget } from "./lib/loans";
+import type { VaultBalancesOverride, VaultId } from "./lib/vaultGoals";
+import type { CategoryBudgets } from "./lib/budget";
 
 type Gate = "loading" | "login" | "app";
 
@@ -34,6 +38,8 @@ export default function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [migrateCandidate, setMigrateCandidate] = useState<AppState | null>(null);
   const [loanTargets, setLoanTargets] = useState<Record<string, LoanTarget>>({});
+  const [vaultBalances, setVaultBalances] = useState<VaultBalancesOverride>({});
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudgets>({});
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
 
   const showToast = useCallback((msg: string) => {
@@ -51,6 +57,16 @@ export default function App() {
       setLoanTargets(await api.getLoanTargets());
     } catch {
       setLoanTargets({});
+    }
+    try {
+      setVaultBalances(await api.getVaultBalances());
+    } catch {
+      setVaultBalances({});
+    }
+    try {
+      setCategoryBudgets(await api.getCategoryBudgets());
+    } catch {
+      setCategoryBudgets({});
     }
     if (serverState.transactions.length === 0) {
       const idb = await loadState();
@@ -101,6 +117,10 @@ export default function App() {
     const onLogout = () => {
       clearAuthToken();
       setState(null);
+      setLiquidity(null);
+      setLoanTargets({});
+      setVaultBalances({});
+      setCategoryBudgets({});
       setMigrateCandidate(null);
       setGate("login");
     };
@@ -145,6 +165,20 @@ export default function App() {
     void api
       .setLoanTarget(key, target)
       .then(setLoanTargets)
+      .catch(() => showToast("Errore di connessione al server"));
+  }
+
+  function onVaultBalance(id: VaultId, amount: number | null) {
+    void api
+      .setVaultBalance(id, amount)
+      .then(setVaultBalances)
+      .catch(() => showToast("Errore di connessione al server"));
+  }
+
+  function onCategoryBudget(category: string, limit: number | null) {
+    void api
+      .setCategoryBudget(category, limit)
+      .then(setCategoryBudgets)
       .catch(() => showToast("Errore di connessione al server"));
   }
 
@@ -226,14 +260,31 @@ export default function App() {
             transactions={txns}
             liquidity={liquidity}
             period={period}
+            onPeriod={setPeriod}
+            onUpload={() => setUploadOpen(true)}
+          />
+        )}
+        {tab === "piano" && (
+          <PianoTab
+            transactions={txns}
+            liquidity={liquidity}
             recurringMarks={state.recurringMarks}
             loanTargets={loanTargets}
-            onPeriod={setPeriod}
+            vaultBalances={vaultBalances}
+            onVaultBalance={onVaultBalance}
             onUpload={() => setUploadOpen(true)}
             onGoPaypal={() => setTab("paypal")}
             onGoAbbonamenti={() => setTab("abbonamenti")}
             onGoMutui={() => setTab("mutui")}
             onGoInvestimenti={() => setTab("investimenti")}
+          />
+        )}
+        {tab === "budget" && (
+          <BudgetTab
+            transactions={txns}
+            budgets={categoryBudgets}
+            onSave={onCategoryBudget}
+            onUpload={() => setUploadOpen(true)}
           />
         )}
         {tab === "bustepaga" && (
@@ -274,12 +325,14 @@ export default function App() {
             transactions={txns}
             recurringMarks={state.recurringMarks}
             loanTargets={loanTargets}
+            categoryBudgets={categoryBudgets}
             onGoAbbonamenti={() => setTab("abbonamenti")}
             onGoPaypal={() => setTab("paypal")}
             onGoMovimenti={() => setTab("movimenti")}
             onGoMutui={() => setTab("mutui")}
             onGoInvestimenti={() => setTab("investimenti")}
             onGoDashboard={() => setTab("dashboard")}
+            onGoBudget={() => setTab("budget")}
             onUpload={() => setUploadOpen(true)}
           />
         )}

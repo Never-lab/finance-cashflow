@@ -1,0 +1,29 @@
+---
+description: Skip redundant orientation when the slice is already approved; thrifty subagents + code review
+alwaysApply: true
+---
+
+# Token thrift
+
+When this chat already has an approved design, or the user says «ok», «procedi», «implementa come approvato», «commit», or «PR»:
+
+- Do **not** re-read Superpowers skills, graphify, or claude-mem.
+- Do **not** brainstorm alternatives. Implement, or git/PR if they asked that.
+- Orientation (`AGENTS.md` → `CLAUDE.md`, `ACTION.md`) only if the task is new and ambiguous.
+- Do **not** write `docs/superpowers/specs/` or `plans/` unless the user explicitly asks.
+
+Still apply: Finance gates (`npm test` + `npm run build` when code changed), `finance-code-review` before done / before «procedi» commit+push, no commit unless asked. English PR/issue: skill **`no-ai-slop`**. Never `Co-authored-by: Cursor`.
+
+## Subagents (Task / explore / generalPurpose / …)
+
+Subagents **must** follow the same thrift. When you spawn one:
+
+1. **Prompt must include** a short thrift block: no Superpowers/graphify/mem re-orientation; no nested Task/reviewer fan-out; read only paths needed; return compact findings (paths + lines + verdict), not essays.
+2. Prefer **one** subagent (or one parallel wave for independent slices). No N×M review loops. No “one reviewer per file.”
+3. Prefer `explore` for read-only needle/structure questions; `generalPurpose` only if writes are required.
+4. Do **not** paste entire diffs or whole files into the prompt when a path + hunk range or question is enough.
+5. Parent synthesizes; subagent does not re-decide product scope or re-open brainstorming.
+
+## Code review / review loops
+
+Default **inline** review (skill `thrifty-code-review` + `finance-code-review` checklist). Do **not** spawn Bugbot / Security Review / reviewer subagents for routine «code review» / «N loop». One `git diff` per change set; loop 2+ only re-checks prior Critical/Important. Subagents only if the user explicitly asks (Bugbot / Security Review / «lancia reviewer»).

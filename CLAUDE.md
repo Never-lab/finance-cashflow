@@ -166,22 +166,35 @@ Parser: `src/lib/parseRevolut.ts`.
 
 ## Come lavorare qui (agent)
 
-Ordine di default (allineato a FABLE + Superpowers del parent):
+Ordine di default (FABLE + POWERS, allineato Glowroot / Kudu / SteelMC — dettaglio `.cursor/rules/fable-powers.mdc`):
 
-1. Leggi questo file + spec/piano in `docs/superpowers/` se tocchi scope.  
-2. Feature nuove → brainstorming (una domanda alla volta) → spec → plan → codice.  
+1. Leggi questo file + orientation; spec/piano in `docs/superpowers/` solo se tocchi scope già documentato lì.  
+2. Feature nuove → brainstorming (una domanda alla volta) → ok → plan → codice.  
 3. Fix parser/CSV → TDD sui fixture, poi UI.  
-4. Diff piccoli (ponytail). Niente dipendenze nuove se bastano poche righe.  
-5. Prima di “fatto”: `npm test` + `npm run build` (e smoke su `npm run dev` se UI — verifica che l’API risponda su `/api/health`).  
-6. **Commit/push:** solo se Nicholas lo chiede — vedi **`ACTION.md`**: «**procedi**» / «vai» / «commit e push» ⇒ commit + push su `master`.  
-7. UI: verifica visuale se cambi layout (Playwright MCP ok).  
-8. Rispondi in italiano; codice/commenti in inglese.
+4. Diff piccoli (ponytail + Karpathy). Niente dipendenze nuove se bastano poche righe. Ask/verify: regola **`code-quality`**.  
+5. Prima di “fatto”: `npm test` + `npm run build` + skill **`finance-code-review`** → `GATE: READY` (e smoke su `npm run dev` se UI — `/api/health`).  
+6. **Commit/push:** solo se Nicholas lo chiede — vedi **`ACTION.md`**: «**procedi**» / «vai» / «commit e push» ⇒ gate review + test/build + commit + push su `master`.  
+7. UI: preserva `styles.css`; verifica visuale se cambi layout (Playwright MCP ok).  
+8. Chat italiano (caveman); codice/commenti in inglese. Token thrift se design già approvato («ok / procedi»).
+
+### Agent ops (quality gate)
+
+| Pezzo | Path |
+|-------|------|
+| Entrypoint locale | `.cursor/rules/finance-local.mdc` |
+| Token thrift / subagent | `.cursor/rules/token-thrift.mdc` |
+| Post-impl gate | `.cursor/rules/finance-post-impl-review.mdc` |
+| Ask / UI / privacy | `.cursor/rules/code-quality.mdc` |
+| Review skill | `.cursor/skills/finance-code-review/` |
+| Caveman | `.cursor/rules/caveman.mdc` — off: `stop caveman` |
 
 ### Skill utili (già disponibili)
 
 | Skill | Quando |
 |-------|--------|
 | `/fable` | Checklist sistema agent |
+| `finance-code-review` | Prima di done / procedi / PR |
+| `thrifty-code-review` | Review loop inline (no fan-out) |
 | Superpowers brainstorming / writing-plans | Feature non banali |
 | `ponytail` + `karpathy-guidelines` | Implementazione sobria |
 | Forge Loop (parent CLAUDE.md) | Auto-critica pre-consegna |
@@ -223,13 +236,15 @@ Non serve: Open Banking, sync cloud, auth, rewrite React Native.
 
 - Test verdi sul pezzo toccato  
 - Build ok  
+- `finance-code-review` → `GATE: READY`  
 - Se parser: almeno un fixture (sample o file utente) importato senza throw  
 - Se UI: look coerente con `styles.css` esistente  
 - Forge Loop / nota `skipped: X, add when Y` se hai tagliato scope
 
 ## Shared agent block (Never-lab)
 
-- Chat: Italian. Code/PR/issue text: English (Floatdesk player UI: Italian).
+- Chat: Italian (caveman). Code/PR/issue text: English.
 - Before posting PR bodies or issue comments: skill **`no-ai-slop`**.
 - Never `Co-authored-by: Cursor`.
 - Prefer `ponytail` + Karpathy; Superpowers only when the slice is new/ambiguous. No default `docs/superpowers/specs|plans` MD — decisions in chat/claude-mem (liquidazi style).
+- Before done / procedi: **`finance-code-review`** (`GATE: READY`) + `npm test` + `npm run build`.

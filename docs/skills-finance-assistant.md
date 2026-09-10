@@ -31,6 +31,15 @@ Le altre `finance-*` hanno override IT in testa.
 
 Le skill sono in **`.cursor/skills/`**. Cursor le carica automaticamente aprendo questo progetto.
 
+Oltre all’assistente €, c’è il gate engineering (portato da Glowroot / Kudu / SteelMC):
+
+| Skill / rule | Ruolo |
+|--------------|--------|
+| `finance-code-review` | Review post-impl + `GATE: READY\|BLOCKED` |
+| `.cursor/rules/token-thrift.mdc` | No re-orient se «ok / procedi» |
+| `.cursor/rules/code-quality.mdc` | Ask/verify, test, UI, privacy |
+| `.cursor/rules/finance-post-impl-review.mdc` | Obbliga la review prima di done |
+
 Lock file: `skills-lock.json` (sorgenti + hash).
 
 Ri-install su macchina nuova (opzionale):

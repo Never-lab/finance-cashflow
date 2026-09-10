@@ -1,0 +1,36 @@
+---
+description: FABLE + POWERS — ordine operativo (Finance)
+alwaysApply: true
+---
+
+# FABLE + POWERS — ordine operativo (Finance)
+
+Stesso sistema di Glowroot / Kudu / SteelMC. Dettaglio: `CLAUDE.md` · globale `~/.claude/CLAUDE.md` · `/fable`.
+
+## Ordine di build
+
+**Memory → MCP → subagent → loop**, poi POWERS sopra quando applicano.
+
+## Bootstrap sessione
+
+0. FABLE (ordine sopra)
+1. Orientation: `AGENTS.md` → `CLAUDE.md` → `ACTION.md` se task nuovo/ambiguo
+2. claude-mem su lavoro non triviale / continuazione (project `Finance` / cashflow)
+3. using-superpowers se skill applicabile
+4. karpathy-guidelines (sempre su codice)
+5. ponytail full su task di codice
+6. POWERS: design / plan / security / restraint / browser
+
+## Skill routing (sintesi)
+
+| Task | Ordine |
+|------|--------|
+| Continua lavoro | claude-mem → poi codice |
+| Feature nuova | brainstorming → ok → plan → implement (TDD se logica/parser) |
+| Bug | systematic-debugging prima del fix |
+| Prima di «fatto» | verification-before-completion + `npm test` + `npm run build` + `finance-code-review` |
+| Review | inline `thrifty-code-review` + `finance-code-review`; Bugbot/Security solo se chiesti |
+| Assistente € | skill `finance-*` / openaccountant in `.cursor/skills/` + `_shared/italy-finance-context.md` |
+| UI change | preserve `styles.css`; Playwright MCP smoke se layout |
+
+Token thrift: se design già approvato in chat («ok / procedi»), non ri-leggere Superpowers / graphify / mem — implementa (vedi `token-thrift.mdc`).

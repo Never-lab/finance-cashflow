@@ -12,6 +12,7 @@ import {
   formatEur,
   monthlySeries,
 } from "./stats";
+import { buildBudgetReport, type CategoryBudgets } from "./budget";
 
 export type InsightSeverity = "info" | "warn" | "leak";
 export type InsightKind = "recurring" | "anomaly" | "cashflow" | "patrimonio";
@@ -123,6 +124,7 @@ export function analyzeFinances(
   opts: {
     recurringMarks?: Record<string, RecurringMark>;
     loanTargets?: Record<string, LoanTarget>;
+    categoryBudgets?: CategoryBudgets;
     period?: Period;
     portfolio?: PortfolioSnapshot | null;
     now?: Date;
@@ -131,6 +133,7 @@ export function analyzeFinances(
 ): AdvisorReport {
   const marks = opts.recurringMarks ?? {};
   const loanTargets = opts.loanTargets ?? {};
+  const categoryBudgets = opts.categoryBudgets ?? {};
   const period = opts.period ?? "3m";
   const portfolio = opts.portfolio ?? null;
   const now = opts.now ?? new Date();
@@ -412,6 +415,27 @@ export function analyzeFinances(
     });
   }
 
+  // --- Budget (current month, even if advisor period differs) ---
+  if (Object.keys(categoryBudgets).length > 0) {
+    const budget = buildBudgetReport(txns, categoryBudgets, now);
+    const flagged = budget.rows.filter((r) => r.status !== "ok").slice(0, 4);
+    for (const row of flagged) {
+      const over = row.status === "over";
+      insights.push({
+        id: `budget-${row.category}`,
+        kind: "cashflow",
+        severity: over ? "leak" : "warn",
+        title: over
+          ? `Budget ${row.category} superato`
+          : `Budget ${row.category} al ${row.pct.toFixed(0)}%`,
+        detail: `${formatEur(row.spent)} su ${formatEur(row.limit)} questo mese (${budget.month}).`,
+        impactEur: over ? round2(row.spent - row.limit) : row.spent,
+        action: "Apri Budget e rivedi il limite o la spesa.",
+      });
+      addPenalty(ledger, "cashflow", over ? 10 : 5);
+    }
+  }
+
   // --- Patrimonio (optional portfolio) ---
   if (portfolio && portfolio.totalContributed > 0) {
     if (savingsRate < 10 && kpis.income > 0) {
@@ -489,6 +513,7 @@ function computeScoreDelta(
   opts: {
     recurringMarks?: Record<string, RecurringMark>;
     loanTargets?: Record<string, LoanTarget>;
+    categoryBudgets?: CategoryBudgets;
     period?: Period;
     portfolio?: PortfolioSnapshot | null;
   },

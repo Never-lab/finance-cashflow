@@ -11,6 +11,8 @@ import type {
 } from "./types";
 import type { LiquidityView, LiquiditySnapshots } from "./lib/liquidity";
 import type { PayslipSummary } from "./lib/payslip";
+import type { VaultBalancesOverride, VaultId } from "./lib/vaultGoals";
+import type { CategoryBudgets } from "./lib/budget";
 import { apiFetch, setAuthToken } from "./lib/authToken";
 
 export type HealthResponse = { ok: boolean; storage: string; auth: boolean };
@@ -191,6 +193,20 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ key, target }),
     }).then((r) => json<Record<string, LoanTarget>>(r)),
+  getVaultBalances: () =>
+    apiFetch("/api/vault/balances").then((r) => json<VaultBalancesOverride>(r)),
+  setVaultBalance: (id: VaultId, amount: number | null) =>
+    apiFetch("/api/vault/balances", {
+      method: "PUT",
+      body: JSON.stringify({ id, amount }),
+    }).then((r) => json<VaultBalancesOverride>(r)),
+  getCategoryBudgets: () =>
+    apiFetch("/api/budget").then((r) => json<CategoryBudgets>(r)),
+  setCategoryBudget: (category: string, limit: number | null) =>
+    apiFetch("/api/budget", {
+      method: "PUT",
+      body: JSON.stringify({ category, limit }),
+    }).then((r) => json<CategoryBudgets>(r)),
   getPayslips: () => apiFetch("/api/payslips").then((r) => json<PayslipSummary>(r)),
   previewPayslip: (file: File) => {
     const fd = new FormData();
