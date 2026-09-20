@@ -220,7 +220,7 @@ function VaultGoalsPanel({
 
   return (
     <section className="stat-section vault-section" id="obiettivi-vault">
-      <h3 className="stat-section-title">Obiettivi Vault</h3>
+      <h3 className="stat-section-title">Obiettivi risparmio</h3>
       <p className="muted vault-waterfall">{waterfallLine}</p>
       <div className="liberation-grid vault-grid">
         {goals.map((goal) => (
@@ -322,7 +322,7 @@ function ImportChecklistPanel({
           >
             <span className="stat-label">{SOURCE_LABEL[row.source]}</span>
             <span className={`stat-value ${row.ok ? "pos" : "neg"}`}>
-              {row.ok ? "Aggiornato" : row.missing ? "Manca" : "Stantio"}
+              {row.ok ? "Aggiornato" : row.missing ? "Manca" : "Export vecchio"}
             </span>
             <span className="stat-hint">
               {row.missing

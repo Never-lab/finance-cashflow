@@ -40,7 +40,7 @@ const FILTER_KINDS: { id: "all" | InsightKind; label: string }[] = [
   { id: "all", label: "Tutti" },
   { id: "recurring", label: "Ricorrenti" },
   { id: "anomaly", label: "Anomalie" },
-  { id: "cashflow", label: "Cash flow" },
+  { id: "cashflow", label: "Flusso" },
   { id: "patrimonio", label: "Patrimonio" },
 ];
 
@@ -103,7 +103,7 @@ export function Advisor({
     return (
       <div className="empty">
         <h2>Nessun dato da analizzare</h2>
-        <p className="muted">Carica i CSV banca: il consigliere lavora solo in locale.</p>
+        <p className="muted">Carica i CSV banca: l&apos;analisi gira solo in locale.</p>
         <button type="button" className="btn primary" onClick={onUpload}>
           Carica CSV
         </button>
@@ -119,6 +119,7 @@ export function Advisor({
             key={k}
             type="button"
             className={period === k ? "chip active" : "chip"}
+            aria-pressed={period === k}
             onClick={() => setPeriod(k)}
           >
             {PERIOD_LABELS[k]}
@@ -128,7 +129,7 @@ export function Advisor({
 
       <div className="stat-row advisor-hero">
         <div className={`stat-card score-card score-${scoreTone(report.score)}`}>
-          <span className="stat-label">Salute cash flow</span>
+          <span className="stat-label">Punteggio regole locali</span>
           <span className="stat-value">{report.score}</span>
           <span className="stat-hint">
             {report.label}
@@ -141,7 +142,7 @@ export function Advisor({
           </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Savings rate</span>
+          <span className="stat-label">Quota risparmiata</span>
           <span className={`stat-value ${report.summary.savingsRate >= 15 ? "pos" : "neg"}`}>
             {report.summary.savingsRate.toFixed(0)}%
           </span>
@@ -157,20 +158,23 @@ export function Advisor({
           </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Insight</span>
+          <span className="stat-label">Avvisi</span>
           <span className="stat-value">{report.insights.length}</span>
           <span className="stat-hint">Regole locali · no cloud</span>
         </div>
       </div>
 
       <p className="muted kpi-note">
-        Analisi su consumo reale (giroconti Mediolanum↔Revolut esclusi). Margine % ≠ liquidità
+        Analisi su consumo reale (giroconti Mediolanum↔Revolut esclusi). Risparmio % ≠ liquidità
         sui conti — rate future non ancora in CSV non sono incluse.
       </p>
 
       {report.topActions.length > 0 && (
         <section className="advisor-top-actions">
-          <h3 className="stat-section-title">Top azioni</h3>
+          <h3 className="stat-section-title">Azioni prioritarie</h3>
+          <p className="muted tiny chart-sub">
+            Ordinate per impatto stimato e gravità delle regole locali (non consulenza umana).
+          </p>
           <div className="top-action-list">
             {report.topActions.map((ins, i) => (
               <div key={ins.id} className="top-action-item">
@@ -202,6 +206,7 @@ export function Advisor({
             key={f.id}
             type="button"
             className={kindFilter === f.id ? "chip active" : "chip"}
+            aria-pressed={kindFilter === f.id}
             onClick={() => setKindFilter(f.id)}
           >
             {f.label}
@@ -211,7 +216,7 @@ export function Advisor({
 
       {visibleInsights.length === 0 ? (
         <div className="empty soft">
-          <h2>Nessun leak evidente</h2>
+          <h2>Nessuno spreco evidente</h2>
           <p className="muted">
             {kindFilter === "all"
               ? "Con i dati attuali non emergono critiche forti."
@@ -268,7 +273,7 @@ function InsightCard({
     <article className={`insight-card sev-${insight.severity}`}>
       <div className="insight-top">
         <span className={`insight-badge sev-${insight.severity}`}>
-          {insight.severity === "leak" ? "Leak" : insight.severity === "warn" ? "Attenzione" : "Info"}
+          {insight.severity === "leak" ? "Spreco" : insight.severity === "warn" ? "Attenzione" : "Info"}
         </span>
         <span className="insight-kind">{kindLabel(insight.kind)}</span>
       </div>

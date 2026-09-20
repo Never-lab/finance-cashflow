@@ -2,12 +2,13 @@
  * Modale globale import CSV Mediolanum/Revolut: rilevamento banca, anteprima prime righe,
  * estrazione snapshot liquidità e merge sul server tramite callback App.onImport.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { BankSource, Transaction } from "@shared/types";
 import { detectBank } from "@shared/lib/detectBank";
 import { importCsv } from "@shared/lib/importCsv";
 import { extractLiquidityFromCsv, type LiquiditySnapshots } from "@shared/lib/liquidity";
 import { formatEur } from "@shared/lib/stats";
+import { useDialogA11y } from "../hooks/useDialogA11y";
 
 type Props = {
   open: boolean;
@@ -16,12 +17,15 @@ type Props = {
 };
 
 export function UploadModal({ open, onClose, onImport }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Transaction[] | null>(null);
   const [source, setSource] = useState<BankSource | "auto">("auto");
   const [filename, setFilename] = useState("");
   const [raw, setRaw] = useState("");
   const [bank, setBank] = useState<BankSource | null>(null);
+
+  useDialogA11y(open, onClose, panelRef);
 
   if (!open) return null;
 
@@ -82,9 +86,11 @@ export function UploadModal({ open, onClose, onImport }: Props) {
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={panelRef}
         className="modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-labelledby="upload-title"
       >
         <h2 id="upload-title">Carica CSV</h2>

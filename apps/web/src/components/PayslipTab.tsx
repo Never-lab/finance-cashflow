@@ -146,8 +146,8 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
       <section className="panel payslip-upload">
         <h3>Importa cedolini PDF</h3>
         <p className="muted">
-          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Il netto in busta è allineato
-          all&apos;accredito Mediolanum (Emolumenti) quando presente nei CSV bancari.
+          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Se nei CSV banca c&apos;è
+          l&apos;accredito Mediolanum «Emolumenti», puoi confrontarlo col netto in busta.
         </p>
         <input
           ref={inputRef}

@@ -91,6 +91,7 @@ export function Transactions({
         <button
           type="button"
           className={hideInternal ? "chip active" : "chip"}
+          aria-pressed={hideInternal}
           onClick={() => setHideInternal((v) => !v)}
         >
           Nascondi interni
@@ -101,9 +102,6 @@ export function Transactions({
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <button type="button" className="btn primary" onClick={onUpload}>
-          Carica CSV
-        </button>
       </div>
 
       <p className="txn-summary">

@@ -61,7 +61,7 @@ export function LoginScreen({ onSuccess }: Props) {
       <div className="login-card panel">
         <p className="brand login-brand">Cash Flow</p>
         <p className="muted login-sub">
-          {isRegister ? "Crea un nuovo account" : "Accedi al monitoring plane"}
+          {isRegister ? "Crea un nuovo account" : "Accedi a Cash Flow"}
         </p>
         <form onSubmit={(e) => void submit(e)} className="login-form">
           <label className="field">

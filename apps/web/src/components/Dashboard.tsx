@@ -78,15 +78,13 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
               key={k}
               type="button"
               className={period === k ? "chip active" : "chip"}
+              aria-pressed={period === k}
               onClick={() => onPeriod(k)}
             >
               {label}
             </button>
           ))}
         </div>
-        <button type="button" className="btn primary" onClick={onUpload}>
-          Carica CSV
-        </button>
       </div>
 
       <div className="stat-row kpi-row">
@@ -103,7 +101,7 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
           hint="Solo consumo e addebiti (no trasferimenti tra conti)"
         />
         <Kpi
-          label="Margine"
+          label="Risparmio %"
           value={`${savingsRate.toFixed(0)}%`}
           tone={savingsRate >= 15 ? "pos" : "neg"}
           hint={`Netto ${formatEur(kpis.net)} · non è il saldo sui conti`}
@@ -123,18 +121,18 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
       )}
       {hiddenFromCharts === 0 && (
         <p className="muted kpi-note">
-          Margine % = quanto resta dopo il consumo tracciato — non è la liquidità sui conti
+          Risparmio % = quanto resta dopo il consumo tracciato — non è la liquidità sui conti
           Mediolanum + Revolut.
         </p>
       )}
 
-      <LiquidityPanel liquidity={liquidity} onUpload={onUpload} />
+      <LiquidityPanel liquidity={liquidity} />
 
       <div className="charts-hero">
         <section className="panel chart-panel hero-panel">
           <h3>Flusso di cassa (Sankey)</h3>
           <p className="muted tiny chart-sub">
-            Entrate reali → categorie di spesa + margine periodo. Giroconti Mediolanum↔Revolut
+            Entrate reali → categorie di spesa + margine periodo (€). Giroconti Mediolanum↔Revolut
             esclusi.
           </p>
           {sankey ? (
@@ -181,22 +179,17 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
 /** Sezione saldi Mediolanum/Revolut estratti dagli export CSV (distinta dai KPI flusso). */
 function LiquidityPanel({
   liquidity,
-  onUpload,
 }: {
   liquidity: LiquidityView | null;
-  onUpload: () => void;
 }) {
   if (!liquidity?.totalEur && !liquidity?.mediolanum && !liquidity?.revolut) {
     return (
       <section className="stat-section liquidity-section" id="liquidita-conti">
         <h3 className="stat-section-title">Liquidità conti</h3>
         <p className="muted liquidity-note">
-          Importa gli export CSV Mediolanum e Revolut per vedere saldi reali e pocket Revolut. I KPI
-          sopra restano flussi di consumo, non liquidità.
+          Importa gli export CSV Mediolanum e Revolut (barra laterale → Carica CSV) per vedere saldi
+          reali e pocket Revolut. I KPI sopra restano flussi di consumo, non liquidità.
         </p>
-        <button type="button" className="btn" onClick={onUpload}>
-          Carica CSV
-        </button>
       </section>
     );
   }

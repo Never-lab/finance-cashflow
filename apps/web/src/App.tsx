@@ -3,30 +3,49 @@
  * e routing tra tab (Dashboard, Piano, Budget, …). Sincronizza tutto con il backend
  * SQLite via `api`; le mutazioni utente aggiornano lo state React dopo ogni risposta.
  */
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { AppState, Period, RecurringMark, Transaction } from "@shared/types";
 import { loadState } from "./db";
 import { withOverrides } from "@shared/lib/appState";
 import { clearAuthToken, getAuthToken } from "@shared/lib/authToken";
 import { api } from "./api";
 import { Dashboard } from "./components/Dashboard";
-import { PianoTab } from "./components/PianoTab";
-import { BudgetTab } from "./components/BudgetTab";
-import { Transactions } from "./components/Transactions";
-import { Recurring } from "./components/Recurring";
-import { PaypalTab } from "./components/PaypalTab";
-import { Advisor } from "./components/Advisor";
-import { Investimenti } from "./components/Investimenti";
 import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
-import { LoansTab } from "./components/LoansTab";
-import { PayslipTab } from "./components/PayslipTab";
 import { AppShell, type AppTab } from "./components/AppShell";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import type { LoanTarget } from "@shared/lib/loans";
 import type { VaultBalancesOverride, VaultId } from "@shared/lib/vaultGoals";
 import type { CategoryBudgets } from "@shared/lib/budget";
+
+const PianoTab = lazy(() =>
+  import("./components/PianoTab").then((m) => ({ default: m.PianoTab })),
+);
+const BudgetTab = lazy(() =>
+  import("./components/BudgetTab").then((m) => ({ default: m.BudgetTab })),
+);
+const Transactions = lazy(() =>
+  import("./components/Transactions").then((m) => ({ default: m.Transactions })),
+);
+const Recurring = lazy(() =>
+  import("./components/Recurring").then((m) => ({ default: m.Recurring })),
+);
+const PaypalTab = lazy(() =>
+  import("./components/PaypalTab").then((m) => ({ default: m.PaypalTab })),
+);
+const Advisor = lazy(() =>
+  import("./components/Advisor").then((m) => ({ default: m.Advisor })),
+);
+const Investimenti = lazy(() =>
+  import("./components/Investimenti").then((m) => ({ default: m.Investimenti })),
+);
+const LoansTab = lazy(() =>
+  import("./components/LoansTab").then((m) => ({ default: m.LoansTab })),
+);
+const PayslipTab = lazy(() =>
+  import("./components/PayslipTab").then((m) => ({ default: m.PayslipTab })),
+);
 
 /** Fasi di avvio: caricamento iniziale, schermata login, app operativa. */
 type Gate = "loading" | "login" | "app";
@@ -275,7 +294,8 @@ export default function App() {
       authRequired={authRequired}
       onLogout={onLogout}
     >
-      {tab === "dashboard" && (
+      <Suspense fallback={<div className="boot">Caricamento…</div>}>
+        {tab === "dashboard" && (
           <Dashboard
             transactions={txns}
             liquidity={liquidity}
@@ -359,6 +379,7 @@ export default function App() {
         {tab === "investimenti" && (
           <Investimenti transactions={txns} refreshKey={dataRefreshKey} />
         )}
+      </Suspense>
 
       <UploadModal
         open={uploadOpen}
@@ -376,14 +397,18 @@ export default function App() {
       />
 
       {migrateCandidate && (
-        <div className="toast">
+        <div className="toast" role="status" aria-live="polite">
           <span>Trovati dati salvati nel browser ({migrateCandidate.transactions.length} movimenti).</span>{" "}
           <button type="button" className="btn primary" onClick={onMigrate}>
             Migra dati browser → SQLite
           </button>
         </div>
       )}
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
     </AppShell>
   );
 }

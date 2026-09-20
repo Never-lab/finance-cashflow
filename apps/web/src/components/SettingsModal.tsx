@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AppState } from "@shared/types";
 import { emptyState, exportStateJson, parseStateJson } from "../db";
 import { api, type Settings } from "../api";
+import { useDialogA11y } from "../hooks/useDialogA11y";
 
 type Props = {
   open: boolean;
@@ -19,6 +20,7 @@ type Props = {
 
 export function SettingsModal({ open, state, authRequired, onClose, onReplace, onRecompute, onLogout }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [recomputeMsg, setRecomputeMsg] = useState<string | null>(null);
   const [recomputing, setRecomputing] = useState(false);
@@ -26,6 +28,8 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [savingKey, setSavingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
+
+  useDialogA11y(open, onClose, panelRef);
 
   useEffect(() => {
     if (!open) return;
@@ -126,9 +130,11 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={panelRef}
         className="modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-labelledby="settings-title"
       >
         <h2 id="settings-title">Dati e backup</h2>
@@ -220,7 +226,7 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
         {authRequired && (
           <>
             <h3>Sessione</h3>
-            <p className="muted">Disconnetti questo browser dal monitoring plane.</p>
+            <p className="muted">Esci da questo browser (sessione locale).</p>
             <div className="settings-actions">
               <button type="button" className="btn danger" onClick={onLogout}>
                 Esci

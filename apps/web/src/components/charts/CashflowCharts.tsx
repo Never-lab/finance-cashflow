@@ -325,13 +325,13 @@ export function CashflowSankeyChart({ data }: { data: SankeyData }) {
           <span className="stat-value neg">{formatEur(data.expense)}</span>
         </div>
         <div className="stat-card compact">
-          <span className="stat-label">Margine</span>
+          <span className="stat-label">Margine €</span>
           <span className={`stat-value ${data.net >= 0 ? "pos" : "neg"}`}>
             {formatEur(data.net)}
           </span>
         </div>
         <div className="stat-card compact">
-          <span className="stat-label">Savings rate</span>
+          <span className="stat-label">Quota risparmiata</span>
           <span className={`stat-value ${data.savingsRate > 0 ? "pos" : ""}`}>
             {data.savingsRate.toFixed(0)}%
           </span>

@@ -25,15 +25,22 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Panoramica",
     items: [
       { id: "dashboard", label: "Dashboard" },
-      { id: "piano", label: "Piano" },
-      { id: "budget", label: "Budget" },
-      { id: "bustepaga", label: "Buste paga" },
       { id: "consigli", label: "Consigli" },
     ],
   },
   {
+    label: "Pianificazione",
+    items: [
+      { id: "piano", label: "Piano" },
+      { id: "budget", label: "Budget" },
+    ],
+  },
+  {
     label: "Flusso",
-    items: [{ id: "movimenti", label: "Movimenti" }],
+    items: [
+      { id: "movimenti", label: "Movimenti" },
+      { id: "bustepaga", label: "Buste paga" },
+    ],
   },
   {
     label: "Impegni",
