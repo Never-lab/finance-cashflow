@@ -257,6 +257,7 @@ export function ensureBootstrapUser(db: Database.Database): void {
 export function runMigrations(db: Database.Database): void {
   migrateToMultiUser(db);
   migratePayslipLeaveApAc(db);
+  migratePayslipNetFields(db);
   ensureBootstrapUser(db);
 }
 
@@ -290,7 +291,31 @@ function migratePayslipLeaveApAc(db: Database.Database): void {
     "leave_perm_ac_s",
     "leave_perm_ac_g",
     "leave_perm_ac_r",
+    "leave_fest_ap_s",
+    "leave_fest_ap_g",
+    "leave_fest_ap_r",
+    "leave_fest_ac_s",
+    "leave_fest_ac_g",
+    "leave_fest_ac_r",
   ]) {
     add(col);
+  }
+}
+
+/** Campi netto ibrido / match banca (parser osra-oluit-3). */
+function migratePayslipNetFields(db: Database.Database): void {
+  const table = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='payslips'`)
+    .get();
+  if (!table) return;
+
+  if (!hasColumn(db, "payslips", "payslip_net")) {
+    db.exec(`ALTER TABLE payslips ADD COLUMN payslip_net REAL`);
+  }
+  if (!hasColumn(db, "payslips", "bank_match_status")) {
+    db.exec(`ALTER TABLE payslips ADD COLUMN bank_match_status TEXT`);
+  }
+  if (!hasColumn(db, "payslips", "acc_anomalous")) {
+    db.exec(`ALTER TABLE payslips ADD COLUMN acc_anomalous INTEGER NOT NULL DEFAULT 0`);
   }
 }

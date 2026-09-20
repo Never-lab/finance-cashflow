@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../api";
-import type { PayslipLeave, PayslipSummary } from "@shared/lib/payslip";
+import type { BankMatchStatus, PayslipLeave, PayslipRecord, PayslipSummary } from "@shared/lib/payslip";
 import { formatEur } from "@shared/lib/stats";
 import { ChartTooltip, CHART } from "./charts/chartTheme";
 
@@ -27,6 +27,18 @@ type Props = {
 
 function periodLabel(p: { periodMonth: number; periodYear: number; periodLabel: string }): string {
   return `${String(p.periodMonth).padStart(2, "0")}/${p.periodYear} · ${p.periodLabel}`;
+}
+
+function matchStatusLabel(status: BankMatchStatus): string {
+  if (status === "matched") return "da banca";
+  if (status === "doubt") return "dubbio · cedolino";
+  return "da cedolino";
+}
+
+function netHint(p: PayslipRecord): string {
+  const parts = [matchStatusLabel(p.bankMatchStatus)];
+  if (p.accAnomalous) parts.push("Acc. c.c. anomalo");
+  return parts.join(" · ");
 }
 
 function formatItDate(iso: string | null): string {
@@ -146,8 +158,8 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
       <section className="panel payslip-upload">
         <h3>Importa cedolini PDF</h3>
         <p className="muted">
-          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Se nei CSV banca c&apos;è
-          l&apos;accredito Mediolanum «Emolumenti», puoi confrontarlo col netto in busta.
+          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Netto KPI: accredito
+          Mediolanum se match affidabile (data valuta ±5 giorni e importo), altrimenti cedolino.
         </p>
         <input
           ref={inputRef}
@@ -188,8 +200,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
               <span className="stat-label">Ultimo netto</span>
               <span className="stat-value pos">{formatEur(latest?.netPay ?? 0)}</span>
               <span className="stat-hint">
-                {latest ? periodLabel(latest) : "—"}
-                {latest?.bankCredit != null ? " · da banca" : " · da cedolino"}
+                {latest ? `${periodLabel(latest)} · ${netHint(latest)}` : "—"}
               </span>
             </div>
             <div className="stat-card">
@@ -222,9 +233,10 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
 
           {latest && (
             <section className="panel payslip-leave-panel">
-              <h3>Ferie e permessi · AP / AC ({periodLabel(latest)})</h3>
+              <h3>Ferie, festività e permessi · AP / AC ({periodLabel(latest)})</h3>
               <div className="payslip-leave-split">
                 <LeaveApAcTable title="Ferie" leave={latest.leaveFerie} />
+                <LeaveApAcTable title="Festività" leave={latest.leaveFest} />
                 <LeaveApAcTable title="Permessi" leave={latest.leavePerm} />
               </div>
             </section>
@@ -234,7 +246,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
             <section className="panel">
               <h3>Netto vs lordo</h3>
               <p className="muted tiny">
-                Barre: lordo, netto (banca o cedolino), accredito c.c. sul PDF.
+                Barre: lordo, netto KPI (banca se match, altrimenti cedolino), accredito banca.
               </p>
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={260}>
@@ -354,10 +366,12 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                     <th>Periodo</th>
                     <th className="num">Lordo</th>
                     <th className="num">Netto</th>
-                    <th className="num">Acc. c.c.</th>
+                    <th className="num">Cedolino</th>
+                    <th>Match</th>
                     <th className="num">Δ banca</th>
-                    <th className="num">Ferie AP/AC</th>
-                    <th className="num">Perm AP/AC</th>
+                    <th className="num">Ferie</th>
+                    <th className="num">Fest</th>
+                    <th className="num">Perm</th>
                     <th>Valuta</th>
                     <th>File</th>
                     <th />
@@ -365,22 +379,21 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                 </thead>
                 <tbody>
                   {[...(summary?.payslips ?? [])].reverse().map((p) => {
-                    /** Scostamento tra netto accredito da CSV banca e netto c.c. sul PDF. */
+                    /** Scostamento banca vs netto cedolino risolto. */
                     const delta =
-                      p.bankCredit != null && p.netToAccount != null
-                        ? Math.round((p.bankCredit - p.netToAccount) * 100) / 100
+                      p.bankCredit != null && p.payslipNet != null
+                        ? Math.round((p.bankCredit - p.payslipNet) * 100) / 100
                         : null;
                     return (
                       <tr key={p.id}>
                         <td>
                           <div>{periodLabel(p)}</div>
-                          {p.bankCredit != null && p.netPay === p.bankCredit && (
-                            <div className="muted tiny">Netto da banca</div>
-                          )}
+                          {p.accAnomalous && <div className="muted tiny">Acc. c.c. anomalo</div>}
                         </td>
                         <td className="num">{p.grossTotal != null ? formatEur(p.grossTotal) : "—"}</td>
                         <td className="num">{p.netPay != null ? formatEur(p.netPay) : "—"}</td>
-                        <td className="num">{p.netToAccount != null ? formatEur(p.netToAccount) : "—"}</td>
+                        <td className="num">{p.payslipNet != null ? formatEur(p.payslipNet) : "—"}</td>
+                        <td className="muted tiny">{matchStatusLabel(p.bankMatchStatus)}</td>
                         <td className="num">
                           {delta != null ? (
                             <span className={delta >= 0 ? "pos" : "neg"}>{formatEur(delta)}</span>
@@ -389,6 +402,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                           )}
                         </td>
                         <td className="num leave-ap-ac">{formatLeaveApAc(p.leaveFerie)}</td>
+                        <td className="num leave-ap-ac">{formatLeaveApAc(p.leaveFest)}</td>
                         <td className="num leave-ap-ac">{formatLeaveApAc(p.leavePerm)}</td>
                         <td>{formatItDate(p.payDate)}</td>
                         <td className="muted tiny">{p.sourceFile ?? "—"}</td>

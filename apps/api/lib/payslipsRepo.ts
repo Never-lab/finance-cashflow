@@ -4,8 +4,8 @@
  * Privacy: contiene importi lordi/netti e residui ferie per user_id.
  */
 import type Database from "better-sqlite3";
-import type { PayslipLeave, PayslipRecord } from "@shared/lib/payslip";
-import { buildLeave } from "@shared/lib/payslip";
+import type { BankMatchStatus, PayslipLeave, PayslipRecord } from "@shared/lib/payslip";
+import { buildLeave, resolvePayslipNet } from "@shared/lib/payslip";
 
 type Row = {
   id: string;
@@ -20,8 +20,17 @@ type Row = {
   social_withheld: number | null;
   net_to_account: number | null;
   total_competenze: number | null;
+  payslip_net: number | null;
   net_pay: number | null;
   bank_credit: number | null;
+  bank_match_status: string | null;
+  acc_anomalous: number | null;
+  leave_fest_ap_s: number | null;
+  leave_fest_ap_g: number | null;
+  leave_fest_ap_r: number | null;
+  leave_fest_ac_s: number | null;
+  leave_fest_ac_g: number | null;
+  leave_fest_ac_r: number | null;
   leave_fest_s: number | null;
   leave_fest_g: number | null;
   leave_fest_r: number | null;
@@ -70,20 +79,45 @@ function sliceFromRow(
 }
 
 function leaveFromRow(
-  apS: number | null,
-  apG: number | null,
-  apR: number | null,
-  acS: number | null,
-  acG: number | null,
-  acR: number | null,
+  apS: number | null | undefined,
+  apG: number | null | undefined,
+  apR: number | null | undefined,
+  acS: number | null | undefined,
+  acG: number | null | undefined,
+  acR: number | null | undefined,
   totalS: number | null,
   totalG: number | null,
   totalR: number | null,
 ): PayslipLeave {
-  return sliceFromRow(apS, apG, apR, acS, acG, acR, totalS, totalG, totalR);
+  return sliceFromRow(
+    apS ?? null,
+    apG ?? null,
+    apR ?? null,
+    acS ?? null,
+    acG ?? null,
+    acR ?? null,
+    totalS,
+    totalG,
+    totalR,
+  );
+}
+
+function parseMatchStatus(raw: string | null): BankMatchStatus {
+  if (raw === "matched" || raw === "doubt" || raw === "missing") return raw;
+  return "missing";
 }
 
 function rowToRecord(row: Row): PayslipRecord {
+  const resolved =
+    row.payslip_net != null
+      ? { payslipNet: row.payslip_net, accAnomalous: Boolean(row.acc_anomalous) }
+      : resolvePayslipNet({
+          netToAccount: row.net_to_account,
+          taxableIncome: row.taxable_income,
+          taxWithheld: row.tax_withheld,
+          socialWithheld: row.social_withheld,
+        });
+
   return {
     id: row.id,
     periodYear: row.period_year,
@@ -97,9 +131,22 @@ function rowToRecord(row: Row): PayslipRecord {
     socialWithheld: row.social_withheld,
     netToAccount: row.net_to_account,
     totalCompetenze: row.total_competenze,
+    payslipNet: resolved.payslipNet,
     netPay: row.net_pay,
     bankCredit: row.bank_credit,
-    leaveFest: leaveFromRow(null, null, null, null, null, null, row.leave_fest_s, row.leave_fest_g, row.leave_fest_r),
+    bankMatchStatus: parseMatchStatus(row.bank_match_status),
+    accAnomalous: resolved.accAnomalous,
+    leaveFest: leaveFromRow(
+      row.leave_fest_ap_s,
+      row.leave_fest_ap_g,
+      row.leave_fest_ap_r,
+      row.leave_fest_ac_s,
+      row.leave_fest_ac_g,
+      row.leave_fest_ac_r,
+      row.leave_fest_s,
+      row.leave_fest_g,
+      row.leave_fest_r,
+    ),
     leaveFerie: leaveFromRow(
       row.leave_ferie_ap_s,
       row.leave_ferie_ap_g,
@@ -128,7 +175,7 @@ function rowToRecord(row: Row): PayslipRecord {
   };
 }
 
-function leaveParams(prefix: "leave_ferie" | "leave_perm", leave: PayslipLeave): Record<string, number | null> {
+function leaveParams(prefix: "leave_ferie" | "leave_perm" | "leave_fest", leave: PayslipLeave): Record<string, number | null> {
   return {
     [`${prefix}_ap_s`]: leave.ap.spettanti,
     [`${prefix}_ap_g`]: leave.ap.godute,
@@ -146,7 +193,10 @@ const UPSERT = `
 INSERT INTO payslips (
   user_id, id, period_year, period_month, period_label, pay_date,
   gross_total, taxable_income, tax_withheld, tax_withheld_net, social_withheld,
-  net_to_account, total_competenze, net_pay, bank_credit,
+  net_to_account, total_competenze, payslip_net, net_pay, bank_credit,
+  bank_match_status, acc_anomalous,
+  leave_fest_ap_s, leave_fest_ap_g, leave_fest_ap_r,
+  leave_fest_ac_s, leave_fest_ac_g, leave_fest_ac_r,
   leave_fest_s, leave_fest_g, leave_fest_r,
   leave_ferie_ap_s, leave_ferie_ap_g, leave_ferie_ap_r,
   leave_ferie_ac_s, leave_ferie_ac_g, leave_ferie_ac_r,
@@ -158,7 +208,10 @@ INSERT INTO payslips (
 ) VALUES (
   @user_id, @id, @period_year, @period_month, @period_label, @pay_date,
   @gross_total, @taxable_income, @tax_withheld, @tax_withheld_net, @social_withheld,
-  @net_to_account, @total_competenze, @net_pay, @bank_credit,
+  @net_to_account, @total_competenze, @payslip_net, @net_pay, @bank_credit,
+  @bank_match_status, @acc_anomalous,
+  @leave_fest_ap_s, @leave_fest_ap_g, @leave_fest_ap_r,
+  @leave_fest_ac_s, @leave_fest_ac_g, @leave_fest_ac_r,
   @leave_fest_s, @leave_fest_g, @leave_fest_r,
   @leave_ferie_ap_s, @leave_ferie_ap_g, @leave_ferie_ap_r,
   @leave_ferie_ac_s, @leave_ferie_ac_g, @leave_ferie_ac_r,
@@ -177,8 +230,17 @@ ON CONFLICT(user_id, id) DO UPDATE SET
   social_withheld = excluded.social_withheld,
   net_to_account = excluded.net_to_account,
   total_competenze = excluded.total_competenze,
+  payslip_net = excluded.payslip_net,
   net_pay = excluded.net_pay,
   bank_credit = excluded.bank_credit,
+  bank_match_status = excluded.bank_match_status,
+  acc_anomalous = excluded.acc_anomalous,
+  leave_fest_ap_s = excluded.leave_fest_ap_s,
+  leave_fest_ap_g = excluded.leave_fest_ap_g,
+  leave_fest_ap_r = excluded.leave_fest_ap_r,
+  leave_fest_ac_s = excluded.leave_fest_ac_s,
+  leave_fest_ac_g = excluded.leave_fest_ac_g,
+  leave_fest_ac_r = excluded.leave_fest_ac_r,
   leave_fest_s = excluded.leave_fest_s,
   leave_fest_g = excluded.leave_fest_g,
   leave_fest_r = excluded.leave_fest_r,
@@ -220,11 +282,12 @@ function toParams(userId: number, p: PayslipRecord) {
     social_withheld: p.socialWithheld,
     net_to_account: p.netToAccount,
     total_competenze: p.totalCompetenze,
+    payslip_net: p.payslipNet,
     net_pay: p.netPay,
     bank_credit: p.bankCredit,
-    leave_fest_s: p.leaveFest.spettanti,
-    leave_fest_g: p.leaveFest.godute,
-    leave_fest_r: p.leaveFest.residue,
+    bank_match_status: p.bankMatchStatus,
+    acc_anomalous: p.accAnomalous ? 1 : 0,
+    ...leaveParams("leave_fest", p.leaveFest),
     ...leaveParams("leave_ferie", p.leaveFerie),
     ...leaveParams("leave_perm", p.leavePerm),
     source_file: p.sourceFile,
