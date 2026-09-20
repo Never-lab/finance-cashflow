@@ -5,11 +5,11 @@ import { formatEur } from "@shared/lib/stats";
 
 /** Colori e sfondo pannello per assi, griglia e serie. */
 export const CHART = {
-  teal: "#6ecfbc",
-  clay: "#e07a4a",
-  muted: "#8f9a94",
-  grid: "#3d4642",
-  panel: "#2a312e",
+  teal: "#5ed4c0",
+  clay: "#e08a5c",
+  muted: "#8a948e",
+  grid: "rgba(238, 242, 239, 0.08)",
+  panel: "#161b19",
 };
 
 type TipPayload = {
