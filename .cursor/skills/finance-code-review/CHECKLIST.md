@@ -19,7 +19,7 @@ Apply every item that the diff touches. Skip items with no relevant files.
 ## CSV / parsers
 
 - [ ] Mediolanum / Revolut detect + header / preamble changes update tests + fixtures
-- [ ] Parser changes have or update `src/lib/*.test.ts` coverage for the edge case
+- [ ] Parser changes have or update `packages/shared/lib/*.test.ts` coverage for the edge case
 - [ ] Description cleaning does not drop needed merchant signal without reason
 
 ## API / SQLite

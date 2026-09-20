@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Questo è il progetto **Finance / Cash Flow**.
+Questo è il progetto **Cash Flow** (`Never-lab/finance-cashflow`), workspace **`C:\Users\nicho\Documents\Cash`**.
 
-Prima di lavorare, leggi **`CLAUDE.md`** in root: struttura, stack (Vite + Hono + SQLite `data/finance.db`), formati CSV (Mediolanum/Revolut), tab Investimenti, migrazione IndexedDB, stile UI, comandi, roadmap e skill da usare / evitare.
+Prima di lavorare, leggi **`CLAUDE.md`** in root: struttura, stack (Vite + Hono + SQLite `data/finance.db`), formati CSV (Mediolanum/Revolut), tab (Piano / Budget / Investimenti / …), migrazione IndexedDB, stile UI, comandi, roadmap e skill da usare / evitare.
 
 **Workflow agent:** leggi **`ACTION.md`** — se Nicholas dice **«procedi»** (o «vai» / «commit e push») dopo un task, fai **commit + push** su `master` (Railway autodeploy). Prima: `finance-code-review` → `GATE: READY`, poi `npm test` + `npm run build`.
 

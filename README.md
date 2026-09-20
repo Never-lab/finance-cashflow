@@ -1,92 +1,101 @@
 # Cash Flow
 
-Hub locale per cash flow personale (Mediolanum + Revolut Pocket) e portafoglio investimenti/risparmi.
+Hub personale di **cash flow** e portafoglio: carichi gli export CSV di banca, li categorizzzi in automatico, e navighi KPI, budget, impegni e investimenti — tutto in locale su SQLite.
 
-## Avvio
+Repo: [`Never-lab/finance-cashflow`](https://github.com/Never-lab/finance-cashflow) · workspace tipico: `Documents/Cash`.
+
+## Cosa fa
+
+1. **Import CSV** — Mediolanum (conto/carta) e Revolut Pocket (solo righe completate). Parse nel browser, persistenza sull’API.
+2. **Cash flow** — entrate/uscite, categorie, esclusione trasferimenti interni, grafici (Sankey, cumulata, breakdown).
+3. **Abbonamenti / ricorrenti** — candidati da storico; stati `could cancel` / `cancelled`.
+4. **Piano** — buffer Mediolanum, vault (Auto/Casa…), liquidità, piano liberazione.
+5. **Budget** — limiti per categoria sul periodo.
+6. **Mutui / PayPal / Buste paga** — da movimenti banca (+ PDF buste dove supportato).
+7. **Consigli** — advisor locale (leak, anomalie, score).
+8. **Investimenti** — strumenti, versamenti, allocation, P&L; quote Yahoo (Finnhub opzionale).
+9. **Backup** — export/import JSON; DB file `data/finance.db`.
+
+Non è un prodotto multi-utente SaaS: un’istanza = i tuoi dati. In produzione (Railway) c’è login locale opzionale.
+
+## Stack (layout)
+
+```
+apps/web          React 19 + Vite 6 (UI :5173)
+apps/api          Hono + better-sqlite3 (API :5174, serve anche dist/)
+packages/shared   tipi + dominio puro (parser, stats, budget, …)
+data/             finance.db (gitignored)
+fixtures/         CSV sample (export reali gitignored)
+```
+
+Alias TypeScript/Vite: `@shared/*` → `packages/shared/*`.
+
+Un solo `package.json` in root (niente workspaces npm): CI e Railway restano `npm ci` → `npm run build` → `npm start`.
+
+## Avvio locale
 
 ```bash
 npm install
 npm run dev
 ```
 
-Apri `http://localhost:5173`. Vite fa proxy di `/api` verso l’API Node su `http://localhost:5174`.
+Apri `http://localhost:5173`. Vite fa proxy di `/api` → `http://localhost:5174`.
 
-Solo API: `npm run server`. Solo UI: `npm run dev:web` (con API già in esecuzione).
+| Comando | Ruolo |
+|---------|--------|
+| `npm run dev` | UI + API insieme |
+| `npm run server` | solo API |
+| `npm run dev:web` | solo Vite (API già su) |
+| `npm test` | vitest (web + api + shared) |
+| `npm run build` | typecheck + bundle UI in `dist/` |
+| `npm start` | API produzione (serve anche `dist/` se presente) |
 
-## Dove stanno i dati
+## Dati e privacy
 
-Tutto in **`data/finance.db`** (SQLite, gitignored). Backup:
+- Fonte di verità: **`data/finance.db`** (SQLite).
+- Backup: copia il file, oppure **Impostazioni → Esporta backup JSON**.
+- Nessuna chiave mercato nel frontend: Finnhub (se usata) sta in `settings` sul DB.
+- Export bancari reali: **non committare** (già in `.gitignore`).
 
-- copia il file `data/finance.db`, oppure
-- **Impostazioni → Esporta backup JSON** (cash flow + override; strumenti investimenti restano nel DB)
+### Migrazione da IndexedDB (app vecchia)
 
-## Migrazione da IndexedDB (versioni precedenti)
+1. `npm run dev`
+2. Se SQLite è vuoto ma IndexedDB ha movimenti → banner **Importa nel database locale**
+3. Oppure **Impostazioni → Importa backup JSON**
 
-Se avevi già usato l’app quando i dati erano solo nel browser:
+## CSV supportati
 
-1. Avvia `npm run dev` (serve API + UI).
-2. Se SQLite è vuoto ma IndexedDB ha movimenti, compare un banner **Importa nel database locale** — conferma per migrare.
-3. In alternativa: **Impostazioni → Importa backup JSON** (sostituisce lo stato via `POST /api/migrate`).
+- **Revolut Pocket** — CSV ufficiale; solo `COMPLETED` / `COMPLETATO`
+- **Mediolanum** — colonne tipo `Data` / `Descrizione` / `Importo` (`;` ok); preamble conto saltato dal parser
 
-Dopo la migrazione i dati vivono in SQLite; IndexedDB non è più la fonte di verità.
+Dettaglio formati: `CLAUDE.md` e `packages/shared/lib/parse*.ts`.
 
-## Uso
+## Assistente Cursor
 
-1. **Carica CSV** — export dalla banca (parse in browser, persistenza su server).
-2. Revolut Pocket: CSV ufficiale (solo righe `COMPLETED`).
-3. Mediolanum: CSV con colonne `Data`, `Descrizione`, `Importo` (`;` ok).
-4. Tab **Investimenti** — strumenti, versamenti, KPI, allocation, P&L; ticker opzionale (Yahoo); fondi senza ticker a saldo manuale.
-5. **Impostazioni** — backup/restore JSON, svuota dati, chiave API mercato opzionale.
+Skill in `.cursor/skills/` (openaccountant + finance IT): spese, abbonamenti, budget, FIRE, tasse IRPEF, ecc.
 
-## Assistente finanziario (Cursor skills)
+Guida: [`docs/skills-finance-assistant.md`](docs/skills-finance-assistant.md).
 
-In `.cursor/skills/`: pack **openaccountant** (spese, abbonamenti, digest, goal, net worth…) + **ai-finance-claude** (budget, portfolio, FIRE, compare…).
-
-Guida, prompt e use case: **[docs/skills-finance-assistant.md](docs/skills-finance-assistant.md)**.
-
-### Quotazioni (Finnhub opzionale)
-
-Default: **Yahoo Finance**, nessuna chiave.
-
-Per provider ufficiale: in **Impostazioni → Quotazioni di mercato** inserisci una [Finnhub API key](https://finnhub.io/). La chiave resta solo nel DB locale (`settings`), mai nel bundle frontend. Rimuovendo la chiave si torna a Yahoo.
-
-## Script
-
-- `npm run dev` — UI + API (concurrently)
-- `npm run server` — solo API
-- `npm run dev:web` — solo Vite
-- `npm test` — test parser/statistiche/server
-- `npm run build` — build produzione UI
-- `npm start` — API Node (Railway / produzione; UI static in arrivo con F-deploy)
+> Non usare le skill globali Cowork `/finance-*-dashboard` su questo repo: qui la UI è Vite + SQLite.
 
 ## Deploy (Railway)
 
-Progetto **separato** da liquidazi. Piano Hobby: un servizio + volume SQLite su `/data`.
+Servizio unico + volume SQLite su `/data`. Autodeploy da `master`.
 
-### Checklist dashboard (una tantum)
+1. New Project → repo `Never-lab/finance-cashflow`, branch `master`
+2. Generate Domain
+3. Volume mount **`/data`**
+4. Variables:
 
-1. [Railway](https://railway.com) → **New Project** → **Deploy from GitHub repo** → `Never-lab/finance-cashflow`, branch **`master`**, autodeploy **ON** (opzionale: Wait for CI).
-2. Servizio web → **Settings** → **Generate Domain** (URL `*.up.railway.app`).
-3. **Add Volume** → mount path **`/data`** (collegato al servizio).
-4. **Variables** (environment production):
+| Variable | Valore |
+|----------|--------|
+| `NODE_ENV` | `production` |
+| `FINANCE_AUTH` | `on` |
+| `FINANCE_USERNAME` | username |
+| `FINANCE_PASSWORD` | ≥ 8 caratteri |
+| `FINANCE_SECRET` | random 32+ byte (`openssl rand -hex 32`) |
+| `DATABASE_PATH` | `/data/finance.db` |
 
-   | Variable | Valore |
-   |----------|--------|
-   | `NODE_ENV` | `production` |
-   | `FINANCE_AUTH` | `on` |
-   | `FINANCE_USERNAME` | il tuo username |
-   | `FINANCE_PASSWORD` | password ≥ 8 caratteri |
-   | `FINANCE_SECRET` | stringa random 32+ byte (`openssl rand -hex 32`) |
-   | `DATABASE_PATH` | `/data/finance.db` |
+Health: `GET /api/health` → `{ "ok": true, … }`.
 
-   Al primo boot con DB vuoto, l'utente viene creato da `FINANCE_USERNAME` / `FINANCE_PASSWORD`. Nessuna registrazione pubblica.
-
-5. Health: `GET https://<tuo-dominio>/api/health` → `{ "ok": true, … }` (**senza `:8080`** — Railway espone solo HTTPS sulla porta 443).
-6. Apri `https://<tuo-dominio>/` per la UI (dopo build con `dist/`).
-
-Build/install: `nixpacks.toml` (Node 22, Python + gcc for `better-sqlite3`, `npm ci`, `npm run build`). Node **22** via `NIXPACKS_NODE_VERSION`.
-
-### Stato attuale
-
-- **Fatto:** config Railway, CI, health API, UI static, **auth login + sessioni HMAC**.
-- **Prossimo:** passkey fase 2, v2 budget, v4 obiettivi Vault.
+Build: `nixpacks.toml` (Node 22 + native build per `better-sqlite3`).

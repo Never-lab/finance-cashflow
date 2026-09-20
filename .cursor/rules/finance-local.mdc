@@ -3,7 +3,9 @@ description: Finance / Cash Flow local agent entrypoint
 alwaysApply: true
 ---
 
-# Finance local
+# Finance local (Cash / finance-cashflow)
+
+Workspace: `C:\Users\nicho\Documents\Cash` — repo `Never-lab/finance-cashflow`.
 
 1. Read `AGENTS.md` → `CLAUDE.md`. Workflow: `ACTION.md` («procedi» → commit+push `master`).
 2. Chat Italian; code identifiers English. Tone: `caveman.mdc` (off: `stop caveman` | `normal mode`).
@@ -11,3 +13,4 @@ alwaysApply: true
 4. No default `docs/superpowers/specs|plans` MD — decisions in chat/claude-mem.
 5. Quality stack (from Glowroot / Kudu / SteelMC): `token-thrift`, `code-quality`, `fable-powers`, `finance-post-impl-review` → skill **`finance-code-review`** before done / procedi.
 6. Assistente €: `.cursor/skills/finance-*` + `_shared/italy-finance-context.md` (see `docs/skills-finance-assistant.md`).
+7. **Not** the Cowork HTML `/finance-*-dashboard` flow — this app is Vite + SQLite (`npm run dev`).

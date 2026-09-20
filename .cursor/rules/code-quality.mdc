@@ -17,11 +17,11 @@ Don't hide uncertainty behind workarounds. State what you verified, what is miss
 
 ## Verify before asking
 
-Inspect relevant parsers, `server/` routes, SQLite schema, fixtures, and tests first. If still blocked, say what you checked.
+Inspect relevant parsers, `apps/api/` routes, SQLite schema, fixtures, and tests first. If still blocked, say what you checked.
 
 ## Foundations
 
-Don't land stubs or fake financial data in shared paths (`src/lib/*`, `server/lib/*`, schema) unless explicitly prototyping and labeled. Partial work must not break import/dedup/KPI for the rest of the app.
+Don't land stubs or fake financial data in shared paths (`packages/shared/lib/*`, `apps/api/lib/*`, schema) unless explicitly prototyping and labeled. Partial work must not break import/dedup/KPI for the rest of the app.
 
 ## Code standard
 
@@ -39,7 +39,7 @@ Don't land stubs or fake financial data in shared paths (`src/lib/*`, `server/li
 
 ## UI quality
 
-- Preserve existing design system in `styles.css` (charcoal / teal / clay). No new UI kit.
+- Preserve existing design system in `apps/web/src/styles.css` (charcoal / teal / clay). No new UI kit.
 - Layout changes: keep sidebar + tab patterns; visual smoke (Playwright MCP ok) when structure changes.
 - Do not invent a second visual language (no purple gradients, cream-serif marketing look, or card spam) unless the user asks for a redesign.
 - User-visible copy stays Italian and consistent with neighboring screens.

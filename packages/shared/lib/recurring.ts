@@ -1,0 +1,174 @@
+/**
+ * Rilevamento uscite ricorrenti (stesso merchant, importo simile, ≥2 mesi).
+ *
+ * Alimenta tab Abbonamenti e advisor; `isSubscriptionLike` separa abbonamenti cancellabili
+ * da assicurazioni, spesa grocery e POS variabili.
+ */
+import type { Transaction } from "../types";
+import { forCashflow } from "./internal";
+import { isFuelPurchase } from "./fuel";
+import { isHospitalityVenue } from "./hospitality";
+
+/** Gruppo ricorrente aggregato per chiave merchant normalizzata. */
+export type RecurringItem = {
+  key: string;
+  label: string;
+  category: string;
+  avgAmount: number;
+  months: string[];
+  count: number;
+  lastDate: string;
+  /** Carico mensile equivalente (semestrale/trimestrale ammortizzato) */
+  monthlyEstimate: number;
+  transactionIds: string[];
+};
+
+/** Esclusi da “abbonamento cancellabile”. */
+const INSURANCE_RE =
+  /allianz|assicur|unipol|generali|\baxa\b|reale mutua|payment loan/i;
+
+const NON_SUBSCRIPTION_CATEGORIES = new Set([
+  "Assicurazioni",
+  "Mutuo",
+  "Finanziamento auto",
+  "Affitto",
+  "Bollette",
+  "Stipendio",
+  "Trasferimenti",
+  "Trasporti",
+  "Auto e manutenzione",
+  "Shopping",
+  "Abbigliamento",
+  "Elettronica",
+  "Spesa",
+  "Ristoranti",
+  "Salute",
+  "Prelievi",
+  "Vacanze",
+  "Intrattenimento",
+  "Casa",
+  "Sport e palestra",
+  "Bellezza",
+  "Educazione",
+  "Animali",
+  "Regali e donazioni",
+  "Investimenti",
+  "Banca e commissioni",
+]);
+
+/** Retail one-off: pattern ricorrente ≠ abbonamento (es. Amazon ordini). */
+const RETAIL_RE =
+  /\bamazon\b(?! prime)|mediaworld|media world|zalando|ikea|decathlon|unieuro|trony|euronics|conad|esselunga|essellunga|coop\b|lidl|aldi|carrefour|eurospin|tigros|\biper\b|simply|pam\b|autodoc|steam games|prozis/i;
+
+/** Merchant abbonamento noto quando la banca descrive genericamente. */
+const SUBSCRIPTION_MERCHANT_RE =
+  /netflix|spotify|disney|youtube.?premium|\bsky\b|cursor|klarna|amazon prime|dazn|icloud|apple\.com\/bill|google.?one|adobe|microsoft 365|office 365|openai|chatgpt|playstation.?plus|xbox live|now tv|paramount|crunchyroll|tidal|deezer|audible|dropbox|nordvpn|fastweb|tim\b|vodafone|windtre/i;
+
+/** Normalizza descrizione per raggruppare lo stesso merchant (max 48 char). */
+export function recurringKey(description: string): string {
+  return description
+    .toLowerCase()
+    .replace(/·\s*(risparmi|deposito|attuale)\b/gi, "")
+    .replace(/\d+/g, " ")
+    .replace(/[^a-zàèéìòù\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48);
+}
+
+/**
+ * Abbonamento “tagliabile” (streaming, gym) vs spesa variabile/assicurazione.
+ * @param item - Gruppo da findRecurring
+ */
+export function isSubscriptionLike(item: RecurringItem): boolean {
+  if (NON_SUBSCRIPTION_CATEGORIES.has(item.category)) return false;
+  const hay = `${item.label} ${item.key}`;
+  if (INSURANCE_RE.test(hay)) return false;
+  if (isFuelPurchase(hay)) return false;
+  if (isHospitalityVenue(hay)) return false;
+  if (RETAIL_RE.test(hay)) return false;
+  if (/bonifico|sepa ist|sepa instant|c\/o benef|disposizione vs/i.test(hay)) return false;
+  if (SUBSCRIPTION_MERCHANT_RE.test(hay)) return true;
+  if (item.category === "Abbonamenti") return true;
+  return false;
+}
+
+function medianGapDays(dates: string[]): number {
+  if (dates.length < 2) return 30;
+  const gaps: number[] = [];
+  for (let i = 1; i < dates.length; i++) {
+    const d0 = new Date(dates[i - 1]!);
+    const d1 = new Date(dates[i]!);
+    gaps.push(Math.max(1, (d1.getTime() - d0.getTime()) / 86_400_000));
+  }
+  gaps.sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)] ?? 30;
+}
+
+/**
+ * Converte rata osservata in equivalente mensile usando gap mediano tra date.
+ * @param avgInstallment - Importo medio rata
+ * @param dates - Date ISO delle occorrenze
+ */
+export function estimateMonthlyBurden(avgInstallment: number, dates: string[]): number {
+  if (avgInstallment <= 0) return 0;
+  const gap = medianGapDays(dates.sort());
+  if (gap <= 35) return avgInstallment;
+  const monthly = (avgInstallment * 30) / gap;
+  return Math.round(monthly * 100) / 100;
+}
+
+/**
+ * Trova uscite ricorrenti: stessa chiave in ≥2 mesi, importi entro ±25% dalla mediana.
+ * Usa solo righe cash-flow (no internal).
+ */
+export function findRecurring(txns: Transaction[]): RecurringItem[] {
+  const expenses = forCashflow(txns).filter((t) => t.amount < 0);
+  const byKey = new Map<string, Transaction[]>();
+
+  for (const t of expenses) {
+    const key = recurringKey(t.description);
+    if (key.length < 3) continue;
+    const list = byKey.get(key) ?? [];
+    list.push(t);
+    byKey.set(key, list);
+  }
+
+  const out: RecurringItem[] = [];
+  for (const [key, list] of byKey) {
+    const months = [...new Set(list.map((t) => t.date.slice(0, 7)))].sort();
+    if (months.length < 2 && list.length < 3) continue;
+
+    const amounts = list.map((t) => -t.amount).sort((a, b) => a - b);
+    const median = amounts[Math.floor(amounts.length / 2)] ?? 0;
+    if (median <= 0) continue;
+
+    const similar = list.filter((t) => {
+      const a = -t.amount;
+      return Math.abs(a - median) / median <= 0.25;
+    });
+    const simMonths = [...new Set(similar.map((t) => t.date.slice(0, 7)))];
+    if (simMonths.length < 2 && similar.length < 3) continue;
+
+    const avg =
+      similar.reduce((s, t) => s + -t.amount, 0) / Math.max(similar.length, 1);
+    const dates = similar.map((t) => t.date);
+    const label = similar[0]?.description ?? key;
+    const category = similar[0]?.category ?? "Altro";
+    const lastDate = dates.sort().at(-1) ?? "";
+
+    out.push({
+      key,
+      label,
+      category,
+      avgAmount: Math.round(avg * 100) / 100,
+      months: simMonths.sort(),
+      count: similar.length,
+      lastDate,
+      monthlyEstimate: estimateMonthlyBurden(avg, dates),
+      transactionIds: similar.map((t) => t.id),
+    });
+  }
+
+  return out.sort((a, b) => b.monthlyEstimate - a.monthlyEstimate);
+}

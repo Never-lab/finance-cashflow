@@ -18,7 +18,11 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./packages/shared/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["apps/web/src", "apps/api", "packages/shared"]
 }

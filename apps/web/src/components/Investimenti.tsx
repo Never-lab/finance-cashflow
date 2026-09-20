@@ -1,0 +1,490 @@
+﻿/**
+ * Tab Investimenti: CRUD strumenti, versamenti, collegamento movimenti banca, grafici
+ * patrimonio/allocazione/prezzo; dati da API SQLite + quotazioni di mercato.
+ */
+import { useEffect, useState, type FormEvent } from "react";
+import type { Contribution, Instrument, InstrumentType, Transaction } from "@shared/types";
+import { api, type InstrumentWithHolding, type PortfolioSummary, type QuoteBar } from "../api";
+import { formatEur } from "@shared/lib/stats";
+import { detectKnownInvestment, PAC_MS_GLOBAL_OPPORTUNITY } from "@shared/lib/knownInvestments";
+import {
+  AllocationChart,
+  InstrumentPriceChart,
+  PortfolioHistoryChart,
+} from "./charts/InvestimentiCharts";
+
+type Props = {
+  transactions: Transaction[];
+  refreshKey?: number;
+};
+
+const TYPE_LABELS: Record<InstrumentType, string> = {
+  pac: "PAC",
+  etf: "ETF",
+  fondo: "Fondo",
+  risparmio: "Risparmio",
+  deposito: "Deposito",
+};
+
+const CASH_TYPES = new Set<InstrumentType>(["risparmio", "deposito"]);
+
+/** Valore mostrato in tabella se manca riga nel summary (no ticker o quote assenti). */
+function fallbackValue(i: InstrumentWithHolding): number {
+  return (i.holding?.cashBalance ?? 0) + (i.holding?.costBasis ?? 0);
+}
+
+export function Investimenti({ transactions, refreshKey = 0 }: Props) {
+  const [instruments, setInstruments] = useState<InstrumentWithHolding[]>([]);
+  const [summary, setSummary] = useState<PortfolioSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [history, setHistory] = useState<{ date: string; value: number }[]>([]);
+  const [instrumentQuotes, setInstrumentQuotes] = useState<QuoteBar[]>([]);
+
+  const [name, setName] = useState("");
+  const [type, setType] = useState<InstrumentType>("pac");
+  const [ticker, setTicker] = useState("");
+  const [qtyOrCash, setQtyOrCash] = useState("");
+  const [cost, setCost] = useState("");
+
+  const [depDate, setDepDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [depAmount, setDepAmount] = useState("");
+  const [depNote, setDepNote] = useState("");
+  const [linkTxId, setLinkTxId] = useState("");
+
+  const isCashType = CASH_TYPES.has(type);
+
+  async function refresh() {
+    setError(null);
+    try {
+      const [list, s, h] = await Promise.all([
+        api.listInstruments(),
+        api.getPortfolioSummary(),
+        api.getPortfolioHistory(),
+      ]);
+      setInstruments(list);
+      setSummary(s);
+      setHistory(h);
+    } catch {
+      setError("Errore di connessione al server");
+    }
+  }
+
+  useEffect(() => {
+    setLoading(true);
+    void refresh().finally(() => setLoading(false));
+  }, [refreshKey]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setContributions([]);
+      return;
+    }
+    void api
+      .listContributions(selectedId)
+      .then(setContributions)
+      .catch(() => setError("Errore di connessione al server"));
+  }, [selectedId]);
+
+  useEffect(() => {
+    const ticker = instruments.find((i) => i.id === selectedId)?.ticker;
+    if (!ticker) {
+      setInstrumentQuotes([]);
+      return;
+    }
+    void api
+      .getQuoteHistory(ticker)
+      .then(setInstrumentQuotes)
+      .catch(() => setInstrumentQuotes([]));
+  }, [selectedId, instruments]);
+
+  function resetForm() {
+    setName("");
+    setType("pac");
+    setTicker("");
+    setQtyOrCash("");
+    setCost("");
+  }
+
+  async function onAdd(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setError(null);
+    try {
+      const created: Instrument = await api.createInstrument({
+        name: name.trim(),
+        type,
+        ticker: ticker.trim() || null,
+        currency: "EUR",
+      });
+      await api.setHolding(created.id, {
+        quantity: isCashType ? null : Number(qtyOrCash) || null,
+        cashBalance: isCashType ? Number(qtyOrCash) || 0 : null,
+        costBasis: isCashType ? 0 : Number(cost) || 0,
+      });
+      await refresh();
+      resetForm();
+      setShowAdd(false);
+    } catch {
+      setError("Errore di connessione al server");
+    }
+  }
+
+  async function onDelete(id: string) {
+    if (!confirm("Eliminare questo strumento e tutti i suoi versamenti?")) return;
+    try {
+      await api.deleteInstrument(id);
+      if (selectedId === id) setSelectedId(null);
+      await refresh();
+    } catch {
+      setError("Errore di connessione al server");
+    }
+  }
+
+  async function onAddContribution(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedId || !depAmount) return;
+    try {
+      await api.addContribution(selectedId, {
+        date: depDate,
+        amount: Number(depAmount),
+        note: depNote.trim() || null,
+      });
+      setDepAmount("");
+      setDepNote("");
+      const [list, contribs, s] = await Promise.all([
+        api.listInstruments(),
+        api.listContributions(selectedId),
+        api.getPortfolioSummary(),
+      ]);
+      setInstruments(list);
+      setContributions(contribs);
+      setSummary(s);
+    } catch {
+      setError("Errore di connessione al server");
+    }
+  }
+
+  async function onDeleteContribution(id: string) {
+    if (!selectedId) return;
+    if (!confirm("Eliminare questo versamento?")) return;
+    try {
+      await api.deleteContribution(id);
+      const [list, contribs, s] = await Promise.all([
+        api.listInstruments(),
+        api.listContributions(selectedId),
+        api.getPortfolioSummary(),
+      ]);
+      setInstruments(list);
+      setContributions(contribs);
+      setSummary(s);
+    } catch {
+      setError("Errore di connessione al server");
+    }
+  }
+
+  async function onLinkTransaction() {
+    if (!selectedId || !linkTxId) return;
+    try {
+      await api.linkTransaction(selectedId, linkTxId);
+      setLinkTxId("");
+      const [list, contribs, s] = await Promise.all([
+        api.listInstruments(),
+        api.listContributions(selectedId),
+        api.getPortfolioSummary(),
+      ]);
+      setInstruments(list);
+      setContributions(contribs);
+      setSummary(s);
+    } catch {
+      setError("Errore di connessione al server");
+    }
+  }
+
+  const selected = instruments.find((i) => i.id === selectedId) ?? null;
+  const lineByInstrument = new Map((summary?.lines ?? []).map((l) => [l.instrumentId, l]));
+  const linkedTxIds = new Set(contributions.map((c) => c.transactionId).filter(Boolean));
+  /** Uscite interne o PAC noti non ancora collegate a un versamento (max 200 per select). */
+  const linkableTx = transactions
+    .filter(
+      (t) =>
+        t.amount < 0 &&
+        (t.internal || detectKnownInvestment(t) != null) &&
+        !linkedTxIds.has(t.id),
+    )
+    .slice(0, 200);
+  const pacInstrument = instruments.find((i) => i.isin === PAC_MS_GLOBAL_OPPORTUNITY.isin);
+
+  if (loading) {
+    return <div className="boot">Caricamento…</div>;
+  }
+
+  return (
+    <div className="investimenti">
+      {pacInstrument && (
+        <p className="muted kpi-note">
+          PAC {PAC_MS_GLOBAL_OPPORTUNITY.isin} ({pacInstrument.name}): storico Mediolanum
+          precaricato (650 € versati, 4 versamenti fino a mar 2026). Nuovi versamenti: aggiungili
+          qui sotto o importa CSV — «Ricalcola tutto» in Dati collega anche i movimenti banca.
+        </p>
+      )}
+
+      <div className="stat-row recurring-kpis">
+        <div className="stat-card">
+          <span className="stat-label">Patrimonio</span>
+          <span className="stat-value">{formatEur(summary?.totalValue ?? 0)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">P&amp;L</span>
+          <span className={`stat-value ${(summary?.pnl ?? 0) >= 0 ? "pos" : "neg"}`}>
+            {formatEur(summary?.pnl ?? 0)}
+            {summary?.pnlPct != null ? ` (${summary.pnlPct.toFixed(1)}%)` : ""}
+          </span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Liquidità (risparmio+deposito)</span>
+          <span className="stat-value">{formatEur(summary?.cashLiquidity ?? 0)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Strumenti</span>
+          <span className="stat-value">{String(instruments.length)}</span>
+        </div>
+      </div>
+      <p className="muted kpi-note">
+        Valore = quantità × ultimo prezzo disponibile per gli strumenti con ticker
+        quotato; altrimenti fallback sul versato.
+      </p>
+
+      {error && <p className="error">{error}</p>}
+
+      <section className="panel chart-panel hero-panel">
+        <h3>Andamento patrimonio</h3>
+        <p className="muted tiny chart-sub">
+          Quantità ferma × prezzo di chiusura disponibile + saldi cash (ultimi 90 giorni).
+        </p>
+        <PortfolioHistoryChart data={history} />
+      </section>
+
+      <section className="panel chart-panel">
+        <h3>Allocazione per tipo</h3>
+        <AllocationChart
+          data={(summary?.allocation ?? []).map((a) => ({
+            label: TYPE_LABELS[a.type],
+            value: a.value,
+            pct: a.pct,
+          }))}
+        />
+      </section>
+
+      <div className="toolbar">
+        <h3 className="stat-section-title">Strumenti</h3>
+        <button type="button" className="btn primary" onClick={() => setShowAdd((s) => !s)}>
+          {showAdd ? "Annulla" : "+ Aggiungi strumento"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <form className="panel" onSubmit={(e) => void onAdd(e)}>
+          <label className="field">
+            Nome
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Es. PAC Msci World"
+              required
+            />
+          </label>
+          <label className="field">
+            Tipo
+            <select value={type} onChange={(e) => setType(e.target.value as InstrumentType)}>
+              {(Object.keys(TYPE_LABELS) as InstrumentType[]).map((t) => (
+                <option key={t} value={t}>
+                  {TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Ticker (opzionale)
+            <input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="Es. SWDA" />
+          </label>
+          <label className="field">
+            {isCashType ? "Saldo attuale (€)" : "Quantità (opzionale)"}
+            <input
+              type="number"
+              step="any"
+              value={qtyOrCash}
+              onChange={(e) => setQtyOrCash(e.target.value)}
+            />
+          </label>
+          {!isCashType && (
+            <label className="field">
+              Versato finora (€)
+              <input type="number" step="any" value={cost} onChange={(e) => setCost(e.target.value)} />
+            </label>
+          )}
+          <div className="modal-actions">
+            <button type="submit" className="btn primary">
+              Salva strumento
+            </button>
+          </div>
+        </form>
+      )}
+
+      {instruments.length === 0 ? (
+        <div className="empty">
+          <h2>Nessuno strumento</h2>
+          <p className="muted">Aggiungi un PAC, ETF, fondo, conto risparmio o deposito.</p>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Ticker</th>
+                <th className="num">Qty / Saldo</th>
+                <th className="num">Valore</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {instruments.map((i) => (
+                <tr
+                  key={i.id}
+                  className={selectedId === i.id ? "row-could" : undefined}
+                >
+                  <td>{i.name}</td>
+                  <td>
+                    <span className="tag">{TYPE_LABELS[i.type]}</span>
+                  </td>
+                  <td>{i.ticker ?? "—"}</td>
+                  <td className="num">
+                    {i.holding?.quantity ?? i.holding?.cashBalance ?? 0}
+                  </td>
+                  <td className="num">
+                    {formatEur(lineByInstrument.get(i.id)?.value ?? fallbackValue(i))}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setSelectedId(selectedId === i.id ? null : i.id)}
+                    >
+                      {selectedId === i.id ? "Chiudi" : "Dettagli"}
+                    </button>{" "}
+                    <button type="button" className="btn danger" onClick={() => void onDelete(i.id)}>
+                      Elimina
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {selected && (
+        <section className="panel invest-detail">
+          <h3>{selected.name} — quotazione</h3>
+          {selected.ticker ? (
+            <InstrumentPriceChart
+              data={instrumentQuotes.map((q) => ({ asOf: q.asOf, close: q.close }))}
+            />
+          ) : (
+            <p className="muted">Nessuna quotazione — aggiorna saldo manuale.</p>
+          )}
+
+          <h3>{selected.name} — versamenti</h3>
+
+          {contributions.length === 0 ? (
+            <p className="muted">Nessun versamento registrato.</p>
+          ) : (
+            <div className="table-wrap flat">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th className="num">Importo</th>
+                    <th>Nota</th>
+                    <th>Movimento collegato</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contributions.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.date}</td>
+                      <td className="num pos">{formatEur(c.amount)}</td>
+                      <td>{c.note ?? "—"}</td>
+                      <td>{c.transactionId ? "Sì" : "—"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn danger"
+                          onClick={() => void onDeleteContribution(c.id)}
+                        >
+                          Elimina
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <form className="invest-spaced" onSubmit={(e) => void onAddContribution(e)}>
+            <label className="field">
+              Data
+              <input type="date" value={depDate} onChange={(e) => setDepDate(e.target.value)} required />
+            </label>
+            <label className="field">
+              Importo (€)
+              <input
+                type="number"
+                step="any"
+                value={depAmount}
+                onChange={(e) => setDepAmount(e.target.value)}
+                required
+              />
+            </label>
+            <label className="field">
+              Nota (opzionale)
+              <input value={depNote} onChange={(e) => setDepNote(e.target.value)} />
+            </label>
+            <button type="submit" className="btn primary">
+              Registra versamento
+            </button>
+          </form>
+
+          <div className="field invest-spaced">
+            Collega movimento (interni disponibili: {linkableTx.length})
+            <div className="toolbar wrap">
+              <select value={linkTxId} onChange={(e) => setLinkTxId(e.target.value)}>
+                <option value="">Seleziona movimento…</option>
+                {linkableTx.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.date} · {t.description.slice(0, 40)} · {formatEur(t.amount)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn"
+                disabled={!linkTxId}
+                onClick={() => void onLinkTransaction()}
+              >
+                Collega movimento
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

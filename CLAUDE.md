@@ -8,8 +8,8 @@ Le regole parent in `~/.claude/CLAUDE.md` restano attive; qui c’è il contesto
 Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale con KPI, grafici, movimenti categorizzati.
 
 - **Owner:** Nicholas  
-- **Path:** `C:\Users\nicho\Documents\Finance`  
-- **Architettura finanziaria personale (nod i Mediolanum/Revolut, Vault, waterfall):** [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md)  
+- **Path:** `C:\Users\nicho\Documents\Cash` (repo `Never-lab/finance-cashflow`; ex-`Documents\Finance`)  
+- **Architettura finanziaria personale (nodi Mediolanum/Revolut, Vault, waterfall):** [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md)  
 - **Lingua UI:** italiano  
 - **Privacy:** dati locali su disco (`data/finance.db`) + API Node su localhost (`:5174`). Nessun cloud, nessun multi-utente. IndexedDB resta solo per migrazione one-shot da installazioni precedenti.  
 - **Stile UI:** tema scuro caldo (charcoal `#1c211f`, teal `#6ecfbc`, clay `#e07a4a`), sidebar raggruppata. Brand serif “Cash Flow”.
@@ -25,11 +25,11 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 | **v1.4** | Grafici Getquin-style: Sankey flusso, curva cumulata, barre, breakdown %, heatmap | **Fatta** |
 | **v1.5** | Tab Consigli: advisor locale leak/anomalie/cash flow + score | **Fatta** |
 | **v1.6** | Consigli rivisto: periodo, impegni+mutui, score v2, patrimonio | **Fatta** |
-| v2 | Budget per categoria + alert | Non iniziata — vedi stack unificato |
+| **v2 (parziale)** | Tab **Budget** per categoria | **Fatta** (alert avanzati: backlog) |
 | **v3 (parziale)** | Tab **Investimenti**: PAC/ETF/fondi/risparmi, KPI, allocation, P&L, quote Yahoo (+ Finnhub opzionale) | **Fatta** (F1–F3) |
 | **F-deploy** | Auth + Railway + volume SQLite | **Fatta** |
 | v3.1 | Tier rendimento (T0/T1/T2) in Investimenti | Non iniziata |
-| v4 | Obiettivi Vault (Auto, Casa) + waterfall visuale | Non iniziata |
+| **v4 (parziale)** | Tab **Piano** + obiettivi Vault (saldi) | **Fatta** (waterfall visuale: backlog) |
 
 Roadmap dettagliata e numeri di sistema: [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md).
 
@@ -60,51 +60,29 @@ npm run build
 ## Struttura
 
 ```
-Finance/
-├── CLAUDE.md                 ← questo file
-├── README.md
-├── package.json
-├── vite.config.ts            ← proxy /api → localhost:5174
-├── index.html
-├── data/
-│   └── finance.db            ← SQLite runtime (gitignored)
-├── docs/superpowers/
-│   ├── specs/2026-08-02-cashflow-dashboard-design.md
-│   ├── specs/2026-08-02-sqlite-investimenti-design.md
-│   └── plans/2026-08-02-sqlite-investimenti.md
-├── fixtures/                 ← CSV di prova (sample ok in git; export reali NO)
-│   ├── mediolanum-sample.csv
-│   ├── revolut-sample.csv
-│   └── Elenco movimenti*.csv ← gitignored (PII)
-├── server/
-│   ├── index.ts              ← Hono app, route /api/*
-│   ├── db.ts                 ← openDb, migrate, getDb
-│   ├── schema.sql
-│   ├── routes/               ← state, instruments, portfolio, quotes, settings
-│   └── lib/                  ← repos, portfolioMath, quotes (yahoo|finnhub)
-└── src/
-    ├── main.tsx
-    ├── App.tsx               ← tabs incl. Investimenti; boot via API; prompt migrazione IDB
-    ├── api.ts                ← client HTTP /api/*
-    ├── styles.css            ← design system (non stravolgere)
-    ├── types.ts
-    ├── db.ts                 ← loadState IndexedDB (migrazione) + re-export appState
-    ├── components/
-    │   ├── Dashboard.tsx
-    │   ├── Transactions.tsx
-    │   ├── Investimenti.tsx
-    │   ├── SettingsModal.tsx ← backup JSON, Finnhub key, wipe
-    │   └── UploadModal.tsx
-    └── lib/
-        ├── appState.ts       ← mergeImport, overrides, export/import JSON
-        ├── csv.ts            ← parse amount/date/table (con skip preamble)
-        ├── detectBank.ts
-        ├── importCsv.ts
-        ├── parseMediolanum.ts
-        ├── parseRevolut.ts
-        ├── categorize.ts
-        ├── stats.ts
-        └── *.test.ts
+Cash/                         ← workspace root (repo finance-cashflow)
+├── CLAUDE.md / AGENTS.md / ACTION.md
+├── .cursor/                  ← rules + skills
+├── package.json              ← scripts root (un solo package)
+├── apps/
+│   ├── web/                  ← React + Vite (UI :5173)
+│   │   ├── index.html
+│   │   ├── vite.config.ts    ← alias @shared, outDir ../../dist
+│   │   └── src/              ← components, api client, styles
+│   └── api/                  ← Hono + SQLite (API :5174)
+│       ├── index.ts / app.ts / db.ts / schema.sql
+│       ├── routes/
+│       └── lib/
+├── packages/
+│   └── shared/               ← types + dominio puro (@shared/*)
+│       ├── types.ts
+│       ├── lib/              ← parser, stats, budget, …
+│       └── test/fixtures.ts
+├── data/finance.db           ← SQLite runtime (gitignored)
+├── docs/                     ← stack + skills; archive/superpowers = storico
+├── fixtures/                 ← CSV sample (export reali NO / gitignored)
+├── public/                   ← favicon ecc.
+└── dist/                     ← build UI (gitignored; servita dall’API in prod)
 ```
 
 ## Modello dati
@@ -138,7 +116,7 @@ Export tipico: `Elenco movimenti dal … al ….csv`
 4. Descrizioni carta lunghe → `cleanMediolanumDescription` estrae `C/O …`  
 5. Detect: filename `elenco movimenti` **oppure** testo con `tipologia operazione` + `uscite` + `entrate`
 
-Parser: `src/lib/parseMediolanum.ts` (`parseCsvTable` con `isHeader`).
+Parser: `packages/shared/lib/parseMediolanum.ts` (`parseCsvTable` con `isHeader`).
 
 ### Revolut (IT + EN — già supportato)
 
@@ -149,7 +127,7 @@ Export tipico: `account-statement_YYYY-…_it-it_….csv`
 - Prodotti: `Attuale`, `Risparmi`, `Deposito` — i pocket compaiono in descrizione (`· Risparmi`); i trasferimenti interni gonfiano entrate+uscite ma il **netto** resta coerente
 - Detect: filename `account-statement` / `revolut`, oppure colonne `Data di completamento` / `Prodotto`+`Importo`
 
-Parser: `src/lib/parseRevolut.ts`.
+Parser: `packages/shared/lib/parseRevolut.ts`.
 
 ### Fixture
 

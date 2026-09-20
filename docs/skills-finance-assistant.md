@@ -2,6 +2,8 @@
 
 Skill pack per lavorare su **finance-cashflow** come assistente personale: analisi spese, abbonamenti, budget, obiettivi, patrimonio, FIRE/portfolio.
 
+> Workspace attivo: **`C:\Users\nicho\Documents\Cash`**. Non confondere con le skill globali Cowork `/finance-*-dashboard` (HTML + `overrides.json`) — qui la fonte di verità è `data/finance.db` + CSV in-app.
+
 > Non è consulenza finanziaria professionale. Usa i numeri del tuo SQLite / CSV locali.
 
 ## Locale: Italia

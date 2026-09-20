@@ -15,7 +15,7 @@ Stesso sistema di Glowroot / Kudu / SteelMC. Dettaglio: `CLAUDE.md` · globale `
 
 0. FABLE (ordine sopra)
 1. Orientation: `AGENTS.md` → `CLAUDE.md` → `ACTION.md` se task nuovo/ambiguo
-2. claude-mem su lavoro non triviale / continuazione (project `Finance` / cashflow)
+2. claude-mem su lavoro non triviale / continuazione (project `Cash` / finance-cashflow)
 3. using-superpowers se skill applicabile
 4. karpathy-guidelines (sempre su codice)
 5. ponytail full su task di codice
@@ -31,6 +31,6 @@ Stesso sistema di Glowroot / Kudu / SteelMC. Dettaglio: `CLAUDE.md` · globale `
 | Prima di «fatto» | verification-before-completion + `npm test` + `npm run build` + `finance-code-review` |
 | Review | inline `thrifty-code-review` + `finance-code-review`; Bugbot/Security solo se chiesti |
 | Assistente € | skill `finance-*` / openaccountant in `.cursor/skills/` + `_shared/italy-finance-context.md` |
-| UI change | preserve `styles.css`; Playwright MCP smoke se layout |
+| UI change | preserve `apps/web/src/styles.css`; Playwright MCP smoke se layout |
 
 Token thrift: se design già approvato in chat («ok / procedi»), non ri-leggere Superpowers / graphify / mem — implementa (vedi `token-thrift.mdc`).
