@@ -1,5 +1,5 @@
 /**
- * Estrazione contenuto cedolini PDF: anydoc → Markdown (primario), pdf-parse → plain (fallback).
+ * Estrazione contenuto cedolini PDF: pdf-parse plain (primario), anydoc Markdown (fallback).
  * Privacy: conversione solo locale; mai OCR hosted Firecrawl (cedolini non escono dalla macchina).
  */
 import { PDFParse } from "pdf-parse";
@@ -34,13 +34,17 @@ async function extractMarkdown(buffer: Buffer): Promise<string | null> {
 }
 
 /**
- * Preferisce Markdown via anydoc; fallback testo via pdf-parse.
+ * Preferisce plain pdf-parse. Anydoc MD spesso fonde `999 TOT.LORDO` con il codice
+ * della riga successiva (`34 CONTRIB.FAP`) → lordo/netto/leave sbagliati o vuoti.
+ * Markdown solo se plain vuoto.
  * @param buffer — PDF binario
  */
 export async function extractPayslipContent(buffer: Buffer): Promise<PayslipExtract> {
+  const plain = await extractPlainText(buffer);
+  if (plain.trim().length > 0) return { content: plain, kind: "plain" };
   const md = await extractMarkdown(buffer);
   if (md) return { content: md, kind: "md" };
-  return { content: await extractPlainText(buffer), kind: "plain" };
+  return { content: "", kind: "plain" };
 }
 
 /**

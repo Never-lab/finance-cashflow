@@ -7,7 +7,7 @@
 import type { Transaction } from "../types";
 
 /** Versione parser per migrazioni e invalidazione cache. */
-export const PAYSLIP_PARSER_VERSION = "osra-oluit-6-leave";
+export const PAYSLIP_PARSER_VERSION = "osra-oluit-7-leave";
 
 /** Kind contenuto estratto (Markdown anydoc vs plain pdf-parse). */
 export type PayslipContentKind = "md" | "plain";
@@ -160,11 +160,12 @@ export function splitLeaveTriple(
   const [a, b, c] = triple;
   if (a === 0 && b === 0 && c === 0) return buildLeave(emptySlice());
 
-  // Classico: spettanti − godute ≈ residue
+  // Classico: spettanti − godute ≈ residue. Fidati della riga "Residuo :" se presente
+  // (anche 0): PDF extract a volte mette meno trailing sul terzo valore (−18,67-).
   if (b > 0 && near(a - b, c, 0.02)) {
     const computed = round2(a - b);
     const residue =
-      apResidue != null && near(apResidue, computed, 0.02) ? apResidue : computed;
+      apResidue != null && !(apResidue === 0 && c > 0) ? apResidue : computed;
     return buildLeave({ spettanti: a, godute: b, residue });
   }
 
@@ -480,9 +481,10 @@ export function resolvePayslipNet(input: {
   socialWithheld: number | null;
 }): { payslipNet: number | null; accAnomalous: boolean } {
   const { netToAccount, taxableIncome, taxWithheld, socialWithheld } = input;
+  // Social può mancare su cedolini corti (es. primi mesi); conguaglio dicembre senza rit. mensile.
   const computed =
-    taxableIncome != null && taxWithheld != null && socialWithheld != null
-      ? round2(taxableIncome - taxWithheld - socialWithheld)
+    taxableIncome != null && taxWithheld != null
+      ? round2(taxableIncome - taxWithheld - (socialWithheld ?? 0))
       : null;
 
   if (netToAccount != null && computed != null) {
@@ -515,7 +517,11 @@ export function parseOsraPayslipText(text: string, sourceFile?: string): Payslip
 
   const grossTotal = amt(text, /999 TOT\.LORDO SOGG\.CONTR\s+([\d.,]+)/);
   const taxableIncome = amt(text, /Imponibile Fiscale\s+([\d.,]+)/);
-  const taxWithheld = amt(text, /Rit\. Fis\. mese lorda\s+([\d.,]+)/);
+  const taxCredito = amt(text, /Rit\.Fis\.\s*credito\s+([\d.,]+)/i);
+  const taxWithheld =
+    amt(text, /Rit\. Fis\. mese lorda\s+([\d.,]+)/) ??
+    amt(text, /Rit\.Fis\.\s*conguaglio\s+([\d.,]+)/i) ??
+    (taxCredito != null ? round2(-taxCredito) : null);
   const taxWithheldNet = amt(text, /Rit\. Fis\. mese netta\s+([\d.,]+)/);
   const socialWithheld = amt(text, /Tot\. rit\. sociali\s+([\d.,]+)/);
 

@@ -55,6 +55,17 @@ describe("resolvePayslipNet", () => {
     expect(r.payslipNet).toBe(1800);
     expect(r.accAnomalous).toBe(false);
   });
+
+  it("computes net when social withheld is missing", () => {
+    const r = resolvePayslipNet({
+      netToAccount: null,
+      taxableIncome: 500,
+      taxWithheld: 115,
+      socialWithheld: null,
+    });
+    expect(r.payslipNet).toBe(385);
+    expect(r.accAnomalous).toBe(false);
+  });
 });
 
 describe("parseOsraPayslipText", () => {
@@ -77,7 +88,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leaveFest.residue).toBeNull();
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-6-leave");
+    expect(parsed!.parserVersion).toBe("osra-oluit-7-leave");
   });
 
   it("parses AP/AC leave grid and non-empty FEST from text fixture", () => {
@@ -148,7 +159,7 @@ describe("parseOsraPayslipMarkdown", () => {
     expect(parsed!.leaveFerie.ap.spettanti).toBe(80);
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-6-leave");
+    expect(parsed!.parserVersion).toBe("osra-oluit-7-leave");
   });
 
   it("parses AP/AC leave from markdown table fixture", () => {
@@ -175,6 +186,20 @@ describe("parsePayslipContent", () => {
     expect(md?.payslipNet).toBe(1507.43);
     expect(plain?.payslipNet).toBe(1507.43);
   });
+});
+
+describe("extractPayslipContent prefers plain", () => {
+  it.skipIf(!fs.existsSync(path.join("fixtures", "06-2026.pdf")))(
+    "returns plain kind and real gross (not anydoc 34 CONTRIB.FAP glue)",
+    async () => {
+      const buffer = fs.readFileSync(path.join("fixtures", "06-2026.pdf"));
+      const extracted = await extractPayslipContent(buffer);
+      expect(extracted.kind).toBe("plain");
+      const parsed = parsePayslipContent(extracted.content, extracted.kind, "06-2026.pdf");
+      expect(parsed!.grossTotal).toBe(2615.5);
+      expect(parsed!.leaveFerie.residue).not.toBeNull();
+    },
+  );
 });
 
 describe("parseOsraPayslipText PDF fixtures", () => {
@@ -422,8 +447,36 @@ Residuo : 2,67 Residuo : 0,00 Residuo : 61,33
     expect(parsed!.leavePerm.ap.residue).toBe(61.33);
   });
 
-  it("keeps classic negative residue from trailing minus", () => {
+  it("prefers Residuo line over trailing-minus grid when AP residue is 0", () => {
     const leave = splitLeaveTriple([53.33, 72, -18.67], 0, null);
-    expect(leave.ap).toMatchObject({ spettanti: 53.33, godute: 72, residue: -18.67 });
+    expect(leave.ap).toMatchObject({ spettanti: 53.33, godute: 72, residue: 0 });
+  });
+
+  it("parses December conguaglio as tax withheld when mese lorda missing", () => {
+    const text = `OSRA Wolters Kluwer OLUIT
+12/2025 - Dicembre
+999 TOT.LORDO SOGG.CONTR 2.125,78
+Imponibile Fiscale 1.995,24
+Rit.Fis. conguaglio 363,42
+Tot. rit. sociali 130,54
+`;
+    const parsed = parseOsraPayslipText(text, "12-cong.txt");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.taxWithheld).toBe(363.42);
+    expect(parsed!.payslipNet).toBe(1501.28);
+  });
+
+  it("parses December Rit.Fis. credito as negative tax withheld", () => {
+    const text = `OSRA Wolters Kluwer OLUIT
+12/2024 - Dicembre
+999 TOT.LORDO SOGG.CONTR 2.013,99
+Imponibile Fiscale 2.007,95
+Rit.Fis. credito 835,37
+Tot. rit. sociali 6,04
+`;
+    const parsed = parseOsraPayslipText(text, "12-credito.txt");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.taxWithheld).toBe(-835.37);
+    expect(parsed!.payslipNet).toBe(2837.28);
   });
 });

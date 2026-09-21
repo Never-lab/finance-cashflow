@@ -217,8 +217,8 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
         <h3>Importa cedolini PDF</h3>
         <p className="muted">
           Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Puoi selezionare tanti PDF
-          insieme (es. 30): vengono elaborati a gruppi. Conversione PDF→Markdown (anydoc) con
-          fallback testo; netto KPI da banca se match, altrimenti cedolino. I PDF restano sul
+          insieme (es. 30): vengono elaborati a gruppi. Estrazione testo PDF (plain); netto KPI
+          da banca se match, altrimenti cedolino. I PDF restano sul
           volume.
         </p>
         <input
