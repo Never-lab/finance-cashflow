@@ -26,6 +26,11 @@ describe("parseItalianAmount", () => {
     expect(parseItalianAmount("700,08")).toBe(700.08);
     expect(parseItalianAmount("—")).toBeNull();
   });
+
+  it("parses trailing minus used by OSRA PDF extract", () => {
+    expect(parseItalianAmount("18,67-")).toBe(-18.67);
+    expect(parseItalianAmount("26,66-")).toBe(-26.66);
+  });
 });
 
 describe("resolvePayslipNet", () => {
@@ -72,7 +77,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leaveFest.residue).toBeNull();
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-5-leave");
+    expect(parsed!.parserVersion).toBe("osra-oluit-6-leave");
   });
 
   it("parses AP/AC leave grid and non-empty FEST from text fixture", () => {
@@ -143,7 +148,7 @@ describe("parseOsraPayslipMarkdown", () => {
     expect(parsed!.leaveFerie.ap.spettanti).toBe(80);
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-5-leave");
+    expect(parsed!.parserVersion).toBe("osra-oluit-6-leave");
   });
 
   it("parses AP/AC leave from markdown table fixture", () => {
@@ -379,5 +384,46 @@ Residuo : 26,67 Residuo : 0,00 Residuo : 56,00
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leaveFest.residue).toBeNull();
     expect(parsed!.leavePerm.ap.residue).toBe(56);
+  });
+});
+
+describe("multi-page OSRA leave grid", () => {
+  const header = `OSRA Wolters Kluwer OLUIT
+08/2025 - Agosto
+999 TOT.LORDO SOGG.CONTR 1.942,43
+Imponibile Fiscale 1.823,19
+Rit. Fis. mese lorda 419,33
+Rit. Fis. mese netta 419,33
+Tot. rit. sociali 119,24
+FEST. FERIE PERM.
+`;
+
+  it("parses leave grid when PDF extract glues trailing minus (26,66-)", () => {
+    const text = `${header}Ore Ore Ore
+Residuo : 2,67 Residuo : 0,00 Residuo : 61,33
+106,67 136,00 26,66- 0,00 0,00 0,00 69,33 8,00 122,66
+`;
+    const parsed = parseOsraPayslipText(text, "08-2025-hyphen.txt");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.leaveFerie.residue).not.toBeNull();
+    expect(parsed!.leavePerm.ap.residue).toBe(61.33);
+  });
+
+  it("uses last non-zero Residuo block when early pages are blank forms", () => {
+    const text = `${header}Residuo : 0,00 Residuo : 0,00 Residuo : 0,00
+0,00 0,00 0,00 0,00 0,00 0,00 0,00 0,00 0,00
+Ore Ore Ore
+Residuo : 2,67 Residuo : 0,00 Residuo : 61,33
+106,67 136,00 26,66- 0,00 0,00 0,00 69,33 8,00 122,66
+`;
+    const parsed = parseOsraPayslipText(text, "08-2025-multipage.txt");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.leaveFerie.residue).not.toBeNull();
+    expect(parsed!.leavePerm.ap.residue).toBe(61.33);
+  });
+
+  it("keeps classic negative residue from trailing minus", () => {
+    const leave = splitLeaveTriple([53.33, 72, -18.67], 0, null);
+    expect(leave.ap).toMatchObject({ spettanti: 53.33, godute: 72, residue: -18.67 });
   });
 });

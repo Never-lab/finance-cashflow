@@ -7,7 +7,7 @@
 import type { Transaction } from "../types";
 
 /** Versione parser per migrazioni e invalidazione cache. */
-export const PAYSLIP_PARSER_VERSION = "osra-oluit-5-leave";
+export const PAYSLIP_PARSER_VERSION = "osra-oluit-6-leave";
 
 /** Kind contenuto estratto (Markdown anydoc vs plain pdf-parse). */
 export type PayslipContentKind = "md" | "plain";
@@ -88,8 +88,13 @@ function round2(n: number): number {
 export function parseItalianAmount(raw: string): number | null {
   const s = raw.trim().replace(/\s/g, "");
   if (!s || s === "—" || s === "-") return null;
-  const n = Number(s.replace(/\./g, "").replace(",", "."));
-  return Number.isFinite(n) ? round2(n) : null;
+  // OSRA PDF extract often glues a trailing minus: "18,67-" → -18.67
+  const neg = s.endsWith("-");
+  const core = neg ? s.slice(0, -1) : s;
+  if (!core) return null;
+  const n = Number(core.replace(/\./g, "").replace(",", "."));
+  if (!Number.isFinite(n)) return null;
+  return round2(neg ? -n : n);
 }
 
 function slugLabel(label: string): string {
@@ -258,6 +263,9 @@ function detectLeaveColumnOrder(text: string): LeaveKind[] {
   return kinds.length === 3 ? kinds : ["ferie", "fest", "perm"];
 }
 
+/** Importo IT in testo PDF, con meno trailing opzionale (`26,66-`). */
+const IT_AMOUNT_RE = /\d{1,3}(?:\.\d{3})*,\d{2}-?/g;
+
 /** Griglia footer OSRA: 3 colonne × (AP/AC spett, god, res) in 9 numeri + residuo/godute. */
 function parseLeaveGrid(text: string): {
   leaveFerie: PayslipLeave;
@@ -267,23 +275,32 @@ function parseLeaveGrid(text: string): {
   const empty = buildLeave(emptySlice());
   const order = detectLeaveColumnOrder(text);
 
-  const gridLine = text.match(
-    /Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s+Residuo\s*:\s*[\d.,]+\s*\n([\d.,\s]+)/i,
-  );
-  const gridNums = gridLine?.[1]?.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
-  if (!gridNums || gridNums.length < 9) {
-    return { leaveFerie: empty, leaveFest: empty, leavePerm: empty };
+  // Multi-page PDF: form blank on early pages, real Residuo on later ones — take last non-zero.
+  const blockRe =
+    /Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)\s*\n([^\n]+)/gi;
+  type LeaveBlock = { resCols: (number | null)[]; triples: number[][]; allZero: boolean };
+  const blocks: LeaveBlock[] = [];
+  let blockMatch: RegExpExecArray | null;
+  while ((blockMatch = blockRe.exec(text)) !== null) {
+    const gridNums = blockMatch[4]!.match(IT_AMOUNT_RE);
+    if (!gridNums || gridNums.length < 9) continue;
+    const n = gridNums.slice(0, 9).map((raw) => parseItalianAmount(raw)!);
+    blocks.push({
+      resCols: [
+        parseItalianAmount(blockMatch[1]!),
+        parseItalianAmount(blockMatch[2]!),
+        parseItalianAmount(blockMatch[3]!),
+      ],
+      triples: [n.slice(0, 3), n.slice(3, 6), n.slice(6, 9)],
+      allZero: n.every((x) => x === 0),
+    });
   }
 
-  const n = gridNums.map((raw) => parseItalianAmount(raw)!);
-  const triples: number[][] = [n.slice(0, 3), n.slice(3, 6), n.slice(6, 9)];
-
-  const residuo = text.match(
-    /Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)\s+Residuo\s*:\s*([\d.,]+)/i,
-  );
-  const resCols = residuo
-    ? [parseItalianAmount(residuo[1]!), parseItalianAmount(residuo[2]!), parseItalianAmount(residuo[3]!)]
-    : [null, null, null];
+  const chosen =
+    [...blocks].reverse().find((b) => !b.allZero) ?? blocks[blocks.length - 1];
+  if (!chosen) {
+    return { leaveFerie: empty, leaveFest: empty, leavePerm: empty };
+  }
 
   const godute = text.match(
     /\d{1,2}\/\d{1,2}\/\d{4}\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*\n\s*Ore/i,
@@ -300,7 +317,7 @@ function parseLeaveGrid(text: string): {
 
   for (let i = 0; i < 3; i++) {
     const kind = order[i]!;
-    byKind[kind] = splitLeaveTriple(triples[i]!, resCols[i] ?? null, godCols[i] ?? null);
+    byKind[kind] = splitLeaveTriple(chosen.triples[i]!, chosen.resCols[i] ?? null, godCols[i] ?? null);
   }
 
   return normalizeAfeaLeaveColumns(
@@ -349,7 +366,7 @@ function parseLeaveFromMarkdownTables(md: string): LeaveBundle | null {
   for (let i = headerIdx + 1; i < lines.length && i < headerIdx + 12; i++) {
     const line = lines[i]!;
     if (/residuo/i.test(line)) {
-      const nums = line.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+      const nums = line.match(IT_AMOUNT_RE);
       if (nums && nums.length >= 3) {
         resCols = [
           parseItalianAmount(nums[0]!),
@@ -360,14 +377,14 @@ function parseLeaveFromMarkdownTables(md: string): LeaveBundle | null {
       continue;
     }
     if (!gridNums) {
-      const nums = line.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+      const nums = line.match(IT_AMOUNT_RE);
       if (nums && nums.length >= 9) {
         gridNums = nums.slice(0, 9).map((raw) => parseItalianAmount(raw)!);
         continue;
       }
     }
     if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(line) && /ore/i.test(lines[i + 1] ?? "")) {
-      const nums = line.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+      const nums = line.match(IT_AMOUNT_RE);
       if (nums && nums.length >= 3) {
         godCols = [
           parseItalianAmount(nums[0]!),
