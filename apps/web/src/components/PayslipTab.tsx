@@ -51,11 +51,14 @@ function formatLeaveHours(v: number | null): string {
   return v != null ? `${v} h` : "—";
 }
 
-/** Riga compatta ore ferie/permessi: preferisce residue, altrimenti spettanti. */
+/** Riga compatta ore ferie/permessi: solo residui AP/AC (mai spettanti). */
 function formatLeaveApAc(leave: PayslipLeave): string {
-  const ap = leave.ap.residue ?? leave.ap.spettanti;
-  const ac = leave.ac.residue ?? leave.ac.spettanti;
-  if (ap == null && ac == null) return "—";
+  const ap = leave.ap.residue;
+  const ac = leave.ac.residue;
+  if (ap == null && ac == null) return formatLeaveHours(leave.residue);
+  if (ac == null && leave.ac.spettanti == null && leave.ac.godute == null) {
+    return formatLeaveHours(ap);
+  }
   return `AP ${formatLeaveHours(ap)} · AC ${formatLeaveHours(ac)}`;
 }
 

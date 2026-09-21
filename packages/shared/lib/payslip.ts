@@ -7,7 +7,7 @@
 import type { Transaction } from "../types";
 
 /** Versione parser per migrazioni e invalidazione cache. */
-export const PAYSLIP_PARSER_VERSION = "osra-oluit-4-md";
+export const PAYSLIP_PARSER_VERSION = "osra-oluit-5-leave";
 
 /** Kind contenuto estratto (Markdown anydoc vs plain pdf-parse). */
 export type PayslipContentKind = "md" | "plain";
@@ -138,6 +138,65 @@ function near(a: number, b: number, eps = AMOUNT_EPS): boolean {
   return Math.abs(a - b) <= eps;
 }
 
+/**
+ * Interpreta una tripla colonna OSRA (3 numeri) + residuo/godute riga AP.
+ *
+ * Casi:
+ * - classico spett/god/res (a−b≈c)
+ * - AP/AC: a=spett AP, b=spett AC; se c > residuo AP allora c = residuo totale
+ * - AP/AC con b=0: a=spett AP, c=spett AC
+ * - solo residuo in c
+ */
+export function splitLeaveTriple(
+  triple: number[],
+  apResidue: number | null,
+  apGodute: number | null,
+): PayslipLeave {
+  const [a, b, c] = triple;
+  if (a === 0 && b === 0 && c === 0) return buildLeave(emptySlice());
+
+  // Classico: spettanti − godute ≈ residue
+  if (b > 0 && near(a - b, c, 0.02)) {
+    const computed = round2(a - b);
+    const residue =
+      apResidue != null && near(apResidue, computed, 0.02) ? apResidue : computed;
+    return buildLeave({ spettanti: a, godute: b, residue });
+  }
+
+  // AP spettanti + AC spettanti; c spesso residuo totale (non residuo AC)
+  if (b > 0 && b < a && !near(a - b, c, 0.02)) {
+    const acResidue =
+      apResidue != null && c > apResidue + 0.02 ? round2(c - apResidue) : c;
+    return buildLeave(
+      { spettanti: a, godute: apGodute, residue: apResidue },
+      { spettanti: b, godute: null, residue: acResidue },
+    );
+  }
+
+  // AP spettanti + AC spettanti (middle vuoto)
+  if (a > 0 && c > 0 && b === 0) {
+    return buildLeave(
+      { spettanti: a, godute: apGodute, residue: apResidue },
+      { spettanti: c, godute: null, residue: null },
+    );
+  }
+
+  // Solo residuo (o residuo riga AP)
+  if (a === 0 && b === 0 && c > 0) {
+    return buildLeave({
+      spettanti: null,
+      godute: apGodute,
+      residue: apResidue != null && !(apResidue === 0 && c > 0) ? apResidue : c,
+    });
+  }
+
+  return buildLeave({
+    spettanti: a,
+    godute: b !== 0 ? b : apGodute,
+    residue: apResidue != null && !(apResidue === 0 && c > 0) ? apResidue : c,
+  });
+}
+
 function daysBetween(isoA: string, isoB: string): number {
   const a = Date.parse(`${isoA}T00:00:00Z`);
   const b = Date.parse(`${isoB}T00:00:00Z`);
@@ -145,6 +204,42 @@ function daysBetween(isoA: string, isoB: string): number {
 }
 
 type LeaveKind = "ferie" | "fest" | "perm";
+
+type LeaveBundle = {
+  leaveFerie: PayslipLeave;
+  leaveFest: PayslipLeave;
+  leavePerm: PayslipLeave;
+};
+
+function leaveSliceEmpty(leave: PayslipLeave): boolean {
+  return (
+    leave.spettanti == null &&
+    leave.godute == null &&
+    leave.residue == null &&
+    leave.ap.spettanti == null &&
+    leave.ap.godute == null &&
+    leave.ap.residue == null &&
+    leave.ac.spettanti == null &&
+    leave.ac.godute == null &&
+    leave.ac.residue == null
+  );
+}
+
+/**
+ * Template AFEA: header spesso `FEST. FERIE PERM.` con ferie nella prima colonna.
+ * Promuove solo se l'ordine colonne inizia con FEST e FERIE è vuota.
+ */
+function normalizeAfeaLeaveColumns(bundle: LeaveBundle, order: LeaveKind[]): LeaveBundle {
+  if (order[0] !== "fest") return bundle;
+  if (leaveSliceEmpty(bundle.leaveFerie) && !leaveSliceEmpty(bundle.leaveFest)) {
+    return {
+      leaveFerie: bundle.leaveFest,
+      leaveFest: buildLeave(emptySlice()),
+      leavePerm: bundle.leavePerm,
+    };
+  }
+  return bundle;
+}
 
 /** Ordine colonne griglia: da header se presente, default FERIE | FEST | PERM. */
 function detectLeaveColumnOrder(text: string): LeaveKind[] {
@@ -197,39 +292,6 @@ function parseLeaveGrid(text: string): {
     ? [parseItalianAmount(godute[1]!), parseItalianAmount(godute[2]!), parseItalianAmount(godute[3]!)]
     : [null, null, null];
 
-  function splitTriple(
-    triple: number[],
-    apResidue: number | null,
-    apGodute: number | null,
-  ): PayslipLeave {
-    const [a, b, c] = triple;
-    if (a === 0 && b === 0 && c === 0) return buildLeave(emptySlice());
-
-    if (b > 0 && near(a - b, c, 0.02)) {
-      return buildLeave({ spettanti: a, godute: b, residue: apResidue ?? c });
-    }
-
-    if (b > 0 && b < a && !near(a - b, c, 0.02)) {
-      return buildLeave(
-        { spettanti: a, godute: apGodute, residue: apResidue },
-        { spettanti: b, godute: null, residue: c },
-      );
-    }
-
-    if (a > 0 && c > 0 && b === 0) {
-      return buildLeave(
-        { spettanti: a, godute: apGodute, residue: apResidue },
-        { spettanti: c, godute: null, residue: null },
-      );
-    }
-
-    if (a === 0 && b === 0 && c > 0) {
-      return buildLeave({ spettanti: null, godute: apGodute, residue: apResidue ?? c });
-    }
-
-    return buildLeave({ spettanti: a, godute: b || apGodute, residue: apResidue ?? c });
-  }
-
   const byKind: Record<LeaveKind, PayslipLeave> = {
     ferie: empty,
     fest: empty,
@@ -238,14 +300,17 @@ function parseLeaveGrid(text: string): {
 
   for (let i = 0; i < 3; i++) {
     const kind = order[i]!;
-    byKind[kind] = splitTriple(triples[i]!, resCols[i] ?? null, godCols[i] ?? null);
+    byKind[kind] = splitLeaveTriple(triples[i]!, resCols[i] ?? null, godCols[i] ?? null);
   }
 
-  return {
-    leaveFerie: byKind.ferie,
-    leaveFest: byKind.fest,
-    leavePerm: byKind.perm,
-  };
+  return normalizeAfeaLeaveColumns(
+    {
+      leaveFerie: byKind.ferie,
+      leaveFest: byKind.fest,
+      leavePerm: byKind.perm,
+    },
+    order,
+  );
 }
 
 /** Rimuove markup GFM lasciando label/importi leggibili dalle regex plain. */
@@ -262,12 +327,6 @@ export function stripMarkdownNoise(md: string): string {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/ {2,}/g, " ");
 }
-
-type LeaveBundle = {
-  leaveFerie: PayslipLeave;
-  leaveFest: PayslipLeave;
-  leavePerm: PayslipLeave;
-};
 
 /**
  * Griglia ferie da tabella GFM (header FERIE/FEST/PERM + riga Residuo + 9 numeri).
@@ -341,39 +400,6 @@ function parseLeaveFromMarkdownTables(md: string): LeaveBundle | null {
     gridNums.slice(6, 9),
   ];
 
-  function splitTriple(
-    triple: number[],
-    apResidue: number | null,
-    apGodute: number | null,
-  ): PayslipLeave {
-    const [a, b, c] = triple;
-    if (a === 0 && b === 0 && c === 0) return buildLeave(emptySlice());
-
-    if (b > 0 && near(a - b, c, 0.02)) {
-      return buildLeave({ spettanti: a, godute: b, residue: apResidue ?? c });
-    }
-
-    if (b > 0 && b < a && !near(a - b, c, 0.02)) {
-      return buildLeave(
-        { spettanti: a, godute: apGodute, residue: apResidue },
-        { spettanti: b, godute: null, residue: c },
-      );
-    }
-
-    if (a > 0 && c > 0 && b === 0) {
-      return buildLeave(
-        { spettanti: a, godute: apGodute, residue: apResidue },
-        { spettanti: c, godute: null, residue: null },
-      );
-    }
-
-    if (a === 0 && b === 0 && c > 0) {
-      return buildLeave({ spettanti: null, godute: apGodute, residue: apResidue ?? c });
-    }
-
-    return buildLeave({ spettanti: a, godute: b || apGodute, residue: apResidue ?? c });
-  }
-
   const byKind: Record<LeaveKind, PayslipLeave> = {
     ferie: empty,
     fest: empty,
@@ -382,14 +408,17 @@ function parseLeaveFromMarkdownTables(md: string): LeaveBundle | null {
 
   for (let i = 0; i < 3; i++) {
     const kind = order[i]!;
-    byKind[kind] = splitTriple(triples[i]!, resCols[i] ?? null, godCols[i] ?? null);
+    byKind[kind] = splitLeaveTriple(triples[i]!, resCols[i] ?? null, godCols[i] ?? null);
   }
 
-  return {
-    leaveFerie: byKind.ferie,
-    leaveFest: byKind.fest,
-    leavePerm: byKind.perm,
-  };
+  return normalizeAfeaLeaveColumns(
+    {
+      leaveFerie: byKind.ferie,
+      leaveFest: byKind.fest,
+      leavePerm: byKind.perm,
+    },
+    order,
+  );
 }
 
 /**
@@ -528,6 +557,7 @@ function isStipendCredit(t: Transaction): boolean {
 
 /**
  * Cerca accrediti stipendio Mediolanum vicino a payDate (±5g) o nel mese competenza.
+ * Preferisce il singolo movimento più vicino al netto cedolino; somma solo se il totale matcha.
  */
 export function matchBankCredit(
   transactions: Transaction[],
@@ -552,10 +582,22 @@ export function matchBankCredit(
 
   if (hits.length === 0) return { bankCredit: null, status: "missing" };
 
-  const bankCredit = round2(hits.reduce((s, t) => s + t.amount, 0));
-  if (payslipNet != null && near(bankCredit, payslipNet)) {
-    return { bankCredit, status: "matched" };
+  if (payslipNet != null) {
+    const closest = hits.reduce((a, b) =>
+      Math.abs(a.amount - payslipNet) <= Math.abs(b.amount - payslipNet) ? a : b,
+    );
+    const closestAmt = round2(closest.amount);
+    if (near(closestAmt, payslipNet)) {
+      return { bankCredit: closestAmt, status: "matched" };
+    }
+    const sum = round2(hits.reduce((s, t) => s + t.amount, 0));
+    if (hits.length > 1 && near(sum, payslipNet)) {
+      return { bankCredit: sum, status: "matched" };
+    }
+    return { bankCredit: closestAmt, status: "doubt" };
   }
+
+  const bankCredit = round2(hits.reduce((s, t) => s + t.amount, 0));
   return { bankCredit, status: "doubt" };
 }
 

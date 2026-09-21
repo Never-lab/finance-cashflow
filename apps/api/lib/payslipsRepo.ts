@@ -132,7 +132,7 @@ function rowToRecord(row: Row): PayslipRecord {
     netToAccount: row.net_to_account,
     totalCompetenze: row.total_competenze,
     payslipNet: resolved.payslipNet,
-    netPay: row.net_pay,
+    netPay: row.net_pay ?? resolved.payslipNet,
     bankCredit: row.bank_credit,
     bankMatchStatus: parseMatchStatus(row.bank_match_status),
     accAnomalous: resolved.accAnomalous,

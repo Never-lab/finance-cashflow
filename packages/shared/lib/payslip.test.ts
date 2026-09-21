@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { extractPayslipContent } from "../../../apps/api/lib/pdfExtract";
 import {
+  buildLeave,
   buildPayslipSummary,
   matchBankCredit,
   parseItalianAmount,
@@ -10,6 +11,7 @@ import {
   parseOsraPayslipText,
   parsePayslipContent,
   resolvePayslipNet,
+  splitLeaveTriple,
   stripMarkdownNoise,
 } from "./payslip";
 import { hasPayslipPdfs, PAYSLIP_TEXT_SAMPLE, readUtf8 } from "../test/fixtures";
@@ -70,7 +72,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leaveFest.residue).toBeNull();
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-4-md");
+    expect(parsed!.parserVersion).toBe("osra-oluit-5-leave");
   });
 
   it("parses AP/AC leave grid and non-empty FEST from text fixture", () => {
@@ -80,10 +82,54 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.accAnomalous).toBe(false);
     expect(parsed!.payslipNet).toBe(1800);
     expect(parsed!.leaveFerie.ap).toMatchObject({ spettanti: 60.67, godute: 0.27, residue: 56 });
-    expect(parsed!.leaveFerie.ac).toMatchObject({ spettanti: 27.5, residue: 89.17 });
+    // c=89,17 è residuo totale → AC residue = 89,17 − 56
+    expect(parsed!.leaveFerie.ac).toMatchObject({ spettanti: 27.5, residue: 33.17 });
+    expect(parsed!.leaveFerie.residue).toBe(89.17);
     expect(parsed!.leaveFest.ap).toMatchObject({ spettanti: 16, godute: 8, residue: 8 });
     expect(parsed!.leavePerm.ap).toMatchObject({ spettanti: 93.33, godute: 1, residue: 26.67 });
     expect(parsed!.leavePerm.ac).toMatchObject({ spettanti: 120 });
+    expect(parsed!.leavePerm.ac.residue).toBeNull();
+  });
+});
+
+describe("splitLeaveTriple", () => {
+  it("keeps classic spettanti − godute = residue", () => {
+    const leave = splitLeaveTriple([80, 53.33, 26.67], 26.67, null);
+    expect(leave.ap).toMatchObject({ spettanti: 80, godute: 53.33, residue: 26.67 });
+    expect(leave.ac.spettanti).toBeNull();
+  });
+
+  it("splits AP/AC when third value is total residue", () => {
+    const leave = splitLeaveTriple([60.67, 27.5, 89.17], 56, 0.27);
+    expect(leave.ap).toMatchObject({ spettanti: 60.67, godute: 0.27, residue: 56 });
+    expect(leave.ac).toMatchObject({ spettanti: 27.5, residue: 33.17 });
+    expect(leave.residue).toBe(89.17);
+  });
+
+  it("treats third value as AC spettanti when middle is zero", () => {
+    const leave = splitLeaveTriple([93.33, 0, 120], 26.67, 1);
+    expect(leave.ap).toMatchObject({ spettanti: 93.33, godute: 1, residue: 26.67 });
+    expect(leave.ac).toMatchObject({ spettanti: 120, residue: null });
+    expect(leave.residue).toBe(26.67);
+  });
+
+  it("does not treat AC residue as total when below AP residue", () => {
+    const leave = splitLeaveTriple([50, 20, 15], 40, null);
+    expect(leave.ap).toMatchObject({ spettanti: 50, residue: 40 });
+    expect(leave.ac).toMatchObject({ spettanti: 20, residue: 15 });
+    expect(leave.residue).toBe(55);
+  });
+});
+
+describe("buildLeave totals", () => {
+  it("sums AP+AC without inventing zeros as null partners", () => {
+    const leave = buildLeave(
+      { spettanti: 10, godute: 2, residue: 8 },
+      { spettanti: 5, godute: null, residue: null },
+    );
+    expect(leave.spettanti).toBe(15);
+    expect(leave.godute).toBe(2);
+    expect(leave.residue).toBe(8);
   });
 });
 
@@ -97,7 +143,7 @@ describe("parseOsraPayslipMarkdown", () => {
     expect(parsed!.leaveFerie.ap.spettanti).toBe(80);
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-4-md");
+    expect(parsed!.parserVersion).toBe("osra-oluit-5-leave");
   });
 
   it("parses AP/AC leave from markdown table fixture", () => {
@@ -105,7 +151,8 @@ describe("parseOsraPayslipMarkdown", () => {
     expect(parsed).not.toBeNull();
     expect(parsed!.payslipNet).toBe(1800);
     expect(parsed!.leaveFerie.ap).toMatchObject({ spettanti: 60.67, godute: 0.27, residue: 56 });
-    expect(parsed!.leaveFerie.ac).toMatchObject({ spettanti: 27.5, residue: 89.17 });
+    expect(parsed!.leaveFerie.ac).toMatchObject({ spettanti: 27.5, residue: 33.17 });
+    expect(parsed!.leaveFerie.residue).toBe(89.17);
     expect(parsed!.leaveFest.ap).toMatchObject({ spettanti: 16, godute: 8, residue: 8 });
     expect(parsed!.leavePerm.ap).toMatchObject({ spettanti: 93.33, godute: 1, residue: 26.67 });
   });
@@ -228,6 +275,40 @@ describe("matchBankCredit", () => {
     expect(r.status).toBe("missing");
     expect(r.bankCredit).toBeNull();
   });
+
+  it("picks closest credit instead of summing unrelated hits", () => {
+    const r = matchBankCredit(
+      [
+        stipend,
+        { ...stipend, id: "2", amount: 2141.13 },
+      ],
+      {
+        payDate: "2026-07-14",
+        periodYear: 2026,
+        periodMonth: 6,
+        payslipNet: 1507.43,
+      },
+    );
+    expect(r.status).toBe("matched");
+    expect(r.bankCredit).toBe(1507.43);
+  });
+
+  it("sums hits only when total matches payslipNet", () => {
+    const r = matchBankCredit(
+      [
+        { ...stipend, amount: 800 },
+        { ...stipend, id: "2", amount: 707.43 },
+      ],
+      {
+        payDate: "2026-07-14",
+        periodYear: 2026,
+        periodMonth: 6,
+        payslipNet: 1507.43,
+      },
+    );
+    expect(r.status).toBe("matched");
+    expect(r.bankCredit).toBe(1507.43);
+  });
 });
 
 describe("buildPayslipSummary", () => {
@@ -263,5 +344,40 @@ describe("buildPayslipSummary", () => {
     expect(doubt.latest?.bankMatchStatus).toBe("doubt");
     expect(doubt.latest?.netPay).toBe(1507.43);
     expect(doubt.latest?.bankCredit).toBe(2141.13);
+  });
+
+  it("exposes AP/AC leave residues on chart without mixing spettanti", () => {
+    const parsed = parseOsraPayslipText(readUtf8(PAYSLIP_TEXT_APAC), "payslip-osra-apac-sample.txt");
+    const summary = buildPayslipSummary([parsed!]);
+    expect(summary.chartLeave[0]).toMatchObject({
+      ferieResidueAp: 56,
+      ferieResidueAc: 33.17,
+      permResidueAp: 26.67,
+      permResidueAc: null,
+    });
+  });
+});
+
+describe("AFEA FEST column carrying ferie", () => {
+  it("promotes FEST column into ferie when FERIE is empty", () => {
+    const text = `OSRA Wolters Kluwer OLUIT
+07/2026 - Luglio
+999 TOT.LORDO SOGG.CONTR 2.800,00
+Imponibile Fiscale 2.500,00
+Rit. Fis. mese lorda 400,00
+Rit. Fis. mese netta 380,00
+Tot. rit. sociali 300,00
+Acc. c.c. n.: 12345678901 BANCA MEDIOLANUM 1.800,00 2.800,00
+Data valuta : 14/08/2026
+FEST. FERIE PERM.
+Residuo : 26,67 Residuo : 0,00 Residuo : 56,00
+80,00 53,33 26,67 0,00 0,00 0,00 0,00 0,00 56,00
+`;
+    const parsed = parseOsraPayslipText(text, "afea-fest.txt");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.leaveFerie.ap.spettanti).toBe(80);
+    expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
+    expect(parsed!.leaveFest.residue).toBeNull();
+    expect(parsed!.leavePerm.ap.residue).toBe(56);
   });
 });
