@@ -234,7 +234,15 @@ export default function App() {
     setLoanTargets(targets);
     setLiquidity(liq);
     setDataRefreshKey((k) => k + 1);
-    const msg = `Ricalcolo ok: ${report.categoriesUpdated} categorie, ${report.internalUpdated} interni, ${report.instrumentsRecalced} strumenti${report.investmentContributionsLinked ? `, +${report.investmentContributionsLinked} versamenti PAC` : ""} · ${report.transactions} movimenti`;
+    const payslipBit =
+      report.payslipsReparsed || report.payslipsSkippedMissingFile
+        ? `, ${report.payslipsReparsed ?? 0} cedolini ri-parsati${
+            report.payslipsSkippedMissingFile
+              ? ` (${report.payslipsSkippedMissingFile} senza PDF — ri-importa)`
+              : ""
+          }`
+        : "";
+    const msg = `Ricalcolo ok: ${report.categoriesUpdated} categorie, ${report.internalUpdated} interni, ${report.instrumentsRecalced} strumenti${report.investmentContributionsLinked ? `, +${report.investmentContributionsLinked} versamenti PAC` : ""}${payslipBit} · ${report.transactions} movimenti`;
     showToast(msg);
     return msg;
   }

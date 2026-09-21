@@ -2,17 +2,18 @@
  * Route cedolini/paghe: elenco, anteprima PDF, import batch, cancellazione.
  * Endpoint: GET /payslips, POST /payslips/preview, POST /payslips/import, DELETE /payslips/:id.
  * Tabelle: payslips; legge transactions per abbinamento accredito banca.
- * Privacy: PDF elaborati in memoria; dati retributivi e ferie persistiti in DB per user_id.
+ * Privacy: PDF salvati su volume (`data/payslips` / Railway `/data/payslips`); numeri anche in SQLite.
  */
 import { Hono } from "hono";
 import { getDb } from "../db";
-import { extractPdfText } from "../lib/pdfExtract";
+import { extractPayslipContent } from "../lib/pdfExtract";
 import { deletePayslip, listPayslips, upsertPayslip } from "../lib/payslipsRepo";
+import { deletePayslipPdf, savePayslipPdf } from "../lib/payslipStorage";
 import { loadAppState } from "../lib/stateRepo";
 import {
   buildPayslipSummary,
   enrichPayslipWithBank,
-  parseOsraPayslipText,
+  parsePayslipContent,
   type PayslipRecord,
 } from "@shared/lib/payslip";
 import { getUserId } from "../lib/requestContext";
@@ -51,8 +52,8 @@ payslipsRoutes.post("/payslips/preview", async (c) => {
   if (!(file instanceof File)) return c.json({ error: "file required" }, 400);
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const text = await extractPdfText(buffer);
-  const parsed = parseOsraPayslipText(text, file.name);
+  const extracted = await extractPayslipContent(buffer);
+  const parsed = parsePayslipContent(extracted.content, extracted.kind, file.name);
   if (!parsed) return c.json({ error: "Formato cedolino non riconosciuto (atteso OSRA/OLUIT)" }, 422);
 
   const transactions = loadAppState(getDb(), userId).transactions;
@@ -75,8 +76,8 @@ payslipsRoutes.post("/payslips/import", async (c) => {
   for (const file of files) {
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
-      const text = await extractPdfText(buffer);
-      const parsed = parseOsraPayslipText(text, file.name);
+      const extracted = await extractPayslipContent(buffer);
+      const parsed = parsePayslipContent(extracted.content, extracted.kind, file.name);
       if (!parsed) {
         errors.push({ file: file.name, error: "Formato non riconosciuto" });
         continue;
@@ -86,6 +87,7 @@ payslipsRoutes.post("/payslips/import", async (c) => {
         transactions,
       );
       upsertPayslip(db, userId, enriched);
+      savePayslipPdf(userId, enriched.id, buffer);
       imported.push(enriched);
     } catch (e) {
       errors.push({
@@ -103,11 +105,12 @@ payslipsRoutes.post("/payslips/import", async (c) => {
   });
 });
 
-/** DELETE /api/payslips/:id — rimuove cedolino salvato. */
+/** DELETE /api/payslips/:id — rimuove cedolino salvato e PDF sul volume. */
 payslipsRoutes.delete("/payslips/:id", (c) => {
   const userId = getUserId(c);
   const id = c.req.param("id");
   const ok = deletePayslip(getDb(), userId, id);
   if (!ok) return c.json({ error: "Not found" }, 404);
+  deletePayslipPdf(userId, id);
   return c.json({ ok: true });
 });

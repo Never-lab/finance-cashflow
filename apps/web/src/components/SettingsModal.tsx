@@ -109,7 +109,7 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
   async function recomputeAll() {
     if (
       !confirm(
-        "Ricalcolare categorie, trasferimenti interni e investimenti su tutti i movimenti? Gli override manuali restano.",
+        "Ricalcolare categorie, trasferimenti interni, investimenti e cedolini (PDF sul volume)? Gli override manuali restano.",
       )
     ) {
       return;
@@ -182,8 +182,9 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
         <h3>Manutenzione</h3>
         <p className="muted">
           Riallinea DB e dashboard: riapplica regole categorie e flag «interno», ricalcola cost basis
-          investimenti e ricarica mutui/abbonamenti/PayPal. Non tocca override manuali né segnalazioni
-          abbonamenti.
+          investimenti, ri-parsa i PDF cedolini sul volume e ricarica mutui/abbonamenti/PayPal. Non
+          tocca override manuali né segnalazioni abbonamenti. Cedolini senza PDF sul volume: ri-importa
+          una volta da Buste paga.
         </p>
         <div className="settings-actions">
           <button

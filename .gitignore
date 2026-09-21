@@ -10,6 +10,7 @@ fixtures/*-real.csv
 fixtures/*.pdf
 data/*.db
 data/*.db-*
+data/payslips/
 # Local prod session / exports (PII + tokens)
 scripts/.prod-*
 scripts/*.out.txt

@@ -1,13 +1,20 @@
-﻿/**
- * Ricalcolo batch categorie/interni transazioni e cost basis investimenti.
- * Ruolo: repo — orchestrazione recompute condiviso (@shared) + instruments + investmentSync.
- * Tabelle: transactions, instruments, contributions/holdings.
+/**
+ * Ricalcolo batch categorie/interni, cost basis investimenti, e ri-parse PDF cedolini dal volume.
+ * Ruolo: repo — orchestrazione recompute condiviso (@shared) + instruments + investmentSync + payslips.
+ * Tabelle: transactions, instruments, contributions/holdings, payslips.
  */
 import type Database from "better-sqlite3";
 import { recomputeTransaction } from "@shared/lib/recompute";
+import {
+  enrichPayslipWithBank,
+  parsePayslipContent,
+} from "@shared/lib/payslip";
 import { loadAppState } from "./stateRepo";
 import { recalcCostBasis } from "./instrumentsRepo";
 import { syncKnownInvestmentContributions } from "./investmentSync";
+import { extractPayslipContent } from "./pdfExtract";
+import { deletePayslip, listPayslips, upsertPayslip } from "./payslipsRepo";
+import { deletePayslipPdf, readPayslipPdf, savePayslipPdf } from "./payslipStorage";
 
 /** Statistiche restituite dopo un recompute completo. */
 export type RecomputeDbReport = {
@@ -17,6 +24,8 @@ export type RecomputeDbReport = {
   instrumentsRecalced: number;
   investmentInstrumentsEnsured: number;
   investmentContributionsLinked: number;
+  payslipsReparsed: number;
+  payslipsSkippedMissingFile: number;
 };
 
 function toInternalCol(internal: boolean | undefined): number | null {
@@ -24,10 +33,13 @@ function toInternalCol(internal: boolean | undefined): number | null {
 }
 
 /**
- * Persiste categorie/flag interni ricalcolati e aggiorna cost_basis di ogni strumento.
- * Collega anche versamenti noti da CSV (sync investimenti).
+ * Persiste categorie/flag interni ricalcolati, cost_basis, sync investimenti,
+ * e ri-parsa i PDF cedolini presenti sul volume.
  */
-export function recomputeDatabase(db: Database.Database, userId: number): RecomputeDbReport {
+export async function recomputeDatabase(
+  db: Database.Database,
+  userId: number,
+): Promise<RecomputeDbReport> {
   const state = loadAppState(db, userId);
   const update = db.prepare(
     `UPDATE transactions SET category = @category, internal = @internal
@@ -67,6 +79,42 @@ export function recomputeDatabase(db: Database.Database, userId: number): Recomp
 
   const investment = syncKnownInvestmentContributions(db, userId);
 
+  let payslipsReparsed = 0;
+  let payslipsSkippedMissingFile = 0;
+  const existing = listPayslips(db, userId);
+  for (const old of existing) {
+    const buffer = readPayslipPdf(userId, old.id);
+    if (!buffer) {
+      payslipsSkippedMissingFile++;
+      continue;
+    }
+    try {
+      const extracted = await extractPayslipContent(buffer);
+      const parsed = parsePayslipContent(
+        extracted.content,
+        extracted.kind,
+        old.sourceFile ?? undefined,
+      );
+      if (!parsed) {
+        payslipsSkippedMissingFile++;
+        continue;
+      }
+      const record = enrichPayslipWithBank(
+        { ...parsed, importedAt: old.importedAt },
+        state.transactions,
+      );
+      if (record.id !== old.id) {
+        savePayslipPdf(userId, record.id, buffer);
+        deletePayslipPdf(userId, old.id);
+        deletePayslip(db, userId, old.id);
+      }
+      upsertPayslip(db, userId, record);
+      payslipsReparsed++;
+    } catch {
+      payslipsSkippedMissingFile++;
+    }
+  }
+
   return {
     transactions: state.transactions.length,
     categoriesUpdated,
@@ -74,5 +122,7 @@ export function recomputeDatabase(db: Database.Database, userId: number): Recomp
     instrumentsRecalced: instrumentIds.length,
     investmentInstrumentsEnsured: investment.instrumentsEnsured,
     investmentContributionsLinked: investment.contributionsLinked,
+    payslipsReparsed,
+    payslipsSkippedMissingFile,
   };
 }

@@ -119,11 +119,11 @@ stateRoutes.post("/migrate", async (c) => {
   return c.json({ ok: true, state: loadAppState(db, userId) });
 });
 
-/** POST /api/recompute — ricalcola categorie/interni, cost_basis strumenti, sync investimenti noti. */
-stateRoutes.post("/recompute", (c) => {
+/** POST /api/recompute — ricalcola categorie/interni, cost_basis, sync investimenti, ri-parse PDF cedolini. */
+stateRoutes.post("/recompute", async (c) => {
   const userId = getUserId(c);
   const db = getDb();
-  const report = recomputeDatabase(db, userId);
+  const report = await recomputeDatabase(db, userId);
   const state = loadAppState(db, userId);
   return c.json({
     ok: true,

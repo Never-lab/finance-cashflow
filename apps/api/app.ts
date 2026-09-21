@@ -2,7 +2,7 @@
  * Composizione applicazione Hono: health, auth, API protette e (opzionale) static UI.
  * Ruolo: wiring route → monta `/api/auth`, middleware sessione su `/api/*`, domini state/instruments/portfolio/quotes/settings/loans/payslips/vault/budget.
  * Path: `__dirname` = cartella compilata di questo file; ROOT = monorepo (due livelli sopra); DIST_DIR = build frontend in `ROOT/dist`.
- * Privacy: con FINANCE_AUTH=on tutte le API (tranne health e login/register) richiedono Bearer token; i cedolini passano da payslips (PDF in memoria).
+ * Privacy: con FINANCE_AUTH=on tutte le API (tranne health e login/register) richiedono Bearer token; i cedolini passano da payslips (PDF su volume + SQLite).
  */
 import { serveStatic } from "@hono/node-server/serve-static";
 import fs from "node:fs";

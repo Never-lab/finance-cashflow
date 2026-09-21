@@ -16,6 +16,8 @@ export type RecomputeReport = {
   instrumentsRecalced: number;
   investmentInstrumentsEnsured?: number;
   investmentContributionsLinked?: number;
+  payslipsReparsed?: number;
+  payslipsSkippedMissingFile?: number;
 };
 
 /**

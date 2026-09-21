@@ -96,6 +96,8 @@ Servizio unico + volume SQLite su `/data`. Autodeploy da `master`.
 | `FINANCE_SECRET` | random 32+ byte (`openssl rand -hex 32`) |
 | `DATABASE_PATH` | `/data/finance.db` |
 
+I PDF cedolini restano su `/data/payslips/{userId}/` (stesso volume). Dopo il primo import, «Ricalcola tutto» li ri-parsa senza ri-caricarli. Estrazione: `@firecrawl/anydoc` → Markdown (locale, senza OCR cloud); fallback `pdf-parse` se anydoc non disponibile.
+
 Health: `GET /api/health` → `{ "ok": true, … }`.
 
 Build: `nixpacks.toml` (Node 22 + native build per `better-sqlite3`).

@@ -1,0 +1,26 @@
+OSRA — Cedolino AP/AC
+
+Wolters Kluwer OLUIT
+
+## 07/2026 - Luglio
+
+| Voce | Importo |
+| --- | ---: |
+| 999 TOT.LORDO SOGG.CONTR | 2.800,00 |
+| Imponibile Fiscale | 2.500,00 |
+| Rit. Fis. mese lorda | 400,00 |
+| Rit. Fis. mese netta | 380,00 |
+| Tot. rit. sociali | 300,00 |
+
+Acc. c.c. n.: 12345678901 BANCA MEDIOLANUM 1.800,00 2.800,00
+
+Data valuta : 14/08/2026
+
+| | FERIE | FEST. | PERM. |
+| --- | ---: | ---: | ---: |
+| Residuo | 56,00 | 8,00 | 26,67 |
+| 60,67 | 27,50 | 89,17 | 16,00 | 8,00 | 8,00 | 93,33 | 0,00 | 120,00 |
+
+14/08/2026 0,27 0,00 1,00
+
+Ore

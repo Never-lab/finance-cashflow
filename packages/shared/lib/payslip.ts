@@ -7,7 +7,10 @@
 import type { Transaction } from "../types";
 
 /** Versione parser per migrazioni e invalidazione cache. */
-export const PAYSLIP_PARSER_VERSION = "osra-oluit-3";
+export const PAYSLIP_PARSER_VERSION = "osra-oluit-4-md";
+
+/** Kind contenuto estratto (Markdown anydoc vs plain pdf-parse). */
+export type PayslipContentKind = "md" | "plain";
 
 /** Esito abbinamento accredito banca vs netto cedolino. */
 export type BankMatchStatus = "matched" | "doubt" | "missing";
@@ -243,6 +246,182 @@ function parseLeaveGrid(text: string): {
     leaveFest: byKind.fest,
     leavePerm: byKind.perm,
   };
+}
+
+/** Rimuove markup GFM lasciando label/importi leggibili dalle regex plain. */
+export function stripMarkdownNoise(md: string): string {
+  return md
+    .replace(/\r\n/g, "\n")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/gm, "")
+    .replace(/\|/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/ {2,}/g, " ");
+}
+
+type LeaveBundle = {
+  leaveFerie: PayslipLeave;
+  leaveFest: PayslipLeave;
+  leavePerm: PayslipLeave;
+};
+
+/**
+ * Griglia ferie da tabella GFM (header FERIE/FEST/PERM + riga Residuo + 9 numeri).
+ * Null se la struttura tabella non è riconoscibile.
+ */
+function parseLeaveFromMarkdownTables(md: string): LeaveBundle | null {
+  const lines = md.replace(/\r\n/g, "\n").split("\n");
+  const headerIdx = lines.findIndex(
+    (l) => /FERIE/i.test(l) && /FEST/i.test(l) && /PERM/i.test(l) && l.includes("|"),
+  );
+  if (headerIdx < 0) return null;
+
+  const order = detectLeaveColumnOrder(lines[headerIdx]!);
+  const empty = buildLeave(emptySlice());
+
+  let resCols: (number | null)[] = [null, null, null];
+  let gridNums: number[] | null = null;
+  let godCols: (number | null)[] = [null, null, null];
+
+  for (let i = headerIdx + 1; i < lines.length && i < headerIdx + 12; i++) {
+    const line = lines[i]!;
+    if (/residuo/i.test(line)) {
+      const nums = line.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+      if (nums && nums.length >= 3) {
+        resCols = [
+          parseItalianAmount(nums[0]!),
+          parseItalianAmount(nums[1]!),
+          parseItalianAmount(nums[2]!),
+        ];
+      }
+      continue;
+    }
+    if (!gridNums) {
+      const nums = line.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+      if (nums && nums.length >= 9) {
+        gridNums = nums.slice(0, 9).map((raw) => parseItalianAmount(raw)!);
+        continue;
+      }
+    }
+    if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(line) && /ore/i.test(lines[i + 1] ?? "")) {
+      const nums = line.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+      if (nums && nums.length >= 3) {
+        godCols = [
+          parseItalianAmount(nums[0]!),
+          parseItalianAmount(nums[1]!),
+          parseItalianAmount(nums[2]!),
+        ];
+      }
+    }
+  }
+
+  // Godute AP anche fuori tabella (riga data + Ore), come plain parser
+  if (godCols.every((c) => c == null)) {
+    const godute = md.match(
+      /\d{1,2}\/\d{1,2}\/\d{4}\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*\n\s*Ore/i,
+    );
+    if (godute) {
+      godCols = [
+        parseItalianAmount(godute[1]!),
+        parseItalianAmount(godute[2]!),
+        parseItalianAmount(godute[3]!),
+      ];
+    }
+  }
+
+  if (!gridNums || gridNums.length < 9) return null;
+
+  const triples: number[][] = [
+    gridNums.slice(0, 3),
+    gridNums.slice(3, 6),
+    gridNums.slice(6, 9),
+  ];
+
+  function splitTriple(
+    triple: number[],
+    apResidue: number | null,
+    apGodute: number | null,
+  ): PayslipLeave {
+    const [a, b, c] = triple;
+    if (a === 0 && b === 0 && c === 0) return buildLeave(emptySlice());
+
+    if (b > 0 && near(a - b, c, 0.02)) {
+      return buildLeave({ spettanti: a, godute: b, residue: apResidue ?? c });
+    }
+
+    if (b > 0 && b < a && !near(a - b, c, 0.02)) {
+      return buildLeave(
+        { spettanti: a, godute: apGodute, residue: apResidue },
+        { spettanti: b, godute: null, residue: c },
+      );
+    }
+
+    if (a > 0 && c > 0 && b === 0) {
+      return buildLeave(
+        { spettanti: a, godute: apGodute, residue: apResidue },
+        { spettanti: c, godute: null, residue: null },
+      );
+    }
+
+    if (a === 0 && b === 0 && c > 0) {
+      return buildLeave({ spettanti: null, godute: apGodute, residue: apResidue ?? c });
+    }
+
+    return buildLeave({ spettanti: a, godute: b || apGodute, residue: apResidue ?? c });
+  }
+
+  const byKind: Record<LeaveKind, PayslipLeave> = {
+    ferie: empty,
+    fest: empty,
+    perm: empty,
+  };
+
+  for (let i = 0; i < 3; i++) {
+    const kind = order[i]!;
+    byKind[kind] = splitTriple(triples[i]!, resCols[i] ?? null, godCols[i] ?? null);
+  }
+
+  return {
+    leaveFerie: byKind.ferie,
+    leaveFest: byKind.fest,
+    leavePerm: byKind.perm,
+  };
+}
+
+/**
+ * Parser MD-first (output anydoc/GFM): tabelle per leave, strip + regex per importi.
+ */
+export function parseOsraPayslipMarkdown(md: string, sourceFile?: string): PayslipRecord | null {
+  const leaveFromMd = parseLeaveFromMarkdownTables(md);
+  const plainish = stripMarkdownNoise(md);
+  const base = parseOsraPayslipText(plainish, sourceFile);
+  if (!base) return null;
+  return {
+    ...base,
+    ...(leaveFromMd ?? {}),
+    parserVersion: PAYSLIP_PARSER_VERSION,
+  };
+}
+
+/**
+ * Entry point: sceglie parser MD o plain in base al kind di estrazione.
+ */
+export function parsePayslipContent(
+  content: string,
+  kind: PayslipContentKind,
+  sourceFile?: string,
+): PayslipRecord | null {
+  if (kind === "md") {
+    return (
+      parseOsraPayslipMarkdown(content, sourceFile) ??
+      parseOsraPayslipText(stripMarkdownNoise(content), sourceFile)
+    );
+  }
+  return parseOsraPayslipText(content, sourceFile);
 }
 
 /**

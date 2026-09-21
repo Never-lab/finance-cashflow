@@ -1,17 +1,22 @@
 ﻿import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { extractPdfText } from "../../../apps/api/lib/pdfExtract";
+import { extractPayslipContent } from "../../../apps/api/lib/pdfExtract";
 import {
   buildPayslipSummary,
   matchBankCredit,
   parseItalianAmount,
+  parseOsraPayslipMarkdown,
   parseOsraPayslipText,
+  parsePayslipContent,
   resolvePayslipNet,
+  stripMarkdownNoise,
 } from "./payslip";
 import { hasPayslipPdfs, PAYSLIP_TEXT_SAMPLE, readUtf8 } from "../test/fixtures";
 
 const PAYSLIP_TEXT_APAC = "fixtures/payslip-osra-apac-sample.txt";
+const PAYSLIP_MD_SAMPLE = "fixtures/payslip-osra-sample.md";
+const PAYSLIP_MD_APAC = "fixtures/payslip-osra-apac-sample.md";
 
 describe("parseItalianAmount", () => {
   it("parses Italian decimal format", () => {
@@ -65,7 +70,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leaveFest.residue).toBeNull();
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-3");
+    expect(parsed!.parserVersion).toBe("osra-oluit-4-md");
   });
 
   it("parses AP/AC leave grid and non-empty FEST from text fixture", () => {
@@ -80,10 +85,51 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leavePerm.ap).toMatchObject({ spettanti: 93.33, godute: 1, residue: 26.67 });
     expect(parsed!.leavePerm.ac).toMatchObject({ spettanti: 120 });
   });
+});
 
+describe("parseOsraPayslipMarkdown", () => {
+  it("parses GFM fixture with same nets as plain sample", () => {
+    const parsed = parseOsraPayslipMarkdown(readUtf8(PAYSLIP_MD_SAMPLE), "payslip-osra-sample.md");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.periodMonth).toBe(6);
+    expect(parsed!.grossTotal).toBe(2615.5);
+    expect(parsed!.payslipNet).toBe(1507.43);
+    expect(parsed!.leaveFerie.ap.spettanti).toBe(80);
+    expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
+    expect(parsed!.leavePerm.ap.residue).toBe(56);
+    expect(parsed!.parserVersion).toBe("osra-oluit-4-md");
+  });
+
+  it("parses AP/AC leave from markdown table fixture", () => {
+    const parsed = parseOsraPayslipMarkdown(readUtf8(PAYSLIP_MD_APAC), "payslip-osra-apac-sample.md");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.payslipNet).toBe(1800);
+    expect(parsed!.leaveFerie.ap).toMatchObject({ spettanti: 60.67, godute: 0.27, residue: 56 });
+    expect(parsed!.leaveFerie.ac).toMatchObject({ spettanti: 27.5, residue: 89.17 });
+    expect(parsed!.leaveFest.ap).toMatchObject({ spettanti: 16, godute: 8, residue: 8 });
+    expect(parsed!.leavePerm.ap).toMatchObject({ spettanti: 93.33, godute: 1, residue: 26.67 });
+  });
+
+  it("stripMarkdownNoise keeps amount labels", () => {
+    const plain = stripMarkdownNoise("| Imponibile Fiscale | 2.407,43 |");
+    expect(plain).toMatch(/Imponibile Fiscale\s+2\.407,43/);
+  });
+});
+
+describe("parsePayslipContent", () => {
+  it("routes md and plain kinds", () => {
+    const md = parsePayslipContent(readUtf8(PAYSLIP_MD_SAMPLE), "md", "x.md");
+    const plain = parsePayslipContent(readUtf8(PAYSLIP_TEXT_SAMPLE), "plain", "x.txt");
+    expect(md?.payslipNet).toBe(1507.43);
+    expect(plain?.payslipNet).toBe(1507.43);
+  });
+});
+
+describe("parseOsraPayslipText PDF fixtures", () => {
   it.skipIf(!fs.existsSync(path.join("fixtures", "07-2026.pdf")))("parses July 2026 PDF with AP/AC split", async () => {
     const buffer = fs.readFileSync(path.join("fixtures", "07-2026.pdf"));
-    const parsed = parseOsraPayslipText(await extractPdfText(buffer), "07-2026.pdf");
+    const extracted = await extractPayslipContent(buffer);
+    const parsed = parsePayslipContent(extracted.content, extracted.kind, "07-2026.pdf");
 
     expect(parsed).not.toBeNull();
     expect(parsed!.periodMonth).toBe(7);
@@ -93,8 +139,8 @@ describe("parseOsraPayslipText", () => {
 
   it.skipIf(!fs.existsSync(path.join("fixtures", "06-2026.pdf")))("parses June 2026 fixture PDF", async () => {
     const buffer = fs.readFileSync(path.join("fixtures", "06-2026.pdf"));
-    const text = await extractPdfText(buffer);
-    const parsed = parseOsraPayslipText(text, "06-2026.pdf");
+    const extracted = await extractPayslipContent(buffer);
+    const parsed = parsePayslipContent(extracted.content, extracted.kind, "06-2026.pdf");
 
     expect(parsed).not.toBeNull();
     expect(parsed!.periodYear).toBe(2026);
@@ -107,8 +153,8 @@ describe("parseOsraPayslipText", () => {
 
   it.skipIf(!fs.existsSync(path.join("fixtures", "13-2025.pdf")))("parses tredicesima fixture", async () => {
     const buffer = fs.readFileSync(path.join("fixtures", "13-2025.pdf"));
-    const text = await extractPdfText(buffer);
-    const parsed = parseOsraPayslipText(text, "13-2025.pdf");
+    const extracted = await extractPayslipContent(buffer);
+    const parsed = parsePayslipContent(extracted.content, extracted.kind, "13-2025.pdf");
 
     expect(parsed).not.toBeNull();
     expect(parsed!.periodMonth).toBe(13);
@@ -126,7 +172,8 @@ describe("parseOsraPayslipText", () => {
     const ids = new Set<string>();
     for (const file of pdfs) {
       const buffer = fs.readFileSync(path.join("fixtures", file));
-      const parsed = parseOsraPayslipText(await extractPdfText(buffer), file);
+      const extracted = await extractPayslipContent(buffer);
+      const parsed = parsePayslipContent(extracted.content, extracted.kind, file);
       expect(parsed, file).not.toBeNull();
       ids.add(parsed!.id);
     }

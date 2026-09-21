@@ -158,8 +158,9 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
       <section className="panel payslip-upload">
         <h3>Importa cedolini PDF</h3>
         <p className="muted">
-          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Netto KPI: accredito
-          Mediolanum se match affidabile (data valuta ±5 giorni e importo), altrimenti cedolino.
+          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Conversione PDF→Markdown
+          (anydoc) con fallback testo; netto KPI: accredito Mediolanum se match affidabile
+          (data valuta ±5 giorni e importo), altrimenti cedolino. I PDF restano sul volume.
         </p>
         <input
           ref={inputRef}
