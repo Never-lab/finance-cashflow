@@ -96,11 +96,14 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<{ file: string; error: string }[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setSummary(await api.getPayslips());
+      setSelectedIds(new Set());
     } catch {
       setSummary(null);
     } finally {
@@ -122,6 +125,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
     try {
       const res = await api.importPayslips(files);
       setSummary(res.summary);
+      setSelectedIds(new Set());
       setErrors(res.errors);
       const msg =
         res.errors.length > 0
@@ -135,14 +139,48 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
     }
   };
 
-  const onDelete = async (id: string) => {
-    if (!confirm("Eliminare questo cedolino?")) return;
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (ids: string[], checked: boolean) => {
+    setSelectedIds(checked ? new Set(ids) : new Set());
+  };
+
+  const onDeleteSelected = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (
+      !confirm(
+        ids.length === 1
+          ? "Eliminare il cedolino selezionato (DB + PDF)?"
+          : `Eliminare ${ids.length} cedolini selezionati (DB + PDF)?`,
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    let ok = 0;
+    let fail = 0;
     try {
-      await api.deletePayslip(id);
+      for (const id of ids) {
+        try {
+          await api.deletePayslip(id);
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
       await load();
-      onToast?.("Cedolino eliminato");
-    } catch {
-      onToast?.("Errore eliminazione");
+      if (fail === 0) onToast?.(ok === 1 ? "Cedolino eliminato" : `Eliminati ${ok} cedolini`);
+      else onToast?.(`Eliminati ${ok}, errori ${fail}`);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -152,6 +190,10 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
 
   const latest = summary?.latest;
   const hasData = (summary?.payslips.length ?? 0) > 0;
+  const rows = [...(summary?.payslips ?? [])].reverse();
+  const rowIds = rows.map((p) => p.id);
+  const allSelected = rowIds.length > 0 && rowIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
 
   return (
     <div className="payslip-tab">
@@ -359,11 +401,34 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
           </div>
 
           <section className="panel payslip-table-panel">
-            <h3>Elenco cedolini</h3>
+            <div className="payslip-table-head">
+              <h3>Elenco cedolini</h3>
+              <button
+                type="button"
+                className="btn sm danger"
+                disabled={!someSelected || deleting}
+                onClick={() => void onDeleteSelected()}
+              >
+                {deleting
+                  ? "Eliminazione…"
+                  : someSelected
+                    ? `Elimina selezionati (${selectedIds.size})`
+                    : "Elimina selezionati"}
+              </button>
+            </div>
             <div className="table-wrap flat">
               <table>
                 <thead>
                   <tr>
+                    <th className="payslip-check-col">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        disabled={rowIds.length === 0 || deleting}
+                        onChange={(e) => toggleAll(rowIds, e.target.checked)}
+                        aria-label="Seleziona tutti i cedolini"
+                      />
+                    </th>
                     <th>Periodo</th>
                     <th className="num">Lordo</th>
                     <th className="num">Netto</th>
@@ -375,18 +440,27 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                     <th className="num">Perm</th>
                     <th>Valuta</th>
                     <th>File</th>
-                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {[...(summary?.payslips ?? [])].reverse().map((p) => {
+                  {rows.map((p) => {
                     /** Scostamento banca vs netto cedolino risolto. */
                     const delta =
                       p.bankCredit != null && p.payslipNet != null
                         ? Math.round((p.bankCredit - p.payslipNet) * 100) / 100
                         : null;
+                    const checked = selectedIds.has(p.id);
                     return (
-                      <tr key={p.id}>
+                      <tr key={p.id} className={checked ? "row-selected" : undefined}>
+                        <td className="payslip-check-col">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={deleting}
+                            onChange={(e) => toggleOne(p.id, e.target.checked)}
+                            aria-label={`Seleziona ${periodLabel(p)}`}
+                          />
+                        </td>
                         <td>
                           <div>{periodLabel(p)}</div>
                           {p.accAnomalous && <div className="muted tiny">Acc. c.c. anomalo</div>}
@@ -407,15 +481,6 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                         <td className="num leave-ap-ac">{formatLeaveApAc(p.leavePerm)}</td>
                         <td>{formatItDate(p.payDate)}</td>
                         <td className="muted tiny">{p.sourceFile ?? "—"}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn sm danger"
-                            onClick={() => void onDelete(p.id)}
-                          >
-                            Elimina
-                          </button>
-                        </td>
                       </tr>
                     );
                   })}
