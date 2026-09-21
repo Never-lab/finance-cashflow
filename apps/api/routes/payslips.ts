@@ -21,18 +21,23 @@ import type { AppEnv } from "../lib/honoTypes";
 
 export const payslipsRoutes = new Hono<AppEnv>();
 
-/** Estrae tutti i File da body multipart (campi singoli o array). */
+/** Estrae tutti i File da body multipart (campi singoli o array, qualsiasi nome campo). */
 function filesFromBody(body: Record<string, unknown>): File[] {
   const files: File[] = [];
   for (const value of Object.values(body)) {
-    if (value instanceof File) files.push(value);
-    else if (Array.isArray(value)) {
+    if (value instanceof File) {
+      if (isPdfFile(value)) files.push(value);
+    } else if (Array.isArray(value)) {
       for (const item of value) {
-        if (item instanceof File) files.push(item);
+        if (item instanceof File && isPdfFile(item)) files.push(item);
       }
     }
   }
   return files;
+}
+
+function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 }
 
 /** GET /api/payslips — riepilogo cedolini + confronto con movimenti. */

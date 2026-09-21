@@ -257,17 +257,45 @@ export const api = {
       json<{ payslip: PayslipSummary["payslips"][0] }>(r),
     );
   },
-  /** POST /api/payslips/import — import multiplo PDF HR. */
-  importPayslips: (files: File[]) => {
-    const fd = new FormData();
-    for (const f of files) fd.append("files", f);
-    return apiFetch("/api/payslips/import", { method: "POST", body: fd }).then((r) =>
-      json<{
-        imported: number;
-        errors: { file: string; error: string }[];
-        summary: PayslipSummary;
-      }>(r),
+  /** POST /api/payslips/import — import multiplo PDF HR (batch automatici se molti file). */
+  importPayslips: async (
+    files: File[],
+    onProgress?: (done: number, total: number) => void,
+  ) => {
+    const pdfs = files.filter(
+      (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name),
     );
+    if (pdfs.length === 0) {
+      throw new Error("Nessun file PDF selezionato");
+    }
+
+    /** Chunk piccoli: evita body/timeout su import massivi (es. 30 cedolini). */
+    const BATCH = 5;
+    let imported = 0;
+    const errors: { file: string; error: string }[] = [];
+    let summary: PayslipSummary | null = null;
+    let done = 0;
+
+    for (let i = 0; i < pdfs.length; i += BATCH) {
+      const chunk = pdfs.slice(i, i + BATCH);
+      const fd = new FormData();
+      for (const f of chunk) fd.append("files", f);
+      const res = await apiFetch("/api/payslips/import", { method: "POST", body: fd }).then((r) =>
+        json<{
+          imported: number;
+          errors: { file: string; error: string }[];
+          summary: PayslipSummary;
+        }>(r),
+      );
+      imported += res.imported;
+      errors.push(...res.errors);
+      summary = res.summary;
+      done = Math.min(pdfs.length, i + chunk.length);
+      onProgress?.(done, pdfs.length);
+    }
+
+    if (!summary) throw new Error("Import fallito");
+    return { imported, errors, summary };
   },
   /** DELETE /api/payslips/:id */
   deletePayslip: (id: string) =>

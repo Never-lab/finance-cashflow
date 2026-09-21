@@ -95,6 +95,9 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
   const [summary, setSummary] = useState<PayslipSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
   const [errors, setErrors] = useState<{ file: string; error: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
@@ -116,14 +119,23 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
   }, [load, refreshKey]);
 
   const onFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(e.target.files ?? [])];
+    const picked = [...(e.target.files ?? [])];
     e.target.value = "";
-    if (files.length === 0) return;
+    const files = picked.filter(
+      (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name),
+    );
+    if (files.length === 0) {
+      onToast?.("Nessun file PDF selezionato");
+      return;
+    }
 
     setImporting(true);
+    setImportProgress({ done: 0, total: files.length });
     setErrors([]);
     try {
-      const res = await api.importPayslips(files);
+      const res = await api.importPayslips(files, (done, total) => {
+        setImportProgress({ done, total });
+      });
       setSummary(res.summary);
       setSelectedIds(new Set());
       setErrors(res.errors);
@@ -136,6 +148,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
       onToast?.(err instanceof Error ? err.message : "Errore import PDF");
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   };
 
@@ -200,9 +213,10 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
       <section className="panel payslip-upload">
         <h3>Importa cedolini PDF</h3>
         <p className="muted">
-          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Conversione PDF→Markdown
-          (anydoc) con fallback testo; netto KPI: accredito Mediolanum se match affidabile
-          (data valuta ±5 giorni e importo), altrimenti cedolino. I PDF restano sul volume.
+          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Puoi selezionare tanti PDF
+          insieme (es. 30): vengono elaborati a gruppi. Conversione PDF→Markdown (anydoc) con
+          fallback testo; netto KPI da banca se match, altrimenti cedolino. I PDF restano sul
+          volume.
         </p>
         <input
           ref={inputRef}
@@ -218,7 +232,11 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
           disabled={importing}
           onClick={() => inputRef.current?.click()}
         >
-          {importing ? "Importazione…" : "Scegli PDF"}
+          {importing && importProgress
+            ? `Importazione ${importProgress.done}/${importProgress.total}…`
+            : importing
+              ? "Importazione…"
+              : "Scegli PDF (anche molti)"}
         </button>
         {errors.length > 0 && (
           <ul className="payslip-errors">
