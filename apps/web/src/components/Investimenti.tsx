@@ -5,7 +5,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Contribution, Instrument, InstrumentType, Transaction } from "@shared/types";
 import { api, type InstrumentWithHolding, type PortfolioSummary, type QuoteBar } from "../api";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 import { detectKnownInvestment, PAC_MS_GLOBAL_OPPORTUNITY } from "@shared/lib/knownInvestments";
 import {
   AllocationChart,
@@ -235,18 +235,18 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
           <span className="stat-label">Patrimonio</span>
-          <span className="stat-value">{formatEur(summary?.totalValue ?? 0)}</span>
+          <span className="stat-value">{formatEurDisplay(summary?.totalValue ?? 0)}</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">P&amp;L</span>
           <span className={`stat-value ${(summary?.pnl ?? 0) >= 0 ? "pos" : "neg"}`}>
-            {formatEur(summary?.pnl ?? 0)}
+            {formatEurDisplay(summary?.pnl ?? 0)}
             {summary?.pnlPct != null ? ` (${summary.pnlPct.toFixed(1)}%)` : ""}
           </span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Liquidità (risparmio+deposito)</span>
-          <span className="stat-value">{formatEur(summary?.cashLiquidity ?? 0)}</span>
+          <span className="stat-value">{formatEurDisplay(summary?.cashLiquidity ?? 0)}</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Strumenti</span>
@@ -367,7 +367,7 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
                     {i.holding?.quantity ?? i.holding?.cashBalance ?? 0}
                   </td>
                   <td className="num">
-                    {formatEur(lineByInstrument.get(i.id)?.value ?? fallbackValue(i))}
+                    {formatEurDisplay(lineByInstrument.get(i.id)?.value ?? fallbackValue(i))}
                   </td>
                   <td>
                     <button
@@ -419,7 +419,7 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
                   {contributions.map((c) => (
                     <tr key={c.id}>
                       <td>{c.date}</td>
-                      <td className="num pos">{formatEur(c.amount)}</td>
+                      <td className="num pos">{formatEurDisplay(c.amount)}</td>
                       <td>{c.note ?? "—"}</td>
                       <td>{c.transactionId ? "Sì" : "—"}</td>
                       <td>
@@ -469,7 +469,7 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
                 <option value="">Seleziona movimento…</option>
                 {linkableTx.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.date} · {t.description.slice(0, 40)} · {formatEur(t.amount)}
+                    {t.date} · {t.description.slice(0, 40)} · {formatEurDisplay(t.amount)}
                   </option>
                 ))}
               </select>

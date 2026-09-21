@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { api } from "../api";
 import type { BankMatchStatus, PayslipLeave, PayslipRecord, PayslipSummary } from "@shared/lib/payslip";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay, formatCompactNumber } from "../lib/privacyAmounts";
 import { ChartTooltip, CHART } from "./charts/chartTheme";
 
 type Props = {
@@ -262,18 +262,18 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
           <div className="stat-row payslip-kpis">
             <div className="stat-card">
               <span className="stat-label">Ultimo netto</span>
-              <span className="stat-value pos">{formatEur(latest?.netPay ?? 0)}</span>
+              <span className="stat-value pos">{formatEurDisplay(latest?.netPay ?? 0)}</span>
               <span className="stat-hint">
                 {latest ? `${periodLabel(latest)} · ${netHint(latest)}` : "—"}
               </span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Media netta (6 mesi)</span>
-              <span className="stat-value">{formatEur(summary?.avgNet6 ?? 0)}</span>
+              <span className="stat-value">{formatEurDisplay(summary?.avgNet6 ?? 0)}</span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Media lorda (6 mesi)</span>
-              <span className="stat-value">{formatEur(summary?.avgGross6 ?? 0)}</span>
+              <span className="stat-value">{formatEurDisplay(summary?.avgGross6 ?? 0)}</span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Ferie residue</span>
@@ -324,12 +324,7 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                       minTickGap={20}
                     />
                     <YAxis
-                      tickFormatter={(v) =>
-                        new Intl.NumberFormat("it-IT", {
-                          notation: "compact",
-                          compactDisplay: "short",
-                        }).format(Number(v))
-                      }
+                      tickFormatter={(v) => formatCompactNumber(Number(v))}
                       tick={{ fill: CHART.muted, fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
@@ -486,13 +481,13 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
                           <div>{periodLabel(p)}</div>
                           {p.accAnomalous && <div className="muted tiny">Acc. c.c. anomalo</div>}
                         </td>
-                        <td className="num">{p.grossTotal != null ? formatEur(p.grossTotal) : "—"}</td>
-                        <td className="num">{p.netPay != null ? formatEur(p.netPay) : "—"}</td>
-                        <td className="num">{p.payslipNet != null ? formatEur(p.payslipNet) : "—"}</td>
+                        <td className="num">{p.grossTotal != null ? formatEurDisplay(p.grossTotal) : "—"}</td>
+                        <td className="num">{p.netPay != null ? formatEurDisplay(p.netPay) : "—"}</td>
+                        <td className="num">{p.payslipNet != null ? formatEurDisplay(p.payslipNet) : "—"}</td>
                         <td className="muted tiny">{matchStatusLabel(p.bankMatchStatus)}</td>
                         <td className="num">
                           {delta != null ? (
-                            <span className={delta >= 0 ? "pos" : "neg"}>{formatEur(delta)}</span>
+                            <span className={delta >= 0 ? "pos" : "neg"}>{formatEurDisplay(delta)}</span>
                           ) : (
                             "—"
                           )}

@@ -169,8 +169,27 @@ body {
 }
 
 .sidebar-upload,
-.sidebar-settings {
+.sidebar-settings,
+.sidebar-privacy {
   width: 100%;
+}
+
+.sidebar-privacy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.sidebar-privacy.active {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.privacy-eye-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
 }
 
 .main-shell {
@@ -1354,7 +1373,8 @@ select {
   }
 
   .sidebar-upload,
-  .sidebar-settings {
+  .sidebar-settings,
+  .sidebar-privacy {
     width: auto;
     flex: 1;
   }
@@ -1392,7 +1412,8 @@ select {
   }
 
   .sidebar-upload,
-  .sidebar-settings {
+  .sidebar-settings,
+  .sidebar-privacy {
     width: 100%;
   }
 

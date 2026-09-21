@@ -7,7 +7,7 @@ import type { BankSource, Transaction } from "@shared/types";
 import { detectBank } from "@shared/lib/detectBank";
 import { importCsv } from "@shared/lib/importCsv";
 import { extractLiquidityFromCsv, type LiquiditySnapshots } from "@shared/lib/liquidity";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 import { useDialogA11y } from "../hooks/useDialogA11y";
 
 type Props = {
@@ -145,7 +145,7 @@ export function UploadModal({ open, onClose, onImport }: Props) {
                     <td>{t.date}</td>
                     <td>{t.description}</td>
                     <td>{t.category}</td>
-                    <td className="num">{formatEur(t.amount)}</td>
+                    <td className="num">{formatEurDisplay(t.amount)}</td>
                   </tr>
                 ))}
               </tbody>

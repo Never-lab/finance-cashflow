@@ -1,7 +1,7 @@
 ﻿/**
  * Palette e tooltip condivisi per grafici Recharts (tema scuro Cash Flow).
  */
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../../lib/privacyAmounts";
 
 /** Colori e sfondo pannello per assi, griglia e serie. */
 export const CHART = {
@@ -46,7 +46,7 @@ export function ChartTooltip({
             style={{ background: String(p.color ?? CHART.teal) }}
           />
           <span>{p.name}</span>
-          <strong>{formatEur(Number(p.value ?? 0))}</strong>
+          <strong>{formatEurDisplay(Number(p.value ?? 0))}</strong>
         </div>
       ))}
     </div>

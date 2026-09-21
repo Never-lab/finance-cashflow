@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartTooltip, CHART } from "./chartTheme";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay, formatCompactNumber } from "../../lib/privacyAmounts";
 
 type HistoryPoint = { date: string; value: number };
 type AllocationSlice = { label: string; value: number; pct: number };
@@ -37,7 +37,7 @@ export function PortfolioHistoryChart({ data }: { data: HistoryPoint[] }) {
     <div className="chart-hero">
       <div className="chart-hero-meta">
         <span className="kpi-label">Valore patrimonio a fine periodo</span>
-        <span className="chart-hero-value">{formatEur(end.value)}</span>
+        <span className="chart-hero-value">{formatEurDisplay(end.value)}</span>
       </div>
       <div className="chart-box tall">
         <ResponsiveContainer width="100%" height={280}>
@@ -58,12 +58,7 @@ export function PortfolioHistoryChart({ data }: { data: HistoryPoint[] }) {
               minTickGap={28}
             />
             <YAxis
-              tickFormatter={(v) =>
-                new Intl.NumberFormat("it-IT", {
-                  notation: "compact",
-                  compactDisplay: "short",
-                }).format(Number(v))
-              }
+              tickFormatter={(v) => formatCompactNumber(Number(v))}
               tick={{ fill: CHART.muted, fontSize: 11 }}
               axisLine={false}
               tickLine={false}

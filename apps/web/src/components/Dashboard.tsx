@@ -11,10 +11,10 @@ import {
   computeKpis,
   cumulativeSeries,
   filterByPeriod,
-  formatEur,
   monthlySeries,
   spendingHeatmap,
 } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 import { forConsumption } from "@shared/lib/consumptionView";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import {
@@ -90,13 +90,13 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
       <div className="stat-row kpi-row">
         <Kpi
           label="Entrate"
-          value={formatEur(kpis.income)}
+          value={formatEurDisplay(kpis.income)}
           tone="pos"
           hint="Stipendio e altre entrate reali (no giroconti Revolut)"
         />
         <Kpi
           label="Uscite"
-          value={formatEur(kpis.expense)}
+          value={formatEurDisplay(kpis.expense)}
           tone="neg"
           hint="Solo consumo e addebiti (no trasferimenti tra conti)"
         />
@@ -104,11 +104,11 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
           label="Risparmio %"
           value={`${savingsRate.toFixed(0)}%`}
           tone={savingsRate >= 15 ? "pos" : "neg"}
-          hint={`Netto ${formatEur(kpis.net)} · non è il saldo sui conti`}
+          hint={`Netto ${formatEurDisplay(kpis.net)} · non è il saldo sui conti`}
         />
         <Kpi
           label="Netto periodo"
-          value={formatEur(kpis.net)}
+          value={formatEurDisplay(kpis.net)}
           tone={kpis.net >= 0 ? "pos" : "neg"}
           hint="Entrate − uscite consumo nel periodo"
         />
@@ -207,26 +207,26 @@ function LiquidityPanel({
         <div className="stat-card kpi">
           <span className="stat-label">Totale EUR</span>
           <span className="stat-value pos">
-            {liquidity.totalEur != null ? formatEur(liquidity.totalEur) : "—"}
+            {liquidity.totalEur != null ? formatEurDisplay(liquidity.totalEur) : "—"}
           </span>
           <span className="stat-hint">Mediolanum + Revolut (Attuale, pocket, deposito)</span>
         </div>
         {med && (
           <div className="stat-card">
             <span className="stat-label">Mediolanum</span>
-            <span className="stat-value">{formatEur(med.available)}</span>
+            <span className="stat-value">{formatEurDisplay(med.available)}</span>
             <span className="stat-hint">
-              Disponibile · contabile {formatEur(med.ledger)} · export {med.asOf}
+              Disponibile · contabile {formatEurDisplay(med.ledger)} · export {med.asOf}
             </span>
           </div>
         )}
         {attuale != null && (
           <div className="stat-card">
             <span className="stat-label">Revolut Attuale</span>
-            <span className="stat-value">{formatEur(attuale)}</span>
+            <span className="stat-value">{formatEurDisplay(attuale)}</span>
             <span className="stat-hint">
               {rev && rev.pendingAttuale > 0
-                ? `Al netto di ${formatEur(rev.pendingAttuale)} in sospeso · CSV ${rev.asOf}`
+                ? `Al netto di ${formatEurDisplay(rev.pendingAttuale)} in sospeso · CSV ${rev.asOf}`
                 : `Conto principale · CSV ${rev?.asOf ?? ""}`}
             </span>
           </div>
@@ -234,9 +234,9 @@ function LiquidityPanel({
         {rev && (
           <div className="stat-card">
             <span className="stat-label">Revolut pocket + deposito</span>
-            <span className="stat-value">{formatEur(rev.risparmi + rev.deposito)}</span>
+            <span className="stat-value">{formatEurDisplay(rev.risparmi + rev.deposito)}</span>
             <span className="stat-hint">
-              Risparmi {formatEur(rev.risparmi)} · Deposito {formatEur(rev.deposito)}
+              Risparmi {formatEurDisplay(rev.risparmi)} · Deposito {formatEurDisplay(rev.deposito)}
             </span>
           </div>
         )}
@@ -245,12 +245,12 @@ function LiquidityPanel({
         <div className="stat-row liquidity-pockets">
           <div className="stat-card compact">
             <span className="stat-label">Pocket Viaggio</span>
-            <span className="stat-value">{formatEur(pockets.viaggio)}</span>
+            <span className="stat-value">{formatEurDisplay(pockets.viaggio)}</span>
             <span className="stat-hint">Stima da movimenti · Risparmi</span>
           </div>
           <div className="stat-card compact">
             <span className="stat-label">Pocket Manutenzione Auto</span>
-            <span className="stat-value">{formatEur(pockets.manutenzioneAuto)}</span>
+            <span className="stat-value">{formatEurDisplay(pockets.manutenzioneAuto)}</span>
             <span className="stat-hint">Stima da movimenti · Risparmi</span>
           </div>
         </div>

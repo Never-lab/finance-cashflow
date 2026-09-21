@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import type { BankSource, Transaction } from "@shared/types";
 import { CATEGORIES } from "@shared/lib/categorize";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -106,9 +106,9 @@ export function Transactions({
 
       <p className="txn-summary">
         <strong>{summary.count}</strong> movimenti · Uscite{" "}
-        <strong className="neg">{formatEur(summary.expense)}</strong> · Entrate{" "}
-        <strong className="pos">{formatEur(summary.income)}</strong> · Netto{" "}
-        <strong className={summary.net >= 0 ? "pos" : "neg"}>{formatEur(summary.net)}</strong>
+        <strong className="neg">{formatEurDisplay(summary.expense)}</strong> · Entrate{" "}
+        <strong className="pos">{formatEurDisplay(summary.income)}</strong> · Netto{" "}
+        <strong className={summary.net >= 0 ? "pos" : "neg"}>{formatEurDisplay(summary.net)}</strong>
         {hideInternal && <span> · interni esclusi</span>}
       </p>
 
@@ -164,7 +164,7 @@ export function Transactions({
                   </label>
                 </td>
                 <td className={`num ${t.amount >= 0 ? "pos" : "neg"}`}>
-                  {formatEur(t.amount)}
+                  {formatEurDisplay(t.amount)}
                 </td>
               </tr>
             ))}

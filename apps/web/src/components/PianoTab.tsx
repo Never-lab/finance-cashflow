@@ -5,7 +5,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import type { RecurringMark, Transaction } from "@shared/types";
-import { formatEur, filterByPeriod } from "@shared/lib/stats";
+import { filterByPeriod } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import { sumEmergencyFundOutflows } from "@shared/lib/knownAccounts";
 import { buildPaypalSummary } from "@shared/lib/paypal";
@@ -136,7 +137,7 @@ export function PianoTab({
           >
             <span className="stat-label">Fondo emergenza (deposito)</span>
             <span className={`stat-value ${savings.emergencyOut > 0 ? "pos" : ""}`}>
-              {formatEur(savings.emergencyOut)}
+              {formatEurDisplay(savings.emergencyOut)}
             </span>
             <span className="stat-hint">
               Versato questo mese · IBAN …14212 · escluso da uscite KPI
@@ -151,7 +152,7 @@ export function PianoTab({
           <button type="button" className="stat-card interactive" onClick={onGoPaypal}>
             <span className="stat-label">Debito rate PayPal</span>
             <span className={`stat-value ${impegni.paypalDebt > 0 ? "neg" : ""}`}>
-              {formatEur(impegni.paypalDebt)}
+              {formatEurDisplay(impegni.paypalDebt)}
             </span>
             <span className="stat-hint">
               {impegni.planCount > 0
@@ -165,28 +166,28 @@ export function PianoTab({
               className={`stat-value ${impegni.loanDebt > 0 ? "neg" : impegni.loanMonthly > 0 ? "neg" : ""}`}
             >
               {impegni.loanDebt > 0
-                ? formatEur(impegni.loanDebt)
+                ? formatEurDisplay(impegni.loanDebt)
                 : impegni.loanMonthly > 0
-                  ? formatEur(impegni.loanMonthly)
+                  ? formatEurDisplay(impegni.loanMonthly)
                   : "—"}
             </span>
             <span className="stat-hint">
               {impegni.loanCount > 0
                 ? impegni.loanDebt > 0
-                  ? `${impegni.loanCount} finanziament${impegni.loanCount === 1 ? "o" : "i"} · ${formatEur(impegni.loanDebt)} residuo`
-                  : `${formatEur(impegni.loanMonthly)}/m · Selfycredit e altri`
+                  ? `${impegni.loanCount} finanziament${impegni.loanCount === 1 ? "o" : "i"} · ${formatEurDisplay(impegni.loanDebt)} residuo`
+                  : `${formatEurDisplay(impegni.loanMonthly)}/m · Selfycredit e altri`
                 : "Nessun finanziamento rilevato nei CSV"}
             </span>
           </button>
           <button type="button" className="stat-card interactive" onClick={onGoAbbonamenti}>
             <span className="stat-label">Abbonamenti / mese</span>
-            <span className="stat-value neg">{formatEur(impegni.recurringMonthly)}</span>
+            <span className="stat-value neg">{formatEurDisplay(impegni.recurringMonthly)}</span>
             <span className="stat-hint">Solo abbonamenti (no mutuo, assicurazioni, bollette)</span>
           </button>
           <div className="stat-card">
             <span className="stat-label">Totale impegnato</span>
             <span className="stat-value neg">
-              {formatEur(
+              {formatEurDisplay(
                 // Se c'è residuo mutuo usa quello; altrimenti somma la rata mensile stimata.
                 impegni.paypalDebt +
                   impegni.loanDebt +
@@ -245,7 +246,7 @@ function VaultGoalCard({
 
   const hintParts: string[] = [];
   if (goal.deadline) hintParts.push(`deadline ${goal.deadline}`);
-  if (goal.monthlyHint != null) hintParts.push(`+${formatEur(goal.monthlyHint)}/m`);
+  if (goal.monthlyHint != null) hintParts.push(`+${formatEurDisplay(goal.monthlyHint)}/m`);
   hintParts.push(goal.source === "override" ? "manuale" : "da CSV");
 
   return (
@@ -261,11 +262,11 @@ function VaultGoalCard({
         <div className="liberation-progress-fill savings" style={{ width: `${goal.pct}%` }} />
       </div>
       <div className="liberation-meta">
-        <span>{formatEur(goal.current)} accantonati</span>
-        <span className="liberation-remaining">mancano {formatEur(goal.remaining)}</span>
+        <span>{formatEurDisplay(goal.current)} accantonati</span>
+        <span className="liberation-remaining">mancano {formatEurDisplay(goal.remaining)}</span>
       </div>
       <span className="stat-hint">
-        Target {formatEur(goal.target)}
+        Target {formatEurDisplay(goal.target)}
         {hintParts.length ? ` · ${hintParts.join(" · ")}` : ""}
       </span>
       <div className="vault-override">
@@ -394,13 +395,13 @@ function LiberationPlanPanel({
               <div className="liberation-meta">
                 <span>
                   {isDebt
-                    ? `${formatEur(goal.current)} restituiti`
-                    : `${formatEur(goal.current)} accantonati`}
+                    ? `${formatEurDisplay(goal.current)} restituiti`
+                    : `${formatEurDisplay(goal.current)} accantonati`}
                 </span>
                 <span className="liberation-remaining">
                   {isDebt
-                    ? `${formatEur(goal.remaining)} residuo`
-                    : `mancano ${formatEur(goal.remaining)}`}
+                    ? `${formatEurDisplay(goal.remaining)} residuo`
+                    : `mancano ${formatEurDisplay(goal.remaining)}`}
                 </span>
               </div>
               <span className="stat-hint">{goal.hint}</span>
@@ -411,8 +412,8 @@ function LiberationPlanPanel({
       </div>
       {plan.liberabileEstimate != null && (
         <p className="muted liberation-note">
-          Liberabile su Attuale (al netto di {formatEur(LIBERATION_DEFAULTS.attualeFloat)} di float):{" "}
-          <strong>{formatEur(plan.liberabileEstimate)}</strong>
+          Liberabile su Attuale (al netto di {formatEurDisplay(LIBERATION_DEFAULTS.attualeFloat)} di float):{" "}
+          <strong>{formatEurDisplay(plan.liberabileEstimate)}</strong>
           {plan.paypalUnder600 ? " · PayPal sotto soglia fase Selfy" : ""}
         </p>
       )}
@@ -464,19 +465,19 @@ function MediolanumBufferPanel({
       <h4 className="mediolanum-buffer-title">Buffer Mediolanum consigliato</h4>
       <p className="muted mediolanum-buffer-intro">
         Quanto lasciare sul conto corrente per SDD, rate carta e bonifico emergenza. Include{" "}
-        {formatEur(MEDIOLANUM_BUFFER_OVERSHOOT)} di margine quando chiudi un piano.
+        {formatEurDisplay(MEDIOLANUM_BUFFER_OVERSHOOT)} di margine quando chiudi un piano.
       </p>
       <div className="stat-row mediolanum-buffer-kpis">
         <div className={`stat-card compact buffer-${buffer.status}`}>
           <span className="stat-label">Target mese tipo</span>
-          <span className="stat-value">{formatEur(buffer.recommendedNormal)}</span>
+          <span className="stat-value">{formatEurDisplay(buffer.recommendedNormal)}</span>
           <span className="stat-hint">
-            Base {formatEur(buffer.monthlyBase)} + {formatEur(MEDIOLANUM_BUFFER_OVERSHOOT)} margine
+            Base {formatEurDisplay(buffer.monthlyBase)} + {formatEurDisplay(MEDIOLANUM_BUFFER_OVERSHOOT)} margine
           </span>
         </div>
         <div className="stat-card compact">
           <span className="stat-label">Target mese PayPal alto</span>
-          <span className="stat-value">{formatEur(buffer.recommendedPeak)}</span>
+          <span className="stat-value">{formatEurDisplay(buffer.recommendedPeak)}</span>
           <span className="stat-hint">
             {buffer.peakMonth ? `Picco ${buffer.peakMonth}` : "Ultimi 3 mesi CSV"}
           </span>
@@ -485,7 +486,7 @@ function MediolanumBufferPanel({
           <div className={`stat-card compact buffer-${buffer.status}`}>
             <span className="stat-label">Disponibile ora</span>
             <span className={`stat-value ${buffer.status === "ok" ? "pos" : "neg"}`}>
-              {formatEur(buffer.currentAvailable)}
+              {formatEurDisplay(buffer.currentAvailable)}
             </span>
             <span className="stat-hint">{statusLabel}</span>
           </div>
@@ -493,7 +494,7 @@ function MediolanumBufferPanel({
         {buffer.gap != null && buffer.gap > 0 && (
           <div className="stat-card compact">
             <span className="stat-label">Mancano al target</span>
-            <span className="stat-value neg">{formatEur(buffer.gap)}</span>
+            <span className="stat-value neg">{formatEurDisplay(buffer.gap)}</span>
             <span className="stat-hint">Prima degli addebiti fine mese</span>
           </div>
         )}
@@ -502,7 +503,7 @@ function MediolanumBufferPanel({
         {buffer.lines.map((line) => (
           <li key={line.id}>
             <span>{line.label}</span>
-            <span>{formatEur(line.monthly)}/m</span>
+            <span>{formatEurDisplay(line.monthly)}/m</span>
           </li>
         ))}
       </ul>

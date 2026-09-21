@@ -14,6 +14,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { AppShell, type AppTab } from "./components/AppShell";
+import { PrivacyProvider } from "./components/PrivacyProvider";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import type { LoanTarget } from "@shared/lib/loans";
 import type { VaultBalancesOverride, VaultId } from "@shared/lib/vaultGoals";
@@ -294,6 +295,7 @@ export default function App() {
   }
 
   return (
+    <PrivacyProvider>
     <AppShell
       tab={tab}
       onTab={setTab}
@@ -418,5 +420,6 @@ export default function App() {
         </div>
       )}
     </AppShell>
+    </PrivacyProvider>
   );
 }

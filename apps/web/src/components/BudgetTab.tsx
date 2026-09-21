@@ -12,7 +12,7 @@ import {
   type BudgetStatus,
   type CategoryBudgets,
 } from "@shared/lib/budget";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -164,12 +164,12 @@ function BudgetRowCard({
       </div>
       <div className="liberation-meta">
         <span>
-          {formatEur(row.spent)} / {formatEur(row.limit)}
+          {formatEurDisplay(row.spent)} / {formatEurDisplay(row.limit)}
         </span>
         <span className="liberation-remaining">
           {row.status === "over"
-            ? `+${formatEur(row.spent - row.limit)} oltre`
-            : `restano ${formatEur(row.remaining)}`}
+            ? `+${formatEurDisplay(row.spent - row.limit)} oltre`
+            : `restano ${formatEurDisplay(row.remaining)}`}
         </span>
       </div>
       <span className="stat-hint">{row.pct.toFixed(0)}% del limite</span>

@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import type { RecurringMark, Transaction } from "@shared/types";
 import { CATEGORIES } from "@shared/lib/categorize";
 import { findRecurring, isSubscriptionLike } from "@shared/lib/recurring";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -69,14 +69,14 @@ export function Recurring({
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
           <span className="stat-label">Stima ricorrenti / mese</span>
-          <span className="stat-value">{formatEur(burden)}</span>
+          <span className="stat-value">{formatEurDisplay(burden)}</span>
           <span className="stat-hint">
             Abbonamenti attivi, esclusi “cancellato” e “potrei tagliare”
           </span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Potresti tagliare</span>
-          <span className="stat-value neg">{formatEur(couldSave)}</span>
+          <span className="stat-value neg">{formatEurDisplay(couldSave)}</span>
           <span className="stat-hint">Somma voci segnate “potrei tagliare”</span>
         </div>
         <div className="stat-card">
@@ -140,7 +140,7 @@ export function Recurring({
                     </select>
                     {!hasManualCategory && <span className="tag auto">auto</span>}
                   </td>
-                  <td className="num neg">{formatEur(i.monthlyEstimate)}</td>
+                  <td className="num neg">{formatEurDisplay(i.monthlyEstimate)}</td>
                   <td>
                     {i.months.length} mesi
                     {i.months.length >= 2 && (

@@ -7,7 +7,7 @@ import type { LoanTarget } from "@shared/lib/loans";
 import { buildLoanSummary } from "@shared/lib/loans";
 import { mergeLoanTargets } from "@shared/lib/knownLoans";
 import type { Transaction } from "@shared/types";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -51,13 +51,13 @@ export function LoansTab({ transactions, loanTargets, onSaveTarget, onUpload }: 
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
           <span className="stat-label">Rate mensili</span>
-          <span className="stat-value neg">{formatEur(summary.monthlyBurden)}</span>
+          <span className="stat-value neg">{formatEurDisplay(summary.monthlyBurden)}</span>
           <span className="stat-hint">Somma rate attive rilevate da CSV</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Debito residuo</span>
           <span className={`stat-value ${summary.remainingDebt > 0 ? "neg" : ""}`}>
-            {summary.remainingDebt > 0 ? formatEur(summary.remainingDebt) : "—"}
+            {summary.remainingDebt > 0 ? formatEurDisplay(summary.remainingDebt) : "—"}
           </span>
           <span className="stat-hint">
             {summary.plans.some((p) => p.remainingSource === "bank")
@@ -71,10 +71,10 @@ export function LoansTab({ transactions, loanTargets, onSaveTarget, onUpload }: 
           <span className="stat-label">Restituito</span>
           <span className="stat-value">
             {summary.plans.some((p) => p.totalRepaidBank != null)
-              ? formatEur(
+              ? formatEurDisplay(
                   summary.plans.reduce((s, p) => s + (p.totalRepaidBank ?? p.totalPaid), 0),
                 )
-              : formatEur(summary.totalPaid)}
+              : formatEurDisplay(summary.totalPaid)}
           </span>
           <span className="stat-hint">
             {summary.plans.some((p) => p.totalRepaidBank != null)
@@ -174,7 +174,7 @@ function LoanRow({
         )}
         {(plan.principalAmount != null || plan.startDate || plan.endDate) && (
           <div className="muted tiny">
-            {plan.principalAmount != null ? `Importo ${formatEur(plan.principalAmount)}` : ""}
+            {plan.principalAmount != null ? `Importo ${formatEurDisplay(plan.principalAmount)}` : ""}
             {plan.startDate ? `${plan.principalAmount != null ? " · " : ""}inizio ${plan.startDate.slice(5)}/${plan.startDate.slice(0, 4)}` : ""}
             {plan.endDate ? ` · fine ${plan.endDate.slice(5)}/${plan.endDate.slice(0, 4)}` : ""}
           </div>
@@ -187,10 +187,10 @@ function LoanRow({
         <div className="muted tiny">
           {plan.paidCount} pagate
           {plan.remainingInstallments != null ? ` · ${plan.remainingInstallments} da pagare` : ""}
-          {plan.totalPaid > 0 ? ` · CSV ${formatEur(plan.totalPaid)}` : ""}
+          {plan.totalPaid > 0 ? ` · CSV ${formatEurDisplay(plan.totalPaid)}` : ""}
         </div>
       </td>
-      <td className="num">{formatEur(plan.installmentAmount)}</td>
+      <td className="num">{formatEurDisplay(plan.installmentAmount)}</td>
       <td className="num">{plan.paidCount}</td>
       <td className="num">
         <input
@@ -208,7 +208,7 @@ function LoanRow({
         />
       </td>
       <td className="num">
-        {plan.remainingEstimate != null ? formatEur(plan.remainingEstimate) : "—"}
+        {plan.remainingEstimate != null ? formatEurDisplay(plan.remainingEstimate) : "—"}
         {plan.remainingSource === "bank" && (
           <div className="muted tiny">banca</div>
         )}
@@ -220,7 +220,7 @@ function LoanRow({
         {plan.nextPaymentDate ? (
           <>
             {plan.nextPaymentDate}
-            <div className="muted tiny">{formatEur(plan.installmentAmount)}</div>
+            <div className="muted tiny">{formatEurDisplay(plan.installmentAmount)}</div>
           </>
         ) : (
           "—"
@@ -228,7 +228,7 @@ function LoanRow({
       </td>
       <td>
         {plan.lastDate}
-        <div className="muted tiny">{formatEur(plan.installmentAmount)}</div>
+        <div className="muted tiny">{formatEurDisplay(plan.installmentAmount)}</div>
       </td>
     </tr>
   );

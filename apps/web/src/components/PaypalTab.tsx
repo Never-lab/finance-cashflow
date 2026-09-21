@@ -5,7 +5,7 @@
 import { useMemo } from "react";
 import type { Transaction } from "@shared/types";
 import { buildPaypalSummary } from "@shared/lib/paypal";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -56,19 +56,19 @@ export function PaypalTab({ transactions, onUpload }: Props) {
       <div className="stat-row recurring-kpis">
         <div className="stat-card">
           <span className="stat-label">Rate attive (mese)</span>
-          <span className="stat-value neg">{formatEur(summary.monthlyBurden)}</span>
+          <span className="stat-value neg">{formatEurDisplay(summary.monthlyBurden)}</span>
           <span className="stat-hint">Solo Unieuro + Autodoc (allineati all’app)</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Debito rate stimato</span>
-          <span className="stat-value neg">{formatEur(summary.remainingDebt)}</span>
+          <span className="stat-value neg">{formatEurDisplay(summary.remainingDebt)}</span>
           <span className="stat-hint">
             Residuo piani noti — senza stime generiche CSV
           </span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Uscite PayPal (totale)</span>
-          <span className="stat-value neg">{formatEur(summary.totalOut)}</span>
+          <span className="stat-value neg">{formatEurDisplay(summary.totalOut)}</span>
           <span className="stat-hint">Tutti gli addebiti PayPal nel CSV</span>
         </div>
       </div>
@@ -104,9 +104,9 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                       )}
                       {p.principalAmount != null && (
                         <div className="muted tiny">
-                          Importo {formatEur(p.principalAmount)}
+                          Importo {formatEurDisplay(p.principalAmount)}
                           {p.totalAmount != null && p.totalAmount !== p.principalAmount
-                            ? ` · totale ${formatEur(p.totalAmount)}`
+                            ? ` · totale ${formatEurDisplay(p.totalAmount)}`
                             : ""}
                           {p.indicativeTaeg != null ? ` · TAEG ${p.indicativeTaeg}%` : ""}
                         </div>
@@ -122,12 +122,12 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                             : "Ricorrente"}
                       </span>
                     </td>
-                    <td className="num neg">{formatEur(p.installmentAmount)}</td>
+                    <td className="num neg">{formatEurDisplay(p.installmentAmount)}</td>
                     <td className="num">
                       {p.expectedCount ? `${p.paidCount}/${p.expectedCount}` : String(p.paidCount)}
                     </td>
                     <td className="num neg">
-                      {p.remainingEstimate != null ? formatEur(p.remainingEstimate) : "—"}
+                      {p.remainingEstimate != null ? formatEurDisplay(p.remainingEstimate) : "—"}
                     </td>
                     <td>{formatItDate(p.nextPaymentDate)}</td>
                     <td>{p.lastDate || "—"}</td>
@@ -172,14 +172,14 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                             : "Ricorrente"}
                       </span>
                     </td>
-                    <td className="num neg">{formatEur(p.installmentAmount)}</td>
+                    <td className="num neg">{formatEurDisplay(p.installmentAmount)}</td>
                     <td className="num">
                       {p.expectedCount
                         ? `${p.paidCount}/${p.expectedCount}`
                         : String(p.paidCount)}
                     </td>
                     <td className="num neg">
-                      {p.remainingEstimate != null ? formatEur(p.remainingEstimate) : "—"}
+                      {p.remainingEstimate != null ? formatEurDisplay(p.remainingEstimate) : "—"}
                     </td>
                     <td>{p.lastDate}</td>
                   </tr>
@@ -207,7 +207,7 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                   <tr key={t.id}>
                     <td>{t.date}</td>
                     <td title={t.description}>{t.description}</td>
-                    <td className="num neg">{formatEur(t.amount)}</td>
+                    <td className="num neg">{formatEurDisplay(t.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -233,7 +233,7 @@ export function PaypalTab({ transactions, onUpload }: Props) {
                   <tr key={t.id}>
                     <td>{t.date}</td>
                     <td title={t.description}>{t.description}</td>
-                    <td className="num pos">{formatEur(t.amount)}</td>
+                    <td className="num pos">{formatEurDisplay(t.amount)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -18,7 +18,8 @@ import {
   YAxis,
 } from "recharts";
 import { ChartTooltip, CHART } from "./chartTheme";
-import { formatEur, type SankeyData } from "@shared/lib/stats";
+import { type SankeyData } from "@shared/lib/stats";
+import { formatEurDisplay, formatCompactNumber } from "../../lib/privacyAmounts";
 
 type CumPoint = { date: string; balance: number; dayNet: number };
 type MonthPoint = { month: string; income: number; expense: number; net: number };
@@ -50,7 +51,7 @@ export function CashflowCurve({ data }: { data: CumPoint[] }) {
       <div className="chart-hero-meta">
         <span className="kpi-label">Saldo cumulato periodo</span>
         <span className={`chart-hero-value ${end.balance >= 0 ? "pos" : "neg"}`}>
-          {formatEur(end.balance)}
+          {formatEurDisplay(end.balance)}
         </span>
       </div>
       <div className="chart-box tall">
@@ -72,12 +73,7 @@ export function CashflowCurve({ data }: { data: CumPoint[] }) {
               minTickGap={28}
             />
             <YAxis
-              tickFormatter={(v) =>
-                new Intl.NumberFormat("it-IT", {
-                  notation: "compact",
-                  compactDisplay: "short",
-                }).format(Number(v))
-              }
+              tickFormatter={(v) => formatCompactNumber(Number(v))}
               tick={{ fill: CHART.muted, fontSize: 11 }}
               axisLine={false}
               tickLine={false}
@@ -121,9 +117,7 @@ export function IncomeExpenseBars({ data }: { data: MonthPoint[] }) {
             tickLine={false}
           />
           <YAxis
-            tickFormatter={(v) =>
-              new Intl.NumberFormat("it-IT", { notation: "compact" }).format(Number(v))
-            }
+            tickFormatter={(v) => formatCompactNumber(Number(v))}
             tick={{ fill: CHART.muted, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -159,7 +153,7 @@ export function CategoryBars({ data }: { data: CatPoint[] }) {
           <div className="cat-bar-head">
             <span>{row.category}</span>
             <span className="cat-bar-meta">
-              {formatEur(row.total)} · {row.pct.toFixed(0)}%
+              {formatEurDisplay(row.total)} · {row.pct.toFixed(0)}%
             </span>
           </div>
           <div className="cat-bar-track">
@@ -204,7 +198,7 @@ export function SpendingHeatmap({ data }: { data: Heat }) {
                 <div
                   key={`${cat}-${m}`}
                   className="heatmap-cell"
-                  title={`${cat} · ${m}: ${formatEur(v)}`}
+                  title={`${cat} · ${m}: ${formatEurDisplay(v)}`}
                   style={{
                     background:
                       v <= 0
@@ -318,16 +312,16 @@ export function CashflowSankeyChart({ data }: { data: SankeyData }) {
       <div className="stat-row sankey-kpis">
         <div className="stat-card compact">
           <span className="stat-label">Entrate</span>
-          <span className="stat-value pos">{formatEur(data.income)}</span>
+          <span className="stat-value pos">{formatEurDisplay(data.income)}</span>
         </div>
         <div className="stat-card compact">
           <span className="stat-label">Uscite</span>
-          <span className="stat-value neg">{formatEur(data.expense)}</span>
+          <span className="stat-value neg">{formatEurDisplay(data.expense)}</span>
         </div>
         <div className="stat-card compact">
           <span className="stat-label">Margine €</span>
           <span className={`stat-value ${data.net >= 0 ? "pos" : "neg"}`}>
-            {formatEur(data.net)}
+            {formatEurDisplay(data.net)}
           </span>
         </div>
         <div className="stat-card compact">
@@ -372,7 +366,7 @@ export function CashflowSankeyChart({ data }: { data: SankeyData }) {
                       {p.source?.name ?? "?"} → {p.target?.name ?? "?"}
                     </div>
                     <div className="chart-tooltip-row">
-                      <strong>{formatEur(Number(p.value))}</strong>
+                      <strong>{formatEurDisplay(Number(p.value))}</strong>
                     </div>
                   </div>
                 );

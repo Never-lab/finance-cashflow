@@ -13,7 +13,7 @@ import {
   type Insight,
   type InsightKind,
 } from "@shared/lib/advisor";
-import { formatEur } from "@shared/lib/stats";
+import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -146,14 +146,14 @@ export function Advisor({
           <span className={`stat-value ${report.summary.savingsRate >= 15 ? "pos" : "neg"}`}>
             {report.summary.savingsRate.toFixed(0)}%
           </span>
-          <span className="stat-hint">Netto consumo {formatEur(report.summary.net)} · non saldo conti</span>
+          <span className="stat-hint">Netto consumo {formatEurDisplay(report.summary.net)} · non saldo conti</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Impegni / mese</span>
-          <span className="stat-value neg">{formatEur(report.impegni.monthlyBurden)}</span>
+          <span className="stat-value neg">{formatEurDisplay(report.impegni.monthlyBurden)}</span>
           <span className="stat-hint">
             {report.impegni.paypalDebt > 0
-              ? `+ PayPal residuo ${formatEur(report.impegni.paypalDebt)}`
+              ? `+ PayPal residuo ${formatEurDisplay(report.impegni.paypalDebt)}`
               : "Mutui + ricorrenti"}
           </span>
         </div>
@@ -280,7 +280,7 @@ function InsightCard({
       <h3>{insight.title}</h3>
       <p>{insight.detail}</p>
       {insight.impactEur != null && (
-        <p className="insight-impact">Impatto stimato: {formatEur(insight.impactEur)}</p>
+        <p className="insight-impact">Impatto stimato: {formatEurDisplay(insight.impactEur)}</p>
       )}
       {insight.action && <p className="insight-action">{insight.action}</p>}
       <InsightLinks
