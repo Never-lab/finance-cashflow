@@ -250,6 +250,20 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
             ))}
           </ul>
         )}
+        {summary?.refresh &&
+          (summary.refresh.reparsed > 0 || summary.refresh.needsReimport > 0) && (
+            <p className="muted">
+              {summary.refresh.reparsed > 0 && (
+                <>Riparsati automaticamente {summary.refresh.reparsed} cedolini (parser aggiornato). </>
+              )}
+              {summary.refresh.needsReimport > 0 && (
+                <>
+                  {summary.refresh.needsReimport} senza PDF sul volume — seleziona di nuovo i file da
+                  BustePaga e importa (sovrascrive).
+                </>
+              )}
+            </p>
+          )}
       </section>
 
       {!hasData ? (

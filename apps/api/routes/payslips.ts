@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { getDb } from "../db";
 import { extractPayslipContent } from "../lib/pdfExtract";
 import { deletePayslip, listPayslips, upsertPayslip } from "../lib/payslipsRepo";
+import { refreshStalePayslips } from "../lib/payslipRefresh";
 import { deletePayslipPdf, savePayslipPdf } from "../lib/payslipStorage";
 import { loadAppState } from "../lib/stateRepo";
 import {
@@ -40,13 +41,17 @@ function isPdfFile(file: File): boolean {
   return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 }
 
-/** GET /api/payslips — riepilogo cedolini + confronto con movimenti. */
-payslipsRoutes.get("/payslips", (c) => {
+/** GET /api/payslips — riepilogo cedolini + confronto con movimenti; riparse stale se PDF presente. */
+payslipsRoutes.get("/payslips", async (c) => {
   const userId = getUserId(c);
   const db = getDb();
-  const payslips = listPayslips(db, userId);
   const transactions = loadAppState(db, userId).transactions;
-  return c.json(buildPayslipSummary(payslips, transactions));
+  const refresh = await refreshStalePayslips(db, userId, transactions);
+  const payslips = listPayslips(db, userId);
+  return c.json({
+    ...buildPayslipSummary(payslips, transactions),
+    refresh,
+  });
 });
 
 /** POST /api/payslips/preview — parse PDF senza persistenza. */

@@ -10,6 +10,7 @@ import {
   parseOsraPayslipMarkdown,
   parseOsraPayslipText,
   parsePayslipContent,
+  payslipNeedsReparse,
   resolvePayslipNet,
   splitLeaveTriple,
   stripMarkdownNoise,
@@ -36,7 +37,7 @@ describe("parseItalianAmount", () => {
 describe("resolvePayslipNet", () => {
   it("flags anomalous Acc. c.c. and uses computed net", () => {
     const r = resolvePayslipNet({
-      netToAccount: 700.08,
+      netToAccount: 1400,
       taxableIncome: 2407.43,
       taxWithheld: 550,
       socialWithheld: 350,
@@ -56,6 +57,17 @@ describe("resolvePayslipNet", () => {
     expect(r.accAnomalous).toBe(false);
   });
 
+  it("ignores partial Acc. c.c. without anomalous flag", () => {
+    const r = resolvePayslipNet({
+      netToAccount: 448.36,
+      taxableIncome: 1938.37,
+      taxWithheld: 445.83,
+      socialWithheld: 126.79,
+    });
+    expect(r.payslipNet).toBe(1365.75);
+    expect(r.accAnomalous).toBe(false);
+  });
+
   it("computes net when social withheld is missing", () => {
     const r = resolvePayslipNet({
       netToAccount: null,
@@ -69,7 +81,7 @@ describe("resolvePayslipNet", () => {
 });
 
 describe("parseOsraPayslipText", () => {
-  it("parses anonymized OSRA text fixture with anomalous Acc", () => {
+  it("parses anonymized OSRA text fixture with partial Acc ignored", () => {
     const parsed = parseOsraPayslipText(readUtf8(PAYSLIP_TEXT_SAMPLE), "payslip-osra-sample.txt");
 
     expect(parsed).not.toBeNull();
@@ -78,7 +90,8 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.periodLabel).toMatch(/Giugno/i);
     expect(parsed!.grossTotal).toBe(2615.5);
     expect(parsed!.netToAccount).toBe(700.08);
-    expect(parsed!.accAnomalous).toBe(true);
+    // Acc 700 ≪ netto calcolato → trattato come acconto, non anomalia
+    expect(parsed!.accAnomalous).toBe(false);
     expect(parsed!.payslipNet).toBe(1507.43);
     expect(parsed!.netPay).toBe(1507.43);
     expect(parsed!.payDate).toBe("2026-07-14");
@@ -88,7 +101,7 @@ describe("parseOsraPayslipText", () => {
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leaveFest.residue).toBeNull();
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-7-leave");
+    expect(parsed!.parserVersion).toBe("osra-oluit-8-leave");
   });
 
   it("parses AP/AC leave grid and non-empty FEST from text fixture", () => {
@@ -159,7 +172,7 @@ describe("parseOsraPayslipMarkdown", () => {
     expect(parsed!.leaveFerie.ap.spettanti).toBe(80);
     expect(parsed!.leaveFerie.ap.residue).toBe(26.67);
     expect(parsed!.leavePerm.ap.residue).toBe(56);
-    expect(parsed!.parserVersion).toBe("osra-oluit-7-leave");
+    expect(parsed!.parserVersion).toBe("osra-oluit-8-leave");
   });
 
   it("parses AP/AC leave from markdown table fixture", () => {
@@ -478,5 +491,20 @@ Tot. rit. sociali 6,04
     expect(parsed).not.toBeNull();
     expect(parsed!.taxWithheld).toBe(-835.37);
     expect(parsed!.payslipNet).toBe(2837.28);
+  });
+});
+
+describe("payslipNeedsReparse", () => {
+  it("flags empty leave with real gross as stale", () => {
+    const base = parseOsraPayslipText(readUtf8(PAYSLIP_TEXT_SAMPLE), "x.txt")!;
+    const stale = {
+      ...base,
+      leaveFerie: buildLeave({ spettanti: null, godute: null, residue: null }),
+      leaveFest: buildLeave({ spettanti: null, godute: null, residue: null }),
+      leavePerm: buildLeave({ spettanti: null, godute: null, residue: null }),
+      parserVersion: "osra-oluit-5-leave",
+    };
+    expect(payslipNeedsReparse(stale)).toBe(true);
+    expect(payslipNeedsReparse(base)).toBe(false);
   });
 });

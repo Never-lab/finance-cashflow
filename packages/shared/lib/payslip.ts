@@ -7,7 +7,7 @@
 import type { Transaction } from "../types";
 
 /** Versione parser per migrazioni e invalidazione cache. */
-export const PAYSLIP_PARSER_VERSION = "osra-oluit-7-leave";
+export const PAYSLIP_PARSER_VERSION = "osra-oluit-8-leave";
 
 /** Kind contenuto estratto (Markdown anydoc vs plain pdf-parse). */
 export type PayslipContentKind = "md" | "plain";
@@ -73,6 +73,8 @@ export type PayslipSummary = {
     festResidueAp: number | null;
     festResidueAc: number | null;
   }[];
+  /** Cedolini riparsati al volo / da ri-importare (PDF assente sul volume). */
+  refresh?: { reparsed: number; needsReimport: number };
 };
 
 const AMOUNT_EPS = 1;
@@ -491,6 +493,10 @@ export function resolvePayslipNet(input: {
     if (near(netToAccount, computed)) {
       return { payslipNet: netToAccount, accAnomalous: false };
     }
+    // Acc. c.c. spesso è solo un acconto/riga parziale (≪ netto): ignora, non flaggare anomalia
+    if (netToAccount < computed * 0.5) {
+      return { payslipNet: computed, accAnomalous: false };
+    }
     return { payslipNet: computed, accAnomalous: true };
   }
   if (netToAccount != null) return { payslipNet: netToAccount, accAnomalous: false };
@@ -526,7 +532,7 @@ export function parseOsraPayslipText(text: string, sourceFile?: string): Payslip
   const socialWithheld = amt(text, /Tot\. rit\. sociali\s+([\d.,]+)/);
 
   const acc = text.match(
-    /Acc\.\s*c\.c\.\s*n\.:\s*\d+\s+BANCA MEDIOLANUM[^\d]*([\d.,]+)\s+([\d.,]+)/i,
+    /Acc\.\s*c\.c\.\s*n\.:\s*\d+\s+BANCA\s+MEDIOLANUM(?:\s+S\.?P\.?A\.?)?[^\d\n]*([\d.,]+)\s+([\d.,]+)/i,
   );
   const netToAccount = acc?.[1] ? parseItalianAmount(acc[1]) : null;
   const totalCompetenze = acc?.[2] ? parseItalianAmount(acc[2]) : null;
@@ -634,6 +640,31 @@ export function enrichPayslipWithBank(payslip: PayslipRecord, transactions: Tran
   });
   const netPay = status === "matched" && bankCredit != null ? bankCredit : payslip.payslipNet;
   return { ...payslip, bankCredit, bankMatchStatus: status, netPay };
+}
+
+/** True se nessuna ore ferie/fest/perm (né AP/AC né totale). */
+export function payslipLeaveEmpty(p: PayslipRecord): boolean {
+  const empty = (leave: PayslipLeave) =>
+    leave.residue == null &&
+    leave.spettanti == null &&
+    leave.godute == null &&
+    leave.ap.residue == null &&
+    leave.ap.spettanti == null &&
+    leave.ac.residue == null &&
+    leave.ac.spettanti == null;
+  return empty(p.leaveFerie) && empty(p.leavePerm) && empty(p.leaveFest);
+}
+
+/**
+ * Cedolino da riparsare: versione parser vecchia, lordo “34” anydoc, o lordo ok ma leave/netto vuoti.
+ */
+export function payslipNeedsReparse(p: PayslipRecord): boolean {
+  if (p.parserVersion !== PAYSLIP_PARSER_VERSION) return true;
+  // Anydoc glue: TOT.LORDO cattura codice riga (es. 34 CONTRIB.FAP)
+  if (p.grossTotal != null && p.grossTotal > 0 && p.grossTotal < 50) return true;
+  if (p.grossTotal != null && p.grossTotal >= 500 && payslipLeaveEmpty(p)) return true;
+  if (p.taxableIncome != null && p.taxableIncome >= 100 && p.payslipNet == null) return true;
+  return false;
 }
 
 function periodKey(p: PayslipRecord): string {
