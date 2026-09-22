@@ -201,6 +201,39 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(patch),
     }).then((r) => json<Settings>(r)),
+  /** GET /api/bank-sync/status — link Open Banking. */
+  getBankSyncStatus: () =>
+    apiFetch("/api/bank-sync/status").then((r) =>
+      json<{
+        configured: boolean;
+        links: {
+          source: "mediolanum" | "revolut";
+          status: string;
+          consentExpiresAt: string | null;
+          lastSyncAt: string | null;
+          lastError: string | null;
+          accountCount: number;
+        }[];
+      }>(r),
+    ),
+  /** POST /api/bank-sync/link — URL SCA GoCardless. */
+  startBankLink: (source: "mediolanum" | "revolut") =>
+    apiFetch("/api/bank-sync/link", {
+      method: "POST",
+      body: JSON.stringify({ source }),
+    }).then((r) => json<{ url: string }>(r)),
+  /** POST /api/bank-sync/run — sync immediata. */
+  runBankSync: () =>
+    apiFetch("/api/bank-sync/run", { method: "POST" }).then((r) =>
+      json<{
+        results: {
+          source: "mediolanum" | "revolut";
+          added: number;
+          updated: number;
+          error?: string;
+        }[];
+      }>(r),
+    ),
   /** GET /api/quotes/:ticker — ultima barra OHLC. */
   getQuote: (ticker: string) =>
     apiFetch(`/api/quotes/${encodeURIComponent(ticker)}`).then((r) => json<QuoteBar>(r)),

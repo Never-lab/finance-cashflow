@@ -21,6 +21,7 @@ import { loansRoutes } from "./routes/loans";
 import { payslipsRoutes } from "./routes/payslips";
 import { vaultRoutes } from "./routes/vault";
 import { budgetRoutes } from "./routes/budget";
+import { bankSyncRoutes } from "./routes/bankSync";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Radice del repository (apps/api → apps → repo root). */
@@ -57,6 +58,7 @@ export function createApp(): Hono {
   app.route("/api", payslipsRoutes);
   app.route("/api", vaultRoutes);
   app.route("/api", budgetRoutes);
+  app.route("/api", bankSyncRoutes);
 
   if (fs.existsSync(path.join(DIST_DIR, "index.html"))) {
     app.use(

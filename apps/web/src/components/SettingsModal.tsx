@@ -28,15 +28,41 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [savingKey, setSavingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
+  const [bankConfigured, setBankConfigured] = useState(false);
+  const [bankLinks, setBankLinks] = useState<
+    {
+      source: "mediolanum" | "revolut";
+      status: string;
+      consentExpiresAt: string | null;
+      lastSyncAt: string | null;
+      lastError: string | null;
+      accountCount: number;
+    }[]
+  >([]);
+  const [bankBusy, setBankBusy] = useState(false);
+  const [bankMsg, setBankMsg] = useState<string | null>(null);
 
   useDialogA11y(open, onClose, panelRef);
+
+  async function refreshBankStatus() {
+    try {
+      const s = await api.getBankSyncStatus();
+      setBankConfigured(s.configured);
+      setBankLinks(s.links);
+    } catch {
+      setBankConfigured(false);
+      setBankLinks([]);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
     setApiKeyInput("");
     setKeyError(null);
     setRecomputeMsg(null);
+    setBankMsg(null);
     api.getSettings().then(setSettings).catch(() => setSettings(null));
+    void refreshBankStatus();
   }, [open]);
 
   if (!open) return null;
@@ -67,6 +93,53 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
     } finally {
       setSavingKey(false);
     }
+  }
+
+  async function linkBank(source: "mediolanum" | "revolut") {
+    setBankBusy(true);
+    setBankMsg(null);
+    setError(null);
+    try {
+      const { url } = await api.startBankLink(source);
+      window.location.href = url;
+    } catch (e) {
+      setBankMsg(e instanceof Error ? e.message : "Errore collegamento");
+      setBankBusy(false);
+    }
+  }
+
+  async function runBankSync() {
+    setBankBusy(true);
+    setBankMsg(null);
+    setError(null);
+    try {
+      const { results } = await api.runBankSync();
+      const parts = results.map((r) =>
+        r.error
+          ? `${r.source}: ${r.error}`
+          : `${r.source}: +${r.added} / ~${r.updated}`,
+      );
+      setBankMsg(parts.join(" · ") || "Nessun conto collegato");
+      await refreshBankStatus();
+      const next = await api.getState();
+      onReplace(next);
+    } catch (e) {
+      setBankMsg(e instanceof Error ? e.message : "Errore sync");
+    } finally {
+      setBankBusy(false);
+    }
+  }
+
+  function bankLabel(source: string): string {
+    return source === "mediolanum" ? "Mediolanum" : "Revolut";
+  }
+
+  function bankStatusLabel(status: string): string {
+    if (status === "linked") return "collegato";
+    if (status === "pending") return "in corso…";
+    if (status === "needs_reauth") return "ricollega";
+    if (status === "error") return "errore";
+    return status;
   }
 
   function download() {
@@ -174,6 +247,64 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
           )}
         </div>
         {keyError && <p className="error">{keyError}</p>}
+
+        <h3>Banche (Open Banking)</h3>
+        <p className="muted">
+          Sync automatica via GoCardless (PSD2). CSV resta disponibile come emergenza. Consenso ~90
+          giorni, poi ricollega.
+        </p>
+        {!bankConfigured ? (
+          <p className="muted">
+            Non configurato sul server (`GOCARDLESS_SECRET_*` + `BANK_SYNC_REDIRECT_URL`).
+          </p>
+        ) : (
+          <>
+            <ul className="muted" style={{ margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
+              {(["mediolanum", "revolut"] as const).map((source) => {
+                const row = bankLinks.find((l) => l.source === source);
+                return (
+                  <li key={source}>
+                    {bankLabel(source)}:{" "}
+                    {row
+                      ? `${bankStatusLabel(row.status)}${
+                          row.lastSyncAt
+                            ? ` · sync ${row.lastSyncAt.slice(0, 16).replace("T", " ")}`
+                            : ""
+                        }${row.lastError ? ` · ${row.lastError}` : ""}`
+                      : "non collegato"}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="settings-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={bankBusy}
+                onClick={() => void linkBank("mediolanum")}
+              >
+                Collega Mediolanum
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={bankBusy}
+                onClick={() => void linkBank("revolut")}
+              >
+                Collega Revolut
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={bankBusy || bankLinks.every((l) => l.status !== "linked")}
+                onClick={() => void runBankSync()}
+              >
+                {bankBusy ? "Sync…" : "Sincronizza ora"}
+              </button>
+            </div>
+            {bankMsg && <p className="muted">{bankMsg}</p>}
+          </>
+        )}
 
         <p className="muted">
           Dati su SQLite locale (`data/finance.db`). Il JSON di backup copre i movimenti; per il portafoglio copia anche il file `.db`.

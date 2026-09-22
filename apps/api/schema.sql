@@ -157,3 +157,23 @@ CREATE TABLE IF NOT EXISTS payslips (
   PRIMARY KEY (user_id, id),
   FOREIGN KEY (user_id) REFERENCES auth_user(id) ON DELETE CASCADE
 );
+
+-- Open Banking links (GoCardless Bank Account Data). One row per user+bank source.
+CREATE TABLE IF NOT EXISTS bank_links (
+  user_id INTEGER NOT NULL,
+  source TEXT NOT NULL,
+  requisition_id TEXT,
+  reference TEXT NOT NULL,
+  institution_id TEXT,
+  account_ids TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'pending',
+  consent_expires_at TEXT,
+  last_sync_at TEXT,
+  last_error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, source),
+  FOREIGN KEY (user_id) REFERENCES auth_user(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bank_links_reference ON bank_links(reference);

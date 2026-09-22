@@ -22,6 +22,10 @@ export const authMiddleware = createMiddleware(async (c, next) => {
     await next();
     return;
   }
+  if (path === "/api/bank-sync/callback" && c.req.method === "GET") {
+    await next();
+    return;
+  }
   if (
     (path === "/api/auth/login" || path === "/api/auth/register") &&
     c.req.method === "POST"

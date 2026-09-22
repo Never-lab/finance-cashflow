@@ -95,6 +95,14 @@ Servizio unico + volume SQLite su `/data`. Autodeploy da `master`.
 | `FINANCE_PASSWORD` | ≥ 8 caratteri |
 | `FINANCE_SECRET` | random 32+ byte (`openssl rand -hex 32`) |
 | `DATABASE_PATH` | `/data/finance.db` |
+| `GOCARDLESS_SECRET_ID` | (opz.) secret portal Bank Account Data |
+| `GOCARDLESS_SECRET_KEY` | (opz.) secret portal Bank Account Data |
+| `BANK_SYNC_REDIRECT_URL` | callback pubblico, es. `https://TUO_DOMAIN/api/bank-sync/callback` |
+| `GOCARDLESS_INSTITUTION_MEDIOLANUM` | (opz.) override institution_id |
+| `GOCARDLESS_INSTITUTION_REVOLUT` | (opz.) override institution_id |
+| `BANK_SYNC_CRON` | `off` per disabilitare cron 06:00 Europe/Rome |
+
+Open Banking (GoCardless AIS): Settings → Collega Mediolanum/Revolut → SCA → sync cron + bottone. CSV resta emergenza.
 
 I PDF cedolini restano su `/data/payslips/{userId}/` (stesso volume). Dopo il primo import, «Ricalcola tutto» li ri-parsa senza ri-caricarli. Estrazione: `@firecrawl/anydoc` → Markdown (locale, senza OCR cloud); fallback `pdf-parse` se anydoc non disponibile.
 
