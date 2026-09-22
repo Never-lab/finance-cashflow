@@ -323,10 +323,12 @@ export default function App() {
             vaultBalances={vaultBalances}
             onVaultBalance={onVaultBalance}
             onUpload={() => setUploadOpen(true)}
+            onGoPayslips={() => setTab("bustepaga")}
             onGoPaypal={() => setTab("paypal")}
             onGoAbbonamenti={() => setTab("abbonamenti")}
             onGoMutui={() => setTab("mutui")}
             onGoInvestimenti={() => setTab("investimenti")}
+            refreshKey={dataRefreshKey}
           />
         )}
         {tab === "budget" && (

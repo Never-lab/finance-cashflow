@@ -17,9 +17,14 @@ import { buildMediolanumBuffer, MEDIOLANUM_BUFFER_OVERSHOOT } from "@shared/lib/
 import { findRecurring, isSubscriptionLike } from "@shared/lib/recurring";
 import {
   IMPORT_FRESHNESS_MAX_AGE_DAYS,
-  importChecklist,
   type ImportFreshnessRow,
 } from "@shared/lib/importFreshness";
+import {
+  monthImportChecklist,
+  type MonthChecklistRow,
+  type PayslipChecklistRow,
+} from "@shared/lib/monthChecklist";
+import { api } from "../api";
 import {
   buildVaultGoals,
   type VaultBalancesOverride,
@@ -35,10 +40,13 @@ type Props = {
   vaultBalances: VaultBalancesOverride;
   onVaultBalance: (id: VaultId, amount: number | null) => void;
   onUpload: () => void;
+  onGoPayslips: () => void;
   onGoPaypal: () => void;
   onGoAbbonamenti: () => void;
   onGoMutui: () => void;
   onGoInvestimenti?: () => void;
+  /** Bump after import/recompute so cedolino checklist refreshes. */
+  refreshKey?: number;
 };
 
 const SOURCE_LABEL: Record<ImportFreshnessRow["source"], string> = {
@@ -54,11 +62,34 @@ export function PianoTab({
   vaultBalances,
   onVaultBalance,
   onUpload,
+  onGoPayslips,
   onGoPaypal,
   onGoAbbonamenti,
   onGoMutui,
   onGoInvestimenti,
+  refreshKey = 0,
 }: Props) {
+  const [payslipPeriods, setPayslipPeriods] = useState<
+    { periodYear: number; periodMonth: number }[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getPayslips()
+      .then((s) => {
+        if (cancelled) return;
+        setPayslipPeriods(
+          s.payslips.map((p) => ({ periodYear: p.periodYear, periodMonth: p.periodMonth })),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setPayslipPeriods([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
   const monthTx = useMemo(() => filterByPeriod(transactions, "month"), [transactions]);
 
   const savings = useMemo(
@@ -94,7 +125,10 @@ export function PianoTab({
     [transactions, liquidity],
   );
 
-  const checklist = useMemo(() => importChecklist(liquidity), [liquidity]);
+  const checklist = useMemo(
+    () => monthImportChecklist(liquidity, payslipPeriods),
+    [liquidity, payslipPeriods],
+  );
 
   const vaultGoals = useMemo(
     () => buildVaultGoals(transactions, vaultBalances),
@@ -103,7 +137,11 @@ export function PianoTab({
 
   return (
     <div className="piano-tab">
-      <ImportChecklistPanel rows={checklist} onUpload={onUpload} />
+      <ImportChecklistPanel
+        rows={checklist}
+        onUpload={onUpload}
+        onGoPayslips={onGoPayslips}
+      />
 
       <VaultGoalsPanel goals={vaultGoals} onSave={onVaultBalance} />
 
@@ -304,43 +342,75 @@ function VaultGoalCard({
 function ImportChecklistPanel({
   rows,
   onUpload,
+  onGoPayslips,
 }: {
-  rows: ImportFreshnessRow[];
+  rows: MonthChecklistRow[];
   onUpload: () => void;
+  onGoPayslips: () => void;
 }) {
-  const allOk = rows.every((r) => r.ok);
+  const banksStale = rows.some((r) => r.kind === "bank" && !r.ok);
+  const payslipStale = rows.some((r) => r.kind === "payslip" && !r.ok);
+  const allOk = !banksStale && !payslipStale;
+
   return (
     <section className="stat-section import-checklist" id="checklist-import">
       <h3 className="stat-section-title">Checklist import</h3>
       <p className="muted">
-        Export CSV fresco se saldo importato entro {IMPORT_FRESHNESS_MAX_AGE_DAYS} giorni.
+        CSV fresco (saldo ≤ {IMPORT_FRESHNESS_MAX_AGE_DAYS}g) + cedolino del mese scorso.
       </p>
       <div className="stat-row import-checklist-row">
-        {rows.map((row) => (
-          <div
-            key={row.source}
-            className={`stat-card compact import-check ${row.ok ? "ok" : "stale"}`}
-          >
-            <span className="stat-label">{SOURCE_LABEL[row.source]}</span>
-            <span className={`stat-value ${row.ok ? "pos" : "neg"}`}>
-              {row.ok ? "Aggiornato" : row.missing ? "Manca" : "Export vecchio"}
-            </span>
-            <span className="stat-hint">
-              {row.missing
-                ? "Nessun snapshot saldi — carica CSV"
-                : row.asOf
-                  ? `Export ${row.asOf}${row.ageDays != null ? ` · ${row.ageDays}g` : ""}`
-                  : "—"}
-            </span>
-          </div>
-        ))}
+        {rows.map((row) =>
+          row.kind === "bank" ? (
+            <div
+              key={row.source}
+              className={`stat-card compact import-check ${row.ok ? "ok" : "stale"}`}
+            >
+              <span className="stat-label">{SOURCE_LABEL[row.source]}</span>
+              <span className={`stat-value ${row.ok ? "pos" : "neg"}`}>
+                {row.ok ? "Aggiornato" : row.missing ? "Manca" : "Export vecchio"}
+              </span>
+              <span className="stat-hint">
+                {row.missing
+                  ? "Nessun snapshot saldi — carica CSV"
+                  : row.asOf
+                    ? `Export ${row.asOf}${row.ageDays != null ? ` · ${row.ageDays}g` : ""}`
+                    : "—"}
+              </span>
+            </div>
+          ) : (
+            <PayslipCheckCard key="payslip" row={row} />
+          ),
+        )}
       </div>
       {!allOk && (
-        <button type="button" className="btn primary" onClick={onUpload}>
-          Carica CSV
-        </button>
+        <div className="settings-actions">
+          {banksStale && (
+            <button type="button" className="btn primary" onClick={onUpload}>
+              Carica CSV
+            </button>
+          )}
+          {payslipStale && (
+            <button type="button" className="btn primary" onClick={onGoPayslips}>
+              Vai a Buste paga
+            </button>
+          )}
+        </div>
       )}
     </section>
+  );
+}
+
+function PayslipCheckCard({ row }: { row: PayslipChecklistRow }) {
+  return (
+    <div className={`stat-card compact import-check ${row.ok ? "ok" : "stale"}`}>
+      <span className="stat-label">Cedolino {row.periodLabel}</span>
+      <span className={`stat-value ${row.ok ? "pos" : "neg"}`}>
+        {row.ok ? "Presente" : "Manca"}
+      </span>
+      <span className="stat-hint">
+        {row.ok ? "Mese scorso in archivio" : "Carica PDF busta paga del mese scorso"}
+      </span>
+    </div>
   );
 }
 
