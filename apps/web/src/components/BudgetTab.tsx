@@ -19,7 +19,6 @@ type Props = {
   budgets: CategoryBudgets;
   onSave: (category: string, limit: number | null) => void;
   onUpload: () => void;
-  onGoConsigli?: () => void;
 };
 
 const STATUS_LABEL: Record<BudgetStatus, string> = {
@@ -43,7 +42,7 @@ const MONTH_IT = [
   "Dicembre",
 ];
 
-export function BudgetTab({ transactions, budgets, onSave, onUpload, onGoConsigli }: Props) {
+export function BudgetTab({ transactions, budgets, onSave, onUpload }: Props) {
   const report = useMemo(
     () => buildBudgetReport(transactions, budgets, new Date()),
     [transactions, budgets],
@@ -81,18 +80,6 @@ export function BudgetTab({ transactions, budgets, onSave, onUpload, onGoConsigl
   return (
     <div className="budget-tab">
       <p className="muted budget-month">Mese corrente: {monthLabel}</p>
-      <p className="muted tiny">
-        Superamenti budget compaiono anche in Consigli
-        {onGoConsigli ? (
-          <>
-            {" · "}
-            <button type="button" className="linkish" onClick={onGoConsigli}>
-              Apri Consigli
-            </button>
-          </>
-        ) : null}
-        .
-      </p>
 
       {report.rows.length === 0 ? (
         <p className="muted">Nessun budget — aggiungi una categoria sotto.</p>

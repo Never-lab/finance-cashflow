@@ -4,13 +4,11 @@
  */
 import { useMemo } from "react";
 import type { Transaction } from "@shared/types";
-import { buildPaypalSummary, type PaypalTarget } from "@shared/lib/paypal";
+import { buildPaypalSummary } from "@shared/lib/paypal";
 import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
-  paypalTargets: Record<string, PaypalTarget>;
-  onSaveTarget: (key: string, target: PaypalTarget | null) => void;
   onUpload: () => void;
 };
 
@@ -20,16 +18,8 @@ function formatItDate(iso: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
-export function PaypalTab({
-  transactions,
-  paypalTargets,
-  onSaveTarget,
-  onUpload,
-}: Props) {
-  const summary = useMemo(
-    () => buildPaypalSummary(transactions, paypalTargets),
-    [transactions, paypalTargets],
-  );
+export function PaypalTab({ transactions, onUpload }: Props) {
+  const summary = useMemo(() => buildPaypalSummary(transactions), [transactions]);
   /** Piani con merchant noto (entrano in KPI liberazione) vs stime generiche da CSV. */
   const knownPlans = summary.plans.filter((p) => p.merchantLabel);
   const otherPlans = summary.plans.filter((p) => !p.merchantLabel);
@@ -102,7 +92,6 @@ export function PaypalTab({
                   <th className="num">Residuo</th>
                   <th>Prossima</th>
                   <th>Ultima</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -142,17 +131,6 @@ export function PaypalTab({
                     </td>
                     <td>{formatItDate(p.nextPaymentDate)}</td>
                     <td>{p.lastDate || "—"}</td>
-                    <td>
-                      {(p.remainingEstimate ?? 0) > 0 && (
-                        <button
-                          type="button"
-                          className="btn small"
-                          onClick={() => onSaveTarget(p.key, { remainingDebt: 0 })}
-                        >
-                          Segna estinto
-                        </button>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>

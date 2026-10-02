@@ -1,8 +1,8 @@
-﻿/**
+/**
  * Tipi condivisi del dominio finanziario (movimenti, stato app, investimenti).
  *
  * Definisce il contratto dati usato da parser CSV, persistenza SQLite/JSON e UI dashboard.
- * Le convenzioni su importi (+ entrate, âˆ’ uscite) e categorie sono allineate a `lib/categorize` e `lib/appState`.
+ * Le convenzioni su importi (+ entrate, − uscite) e categorie sono allineate a `lib/categorize` e `lib/appState`.
  */
 
 /** Banca di origine di un movimento importato da CSV. */
@@ -14,7 +14,7 @@ export type Transaction = {
   id: string;
   /** Data contabile in formato ISO `YYYY-MM-DD`. */
   date: string;
-  /** Descrizione mostrata in UI (puÃ² differire dal testo grezzo CSV). */
+  /** Descrizione mostrata in UI (può differire dal testo grezzo CSV). */
   description: string;
   /** Importo in EUR: positivo = entrata, negativo = uscita. */
   amount: number;
@@ -27,7 +27,7 @@ export type Transaction = {
 };
 
 /** Finestra temporale per filtri KPI e grafici. */
-export type Period = "month" | "30d" | "3m" | "all";
+export type Period = "month" | "3m" | "all";
 
 /** Segnalazione utente su un abbonamento ricorrente (`lib/recurring`). */
 export type RecurringMark = "could_cancel" | "cancelled" | "";
@@ -62,7 +62,7 @@ export type Instrument = {
   updatedAt: string;
 };
 
-/** Posizione su uno strumento: quantitÃ , cash, costo e data riferimento. */
+/** Posizione su uno strumento: quantità, cash, costo e data riferimento. */
 export type Holding = {
   instrumentId: string;
   quantity: number | null;
@@ -80,4 +80,3 @@ export type Contribution = {
   transactionId?: string | null;
   note?: string | null;
 };
-

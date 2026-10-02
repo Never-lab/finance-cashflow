@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   categoryBreakdown,
   categoryBreakdownPct,
@@ -64,20 +64,6 @@ describe("stats", () => {
     expect(filterByPeriod(txns, "all", now)).toHaveLength(3);
   });
 
-  it("filters 30d as inclusive rolling window (end ÔêÆ 29 days)", () => {
-    const now = new Date(2026, 1, 15); // Feb 15 ÔåÆ start Feb 15 ÔêÆ 29 = Jan 17
-    const windowTxns: Transaction[] = [
-      { ...txns[0]!, id: "before", date: "2026-01-16", amount: -1 }, // day before start
-      { ...txns[0]!, id: "edge", date: "2026-01-17", amount: -2 }, // inclusive start
-      { ...txns[0]!, id: "mid", date: "2026-02-01", amount: -3 },
-      { ...txns[0]!, id: "end", date: "2026-02-15", amount: -4 }, // inclusive end
-      { ...txns[0]!, id: "after", date: "2026-02-16", amount: -5 }, // after end
-    ];
-    const got = filterByPeriod(windowTxns, "30d", now);
-    expect(got.map((t) => t.id).sort()).toEqual(["edge", "end", "mid"]);
-  });
-
-
   it("cumulative series", () => {
     const c = cumulativeSeries(txns);
     expect(c.at(-1)?.balance).toBe(750);
@@ -92,7 +78,7 @@ describe("stats", () => {
     expect(heat.months.length).toBe(2);
   });
 
-  it("builds sankey income ÔåÆ hub ÔåÆ expenses + savings", () => {
+  it("builds sankey income → hub → expenses + savings", () => {
     const s = cashflowSankey(txns, 6);
     expect(s).not.toBeNull();
     expect(s!.links.length).toBeGreaterThan(1);

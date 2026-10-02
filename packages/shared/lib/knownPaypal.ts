@@ -1,18 +1,24 @@
-﻿import type { PaypalKind } from "./paypal";
+/**
+ * Piani rate PayPal noti (Pay Monthly, Paga in 3) con importi da app PayPal.
+ *
+ * Il CSV Mediolanum spesso non rivela il merchant: qui si agganciano kind + importo rata
+ * per `buildPaypalSummary` e KPI debito residuo.
+ */
+import type { PaypalKind } from "./paypal";
 
-/** Owner-known PayPal installment plans (bank CSV key ÔåÆ metadata). */
+/** Piano PayPal riconoscibile da tipo e importo rata. */
 export type KnownPaypalPlan = {
   key: string;
   label: string;
   kind: PaypalKind;
-  /** Match Mediolanum lines: classifyPaypal kind + installment amount */
+  /** Tipo atteso su riga Mediolanum (`classifyPaypal`) */
   matchKind: PaypalKind;
   matchAmount: number;
-  /** Extra line amounts that belong to the same installment (e.g. split auth) */
+  /** Importi aggiuntivi stessa rata (es. split autorizzazione) */
   splitAmounts?: number[];
   totalInstallments: number;
   installmentAmount: number;
-  /** From PayPal app ÔÇö overrides CSV-only counts when set */
+  /** Da app PayPal — sovrascrive conteggio solo-CSV se impostato */
   paidCount?: number;
   totalRepaid?: number;
   remainingDebt?: number;
@@ -23,7 +29,7 @@ export type KnownPaypalPlan = {
   indicativeTaeg?: number;
 };
 
-/** Unieuro ÔÇö Pay Monthly 24├ù, acquisto 5 nov 2025. Extinguished. */
+/** Unieuro — Pay Monthly 24×, acquisto 5 nov 2025. */
 export const UNIEURO_PAYMONTHLY: KnownPaypalPlan = {
   key: "paypal-unieuro",
   label: "Unieuro S.p.A.",
@@ -32,17 +38,17 @@ export const UNIEURO_PAYMONTHLY: KnownPaypalPlan = {
   matchAmount: 23.94,
   totalInstallments: 24,
   installmentAmount: 23.94,
-  paidCount: 24,
-  totalRepaid: 574.46,
-  remainingDebt: 0,
-  nextPaymentDate: undefined,
+  paidCount: 9,
+  totalRepaid: 215.46,
+  remainingDebt: 359,
+  nextPaymentDate: "2026-09-05",
   startDate: "2025-11-05",
   principalAmount: 499.8,
   totalAmount: 574.46,
   indicativeTaeg: 14.99,
 };
 
-/** Autodoc ÔÇö Paga in 3, acquisto 17 lug 2026. Prima rata splittata 28,13 + 10,33. Extinguished. */
+/** Autodoc — Paga in 3, acquisto 17 lug 2026. Prima rata splittata 28,13 + 10,33. */
 export const AUTODOC_PAYIN3: KnownPaypalPlan = {
   key: "paypal-autodoc",
   label: "Autodoc SE",
@@ -52,10 +58,10 @@ export const AUTODOC_PAYIN3: KnownPaypalPlan = {
   splitAmounts: [28.13, 10.33],
   totalInstallments: 3,
   installmentAmount: 38.46,
-  paidCount: 3,
-  totalRepaid: 115.38,
-  remainingDebt: 0,
-  nextPaymentDate: undefined,
+  paidCount: 2,
+  totalRepaid: 76.92,
+  remainingDebt: 38.46,
+  nextPaymentDate: "2026-09-17",
   startDate: "2026-07-17",
   principalAmount: 115.38,
   totalAmount: 115.38,
@@ -63,6 +69,11 @@ export const AUTODOC_PAYIN3: KnownPaypalPlan = {
 
 export const KNOWN_PAYPAL_PLANS: KnownPaypalPlan[] = [UNIEURO_PAYMONTHLY, AUTODOC_PAYIN3];
 
+/**
+ * @param kind - Tipo PayPal classificato
+ * @param amount - Importo rata (positivo, valore assoluto)
+ * @param known - Piano catalogato
+ */
 export function matchKnownPaypalPlan(
   kind: PaypalKind,
   amount: number,

@@ -1,14 +1,22 @@
-﻿import type { Period, Transaction } from "../types";
+/**
+ * KPI, serie temporali e grafici dashboard (heatmap, Sankey, breakdown categorie).
+ *
+ * Input tipico: transazioni già filtrate con `forConsumption`/`forCashflow` lato chiamante.
+ * Importi: entrate positive, uscite in valore assoluto nei totali spesa.
+ */
+import type { Period, Transaction } from "../types";
 
+/**
+ * Filtra per mese corrente, ultimi 3 mesi o intero storico.
+ * @param period - Finestra `month` | `3m` | `all`
+ * @param now - Riferimento “oggi” per calendario locale
+ */
 export function filterByPeriod(txns: Transaction[], period: Period, now = new Date()): Transaction[] {
   if (period === "all") return txns;
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const start = new Date(end);
   if (period === "month") {
     start.setDate(1);
-  } else if (period === "30d") {
-    // Inclusive rolling window: today and prior 29 days = 30 calendar days.
-    start.setDate(start.getDate() - 29);
   } else {
     start.setMonth(start.getMonth() - 2);
     start.setDate(1);
@@ -22,13 +30,15 @@ function toYmd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Totali periodo: expense è valore assoluto delle uscite. */
 export type Kpis = {
   income: number;
-  expense: number; // absolute
+  expense: number;
   net: number;
   count: number;
 };
 
+/** Somma entrate/uscite nette sul set passato. */
 export function computeKpis(txns: Transaction[]): Kpis {
   let income = 0;
   let expense = 0;
@@ -39,6 +49,7 @@ export function computeKpis(txns: Transaction[]): Kpis {
   return { income, expense, net: income - expense, count: txns.length };
 }
 
+/** Aggregato per YYYY-MM ordinato cronologicamente. */
 export function monthlySeries(txns: Transaction[]): { month: string; income: number; expense: number; net: number }[] {
   const map = new Map<string, { income: number; expense: number }>();
   for (const t of txns) {
@@ -58,6 +69,7 @@ export function monthlySeries(txns: Transaction[]): { month: string; income: num
     }));
 }
 
+/** Totale uscite per categoria (solo importi negativi). */
 export function categoryBreakdown(txns: Transaction[]): { category: string; total: number }[] {
   const map = new Map<string, number>();
   for (const t of txns) {
@@ -69,7 +81,10 @@ export function categoryBreakdown(txns: Transaction[]): { category: string; tota
     .sort((a, b) => b.total - a.total);
 }
 
-/** Top N categories + Altro, with % of expense total. */
+/**
+ * Top N categorie + bucket “Altro” con percentuale sul totale uscite.
+ * @param topN - Numero categorie in evidenza (default 6)
+ */
 export function categoryBreakdownPct(
   txns: Transaction[],
   topN = 6,
@@ -93,7 +108,7 @@ export function categoryBreakdownPct(
   return rows;
 }
 
-/** Daily cumulative net (cash-flow curve, Getquin-style hero). */
+/** Curva cumulata giornaliera del netto (hero cash-flow stile Getquin). */
 export function cumulativeSeries(
   txns: Transaction[],
 ): { date: string; balance: number; dayNet: number }[] {
@@ -110,15 +125,16 @@ export function cumulativeSeries(
     });
 }
 
+/** Matrice spesa mese × categoria per heatmap UI. */
 export type HeatmapData = {
   months: string[];
   categories: string[];
-  /** value[monthIndex][catIndex] */
+  /** matrix[mese][categoria] in EUR */
   matrix: number[][];
   max: number;
 };
 
-/** Expense intensity by month ├ù top categories. */
+/** Intensità uscite per mese sulle top categorie. */
 export function spendingHeatmap(txns: Transaction[], topCats = 5): HeatmapData {
   const cats = categoryBreakdown(txns)
     .slice(0, topCats)
@@ -145,18 +161,20 @@ export function spendingHeatmap(txns: Transaction[], topCats = 5): HeatmapData {
   return { months, categories: cats, matrix, max: round2(max) };
 }
 
+/** Dati per diagramma Sankey entrate → uscite (+ margine se net &gt; 0). */
 export type SankeyData = {
   nodes: { name: string }[];
   links: { source: number; target: number; value: number }[];
-  savingsRate: number; // 0-100
+  savingsRate: number;
   income: number;
   expense: number;
   net: number;
 };
 
 /**
- * Getquin-style cash-flow Sankey:
- * income categories ÔåÆ Entrate ÔåÆ expense categories (+ Risparmio if net > 0).
+ * Sankey cash-flow: categorie entrata → nodo Entrate → categorie uscita.
+ * Scala link uscita se spese &gt; entrate per evitare overflow visivo.
+ * @param topExpenses - Quante categorie spesa mostrare prima di “Altro”
  */
 export function cashflowSankey(txns: Transaction[], topExpenses = 7): SankeyData | null {
   const kpis = computeKpis(txns);
@@ -172,7 +190,7 @@ export function cashflowSankey(txns: Transaction[], topExpenses = 7): SankeyData
     .sort((a, b) => b.total - a.total);
 
   if (incomeCats.length === 0 && kpis.income <= 0) {
-    // Expenses only ÔÇö still show a minimal diagram from a synthetic hub
+    // Solo uscite: hub sintetico per diagramma minimale
     incomeCats = [{ category: "Entrate (n/d)", total: kpis.expense }];
   }
 
@@ -213,11 +231,10 @@ export function cashflowSankey(txns: Transaction[], topExpenses = 7): SankeyData
     nodes.push({ name: `Margine ${formatEurCompact(kpis.net)}` });
     links.push({ source: hubIdx, target: idx, value: kpis.net });
   } else if (kpis.net < -0.009 && kpis.income > 0) {
-    // Deficit: show gap as outflow from hub already covered by expenses > income;
-    // add a note node only if expenses exceed what we linked ÔÇö clamp links instead.
+    // Deficit: le uscite superano già le entrate linkate — si scala sotto
   }
 
-  // If expenses > income, sankey values from hub exceed inflow ÔÇö scale expense links
+  // Se outflow hub &gt; inflow, ridimensiona link uscita
   const outSum = links.filter((l) => l.source === hubIdx).reduce((s, l) => s + l.value, 0);
   const inSum = links.filter((l) => l.target === hubIdx).reduce((s, l) => s + l.value, 0);
   if (outSum > inSum && inSum > 0) {
@@ -252,6 +269,7 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Formato valuta EUR locale it-IT (2 decimali). */
 export function formatEur(n: number): string {
   return new Intl.NumberFormat("it-IT", {
     style: "currency",

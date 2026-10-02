@@ -1,7 +1,6 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { analyzeFinances } from "./advisor";
 import { withResolvedInternal } from "./internal";
-import * as Paypal from "./paypal";
 import type { Transaction } from "../types";
 
 function tx(
@@ -61,89 +60,6 @@ describe("analyzeFinances", () => {
     expect(r.impegni.monthlyBurden).toBeGreaterThanOrEqual(r.impegni.loanMonthly);
   });
 
-  it("monthlyBurden = recurring + loan + paypal; scope all", () => {
-    const mutuoDesc =
-      "PAG. MUTUO/FIN. VARI NUM. 740/00136196 R.008 06740001361960000000000 D";
-    const rows: Transaction[] = [
-      tx({ id: "i", date: "2026-08-01", description: "Stipendio", amount: 2000, category: "Stipendio" }),
-      tx({ id: "l1", date: "2026-07-31", description: mutuoDesc, amount: -109.6, category: "Mutuo" }),
-      tx({ id: "l2", date: "2026-08-31", description: mutuoDesc, amount: -109.6, category: "Mutuo" }),
-      tx({
-        id: "pp",
-        date: "2026-08-05",
-        description: "PAYPAL *PYPL PAYMTHLY",
-        amount: -23.94,
-        category: "Shopping",
-      }),
-    ];
-    const r = analyzeFinances(rows, {
-      now: new Date(2026, 7, 15),
-      period: "3m",
-      skipScoreDelta: true,
-    });
-    expect(r.impegni.scope).toBe("all");
-    expect(r.impegni.monthlyBurden).toBeCloseTo(
-      r.impegni.recurringMonthly + r.impegni.loanMonthly + r.impegni.paypalMonthly,
-      2,
-    );
-    expect(r.impegni.monthlyBurden).toBeGreaterThanOrEqual(
-      r.impegni.loanMonthly + r.impegni.recurringMonthly,
-    );
-  });
-
-  it("paypal-debt copy lists active kinds, not only hardcoded Paga in 3", () => {
-    const spy = vi.spyOn(Paypal, "buildPaypalSummary").mockReturnValue({
-      plans: [
-        {
-          key: "paypal-mock",
-          kind: "pay_monthly",
-          label: "Mock Merchant",
-          merchantLabel: "Mock Merchant",
-          installmentAmount: 40,
-          paidCount: 2,
-          expectedCount: 12,
-          remainingEstimate: 400,
-          remainingSource: "paypal",
-          totalPaid: 80,
-          totalRepaidPaypal: 80,
-          dates: ["2026-08-01"],
-          lastDate: "2026-08-01",
-          nextPaymentDate: null,
-          startDate: null,
-          principalAmount: null,
-          totalAmount: null,
-          indicativeTaeg: null,
-          status: "active",
-          transactions: [],
-        },
-      ],
-      otherOut: [],
-      income: [],
-      totalOut: 80,
-      totalIn: 0,
-      remainingDebt: 400,
-      monthlyBurden: 40,
-    });
-    try {
-      const rows: Transaction[] = [
-        tx({ id: "i", date: "2026-08-01", description: "Stipendio", amount: 3000, category: "Stipendio" }),
-      ];
-      const r = analyzeFinances(rows, {
-        now: new Date(2026, 7, 15),
-        period: "3m",
-        skipScoreDelta: true,
-      });
-      expect(r.impegni.paypalMonthly).toBe(40);
-      expect(r.impegni.monthlyBurden).toBeGreaterThanOrEqual(40);
-      const insight = r.insights.find((i) => i.id === "paypal-debt");
-      expect(insight).toBeDefined();
-      expect(insight!.detail).toContain("Pay Monthly");
-      expect(insight!.detail).not.toMatch(/su piani Paga in 3\.?$/);
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
   it("returns top actions for leak insights", () => {
     const rows: Transaction[] = [
       tx({ id: "1", date: "2026-08-01", description: "Stipendio", amount: 1000, category: "Stipendio" }),
@@ -167,7 +83,7 @@ describe("analyzeFinances", () => {
     expect(r.insights.some((i) => i.id === "invest-low-savings")).toBe(true);
   });
 
-  it("ignores Mediolanum ÔåÆ Revolut pocket funding in large-hit", () => {
+  it("ignores Mediolanum → Revolut pocket funding in large-hit", () => {
     const rows: Transaction[] = [
       tx({ id: "1", date: "2026-08-01", description: "Stipendio", amount: 3000, category: "Stipendio" }),
       tx({
@@ -194,21 +110,6 @@ describe("analyzeFinances", () => {
     const r = analyzeFinances(rows, { now: new Date(2026, 7, 15), period: "3m" });
     expect(r.score).toBeGreaterThanOrEqual(0);
     expect(r.score).toBeLessThanOrEqual(100);
-  });
-
-  it("scoreDelta is null for 3m; may compute for month", () => {
-    const rows: Transaction[] = [
-      tx({ id: "1", date: "2026-08-01", description: "Stipendio", amount: 2000, category: "Stipendio" }),
-      tx({ id: "2", date: "2026-07-01", description: "Stipendio", amount: 2000, category: "Stipendio" }),
-      tx({ id: "3", date: "2026-08-05", description: "Spesa", amount: -500, category: "Spesa" }),
-      tx({ id: "4", date: "2026-07-05", description: "Spesa", amount: -400, category: "Spesa" }),
-    ];
-    const r3m = analyzeFinances(rows, { now: new Date(2026, 7, 15), period: "3m" });
-    expect(r3m.scoreDelta).toBeNull();
-    const rMonth = analyzeFinances(rows, { now: new Date(2026, 7, 15), period: "month" });
-    // Prior month has data ÔåÆ delta is a number (may be 0)
-    expect(rMonth.scoreDelta).not.toBeNull();
-    expect(typeof rMonth.scoreDelta).toBe("number");
   });
 
   it("flags category budget warn/over for current month", () => {

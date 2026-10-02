@@ -1,10 +1,16 @@
-﻿import type { Transaction } from "../types";
+/**
+ * Piano “liberazione” debiti PayPal/Selfy e risparmio pocket Revolut (Viaggio, Lifecycle).
+ *
+ * Obiettivi percentuali per UI strategia; usa liquidità, PayPal e mutui da CSV + known defaults.
+ */
+import type { Transaction } from "../types";
 import type { LiquidityView } from "./liquidity";
 import { SELFYCREDIT_00136196, mergeLoanTargets } from "./knownLoans";
 import { buildLoanSummary, type LoanTarget } from "./loans";
-import { buildPaypalSummary, type PaypalTarget } from "./paypal";
+import { buildPaypalSummary } from "./paypal";
 import { formatEur } from "./stats";
 
+/** Target EUR e soglie fase (PayPal → Selfy) configurati owner. */
 export const LIBERATION_DEFAULTS = {
   viaggioAnnualTarget: 1200,
   viaggioMonthly: 100,
@@ -15,6 +21,7 @@ export const LIBERATION_DEFAULTS = {
   selfyPartialPayoff: 1000,
 } as const;
 
+/** Singolo obiettivo debt/savings con hint mensile e fase testuale. */
 export type LiberationGoal = {
   id: string;
   label: string;
@@ -28,6 +35,7 @@ export type LiberationGoal = {
   phase: string | null;
 };
 
+/** Insieme obiettivi + flag fase PayPal e stima EUR liberabile da Attuale. */
 export type LiberationPlan = {
   goals: LiberationGoal[];
   paypalUnder600: boolean;
@@ -43,7 +51,7 @@ function pct(current: number, target: number): number {
   return Math.min(100, Math.round((current / target) * 1000) / 10);
 }
 
-/** Revolut Risparmi moves tagged Tech / Lifecycle / Telefono. */
+/** Saldo stimato pocket Lifecycle/Tech da movimenti “Accredita EUR …” su Risparmi. */
 export function estimateLifecycleBalance(transactions: Transaction[]): number {
   let bal = 0;
   for (const t of transactions) {
@@ -55,13 +63,15 @@ export function estimateLifecycleBalance(transactions: Transaction[]): number {
   return round2(Math.max(0, bal));
 }
 
+/**
+ * Costruisce i quattro goal PayPal, Selfy, Viaggio, Lifecycle con percentuali avanzamento.
+ */
 export function buildLiberationPlan(
   transactions: Transaction[],
   loanTargets: Record<string, LoanTarget>,
   liquidity: LiquidityView | null,
-  paypalTargets: Record<string, PaypalTarget> = {},
 ): LiberationPlan {
-  const paypal = buildPaypalSummary(transactions, paypalTargets);
+  const paypal = buildPaypalSummary(transactions);
   const loans = buildLoanSummary(transactions, mergeLoanTargets(loanTargets));
 
   const paypalRepaid = round2(paypal.plans.reduce((s, p) => s + p.totalPaid, 0));
@@ -93,24 +103,19 @@ export function buildLiberationPlan(
   const goals: LiberationGoal[] = [
     {
       id: "paypal",
-      label: "PayPal ÔÇö liberazione rate",
+      label: "PayPal — liberazione rate",
       kind: "debt",
       current: paypalRepaid,
       target: paypalTotal,
       remaining: paypalRemaining,
       monthlyHint: paypal.monthlyBurden > 0 ? paypal.monthlyBurden : null,
-      // remainingDebt 0 ÔåÆ goal complete (incl. empty / extinguished known plans)
-      pct: paypalRemaining <= 0 ? 100 : pct(paypalRepaid, paypalTotal),
+      pct: pct(paypalRepaid, paypalTotal),
       hint:
         activePaypal > 0
-          ? `${activePaypal} piani attivi ┬À ${formatEur(paypal.monthlyBurden)}/m stimati`
-          : paypalRemaining <= 0
-            ? "Residuo 0 ┬À goal PayPal completo"
-            : "Nessun piano attivo nei CSV",
+          ? `${activePaypal} piani attivi · ${formatEur(paypal.monthlyBurden)}/m stimati`
+          : "Nessun piano attivo nei CSV",
       phase: paypalUnder600
-        ? paypalRemaining <= 0
-          ? "PayPal chiuso ┬À focus Selfy"
-          : "Fase Selfy: valuta colpo parziale"
+        ? "Fase Selfy: valuta colpo parziale"
         : `Prima chiudi sotto ${formatEur(LIBERATION_DEFAULTS.paypalPhaseThreshold)} residuo`,
     },
     {
@@ -122,7 +127,7 @@ export function buildLiberationPlan(
       remaining: round2(selfyRemaining),
       monthlyHint: selfyInstallment > 0 ? selfyInstallment : null,
       pct: pct(selfyRepaid, selfyPrincipal),
-      hint: `${formatEur(selfyInstallment)}/m ┬À ${selfyRemainingInstallments} rate rimaste`,
+      hint: `${formatEur(selfyInstallment)}/m · ${selfyRemainingInstallments} rate rimaste`,
       phase: !paypalUnder600
         ? "Dopo PayPal sotto controllo"
         : selfyRepaid < LIBERATION_DEFAULTS.selfyPartialPayoff
@@ -138,7 +143,7 @@ export function buildLiberationPlan(
       remaining: round2(Math.max(0, LIBERATION_DEFAULTS.viaggioAnnualTarget - viaggioCurrent)),
       monthlyHint: LIBERATION_DEFAULTS.viaggioMonthly,
       pct: pct(viaggioCurrent, LIBERATION_DEFAULTS.viaggioAnnualTarget),
-      hint: `Accantona ${formatEur(LIBERATION_DEFAULTS.viaggioMonthly)}/m ┬À weekend e ponti`,
+      hint: `Accantona ${formatEur(LIBERATION_DEFAULTS.viaggioMonthly)}/m · weekend e ponti`,
       phase: viaggioCurrent < 300 ? "Ricarica dopo Valencia" : null,
     },
     {
@@ -152,8 +157,8 @@ export function buildLiberationPlan(
       pct: pct(lifecycleCurrent, LIBERATION_DEFAULTS.lifecycleTarget),
       hint:
         lifecycleCurrent > 0
-          ? `Pocket Tech rilevato ┬À obiettivo ${formatEur(LIBERATION_DEFAULTS.lifecycleTarget)}`
-          : `Accantona ${formatEur(LIBERATION_DEFAULTS.lifecycleMonthly)}/m ÔÇö ┬½Accredita EUR Tech┬╗ su Risparmi`,
+          ? `Pocket Tech rilevato · obiettivo ${formatEur(LIBERATION_DEFAULTS.lifecycleTarget)}`
+          : `Accantona ${formatEur(LIBERATION_DEFAULTS.lifecycleMonthly)}/m — «Accredita EUR Tech» su Risparmi`,
       phase: null,
     },
   ];

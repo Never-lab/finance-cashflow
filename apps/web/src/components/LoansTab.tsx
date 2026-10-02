@@ -103,7 +103,6 @@ export function LoansTab({ transactions, loanTargets, onSaveTarget, onUpload }: 
                 </th>
                 <th>Prossima</th>
                 <th>Ultima</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -230,17 +229,6 @@ function LoanRow({
       <td>
         {plan.lastDate}
         <div className="muted tiny">{formatEurDisplay(plan.installmentAmount)}</div>
-      </td>
-      <td>
-        {(plan.remainingEstimate ?? 0) > 0 && (
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => onSave({ ...mergedTarget(), remainingDebt: 0 })}
-          >
-            Segna estinto
-          </button>
-        )}
       </td>
     </tr>
   );
