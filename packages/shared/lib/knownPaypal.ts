@@ -1,6 +1,6 @@
 ﻿import type { PaypalKind } from "./paypal";
 
-/** Owner-known PayPal installment plans (bank CSV key ÔåÆ metadata). */
+/** Owner-known PayPal installment plans (bank CSV key → metadata). */
 export type KnownPaypalPlan = {
   key: string;
   label: string;
@@ -12,7 +12,7 @@ export type KnownPaypalPlan = {
   splitAmounts?: number[];
   totalInstallments: number;
   installmentAmount: number;
-  /** From PayPal app ÔÇö overrides CSV-only counts when set */
+  /** From PayPal app — overrides CSV-only counts when set */
   paidCount?: number;
   totalRepaid?: number;
   remainingDebt?: number;
@@ -23,7 +23,7 @@ export type KnownPaypalPlan = {
   indicativeTaeg?: number;
 };
 
-/** Unieuro ÔÇö Pay Monthly 24├ù, acquisto 5 nov 2025. Extinguished. */
+/** Unieuro — Pay Monthly 24×, acquisto 5 nov 2025. Extinguished. */
 export const UNIEURO_PAYMONTHLY: KnownPaypalPlan = {
   key: "paypal-unieuro",
   label: "Unieuro S.p.A.",
@@ -42,7 +42,7 @@ export const UNIEURO_PAYMONTHLY: KnownPaypalPlan = {
   indicativeTaeg: 14.99,
 };
 
-/** Autodoc ÔÇö Paga in 3, acquisto 17 lug 2026. Prima rata splittata 28,13 + 10,33. Extinguished. */
+/** Autodoc — Paga in 3, acquisto 17 lug 2026. Prima rata splittata 28,13 + 10,33. Extinguished. */
 export const AUTODOC_PAYIN3: KnownPaypalPlan = {
   key: "paypal-autodoc",
   label: "Autodoc SE",

@@ -41,7 +41,7 @@ describe("liberationPlan", () => {
     expect(selfy.phase).toMatch(/Selfy|colpo/i);
   });
 
-  it("remainingDebt 0 ÔåÆ PayPal goal complete, paypalUnder600 true", () => {
+  it("remainingDebt 0 → PayPal goal complete, paypalUnder600 true", () => {
     const plan = buildLiberationPlan([], {}, null);
     const paypal = plan.goals.find((g) => g.id === "paypal")!;
     expect(paypal.remaining).toBe(0);
@@ -68,7 +68,7 @@ describe("liberationPlan", () => {
       {
         id: "1",
         date: "2026-09-01",
-        description: "Accredita EUR Tech ┬À Risparmi",
+        description: "Accredita EUR Tech · Risparmi",
         amount: 100,
         currency: "EUR",
         source: "revolut",
@@ -77,7 +77,7 @@ describe("liberationPlan", () => {
       {
         id: "2",
         date: "2026-09-15",
-        description: "Prelievo da Pocket ┬À Risparmi Tech",
+        description: "Prelievo da Pocket · Risparmi Tech",
         amount: -50,
         currency: "EUR",
         source: "revolut",

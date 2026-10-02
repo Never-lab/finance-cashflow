@@ -167,7 +167,7 @@ describe("analyzeFinances", () => {
     expect(r.insights.some((i) => i.id === "invest-low-savings")).toBe(true);
   });
 
-  it("ignores Mediolanum ÔåÆ Revolut pocket funding in large-hit", () => {
+  it("ignores Mediolanum → Revolut pocket funding in large-hit", () => {
     const rows: Transaction[] = [
       tx({ id: "1", date: "2026-08-01", description: "Stipendio", amount: 3000, category: "Stipendio" }),
       tx({
@@ -206,7 +206,7 @@ describe("analyzeFinances", () => {
     const r3m = analyzeFinances(rows, { now: new Date(2026, 7, 15), period: "3m" });
     expect(r3m.scoreDelta).toBeNull();
     const rMonth = analyzeFinances(rows, { now: new Date(2026, 7, 15), period: "month" });
-    // Prior month has data ÔåÆ delta is a number (may be 0)
+    // Prior month has data → delta is a number (may be 0)
     expect(rMonth.scoreDelta).not.toBeNull();
     expect(typeof rMonth.scoreDelta).toBe("number");
   });

@@ -39,7 +39,7 @@ describe("paypal", () => {
     ).toBe("pay_monthly");
   });
 
-  it("empty CSV ÔåÆ remainingDebt 0, monthlyBurden 0, no phantom known plans", () => {
+  it("empty CSV → remainingDebt 0, monthlyBurden 0, no phantom known plans", () => {
     const s = buildPaypalSummary([]);
     expect(s.remainingDebt).toBe(0);
     expect(s.monthlyBurden).toBe(0);
@@ -83,7 +83,7 @@ describe("paypal", () => {
     expect(s.monthlyBurden).toBe(0);
   });
 
-  it("matched closed known plans ÔåÆ remainingDebt 0, monthlyBurden 0", () => {
+  it("matched closed known plans → remainingDebt 0, monthlyBurden 0", () => {
     const rows = [
       tx({
         id: "u1",
@@ -169,7 +169,7 @@ describe("paypal", () => {
     expect(s.monthlyBurden).toBe(23.94);
   });
 
-  it("override remainingDebt 0 ÔåÆ likely_done", () => {
+  it("override remainingDebt 0 → likely_done", () => {
     const rows = [
       tx({
         id: "u1",

@@ -1,6 +1,6 @@
-﻿/**
+/**
  * Composizione applicazione Hono: health, auth, API protette e (opzionale) static UI.
- * Ruolo: wiring route â†’ monta `/api/auth`, middleware sessione su `/api/*`, domini state/instruments/portfolio/quotes/settings/loans/payslips/vault/budget.
+ * Ruolo: wiring route → monta `/api/auth`, middleware sessione su `/api/*`, domini state/instruments/portfolio/quotes/settings/loans/payslips/vault/budget.
  * Path: `__dirname` = cartella compilata di questo file; ROOT = monorepo (due livelli sopra); DIST_DIR = build frontend in `ROOT/dist`.
  * Privacy: con FINANCE_AUTH=on tutte le API (tranne health e login/register) richiedono Bearer token; i cedolini passano da payslips (PDF su volume + SQLite).
  */
@@ -25,7 +25,7 @@ import { budgetRoutes } from "./routes/budget";
 import { bankSyncRoutes } from "./routes/bankSync";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-/** Radice del repository (apps/api â†’ apps â†’ repo root). */
+/** Radice del repository (apps/api → apps → repo root). */
 const ROOT = path.join(__dirname, "../..");
 /** Directory della build Vite del frontend; se contiene index.html si abilita SPA fallback. */
 export const DIST_DIR = path.join(ROOT, "dist");
@@ -37,7 +37,7 @@ export const DIST_DIR = path.join(ROOT, "dist");
 export function createApp(): Hono {
   const app = new Hono();
 
-  /** GET /api/health â€” stato servizio, storage sqlite, flag auth. */
+  /** GET /api/health — stato servizio, storage sqlite, flag auth. */
   app.get("/api/health", (c) =>
     c.json({
       ok: true,
@@ -89,4 +89,3 @@ export function createApp(): Hono {
 
   return app;
 }
-

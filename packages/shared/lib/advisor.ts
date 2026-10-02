@@ -1,4 +1,10 @@
-﻿import type { Period, RecurringMark, Transaction } from "../types";
+/**
+ * Motore consigli “advisor” rule-based (score 0–100, insight leak/warn/info).
+ *
+ * Combina consumo filtrato, ricorrenti, mutui, PayPal, budget e patrimonio opzionale;
+ * nessuna chiamata LLM esterna — output per card dashboard.
+ */
+import type { Period, RecurringMark, Transaction } from "../types";
 import type { LoanTarget } from "./loans";
 import { forConsumption } from "./consumptionView";
 import { buildLoanSummary } from "./loans";
@@ -17,25 +23,28 @@ import { buildBudgetReport, type CategoryBudgets } from "./budget";
 export type InsightSeverity = "info" | "warn" | "leak";
 export type InsightKind = "recurring" | "anomaly" | "cashflow" | "patrimonio";
 
+/** Snapshot portafoglio investimenti per insight patrimonio. */
 export type PortfolioSnapshot = {
   totalContributed: number;
   totalValue: number;
   pnl: number;
 };
 
+/** Singolo messaggio advisor con severità e azione suggerita. */
 export type Insight = {
   id: string;
   kind: InsightKind;
   severity: InsightSeverity;
   title: string;
   detail: string;
-  /** Optional euro impact estimate */
+  /** Stima impatto EUR (mensile o stock) */
   impactEur?: number;
   action?: string;
 };
 
+/** Debiti e carico fisso mensile aggregato. */
 export type ImpegniSnapshot = {
-  /** Stock/all-time ÔÇö not filtered by advisor period */
+  /** Stock/all-time — not filtered by advisor period */
   scope: "all";
   paypalDebt: number;
   paypalMonthly: number;
@@ -45,6 +54,7 @@ export type ImpegniSnapshot = {
   monthlyBurden: number;
 };
 
+/** Report completo advisor per periodo selezionato. */
 export type AdvisorReport = {
   score: number;
   label: string;
@@ -147,7 +157,11 @@ function totalPenalty(ledger: PenaltyLedger): number {
   return ledger.recurring + ledger.anomaly + ledger.cashflow + ledger.patrimonio;
 }
 
-/** Local rule-based leak / advice engine (no external AI). */
+/**
+ * Analizza finanze e produce score + insight ranked.
+ * @param opts.period - Finestra KPI (default 3m)
+ * @param opts.skipScoreDelta - Evita ricorsione nel calcolo delta mese precedente
+ */
 export function analyzeFinances(
   txns: Transaction[],
   opts: {
@@ -180,14 +194,8 @@ export function analyzeFinances(
   let bonus = 0;
 
   const impegni = buildImpegni(txns, marks, loanTargets, paypalTargets);
-  const {
-    recurringMonthly,
-    loanMonthly,
-    paypalMonthly,
-    monthlyBurden,
-    paypalDebt,
-    loanDebt,
-  } = impegni;
+  const { recurringMonthly, loanMonthly, paypalMonthly, monthlyBurden, paypalDebt, loanDebt } =
+    impegni;
 
   const recurring = findRecurring(filtered);
   const activeRecurring = recurring.filter((r) => marks[r.key] !== "cancelled");
@@ -195,7 +203,7 @@ export function analyzeFinances(
   const couldCancel = activeRecurring.filter((r) => marks[r.key] === "could_cancel");
   const couldCancelSum = couldCancel.reduce((s, r) => s + r.monthlyEstimate, 0);
 
-  // --- Recurring / subscriptions ---
+  // --- Ricorrenti / abbonamenti ---
   if (avgIncome > 0 && recurringMonthly / avgIncome > 0.25) {
     const pct = round2((100 * recurringMonthly) / avgIncome);
     insights.push({
@@ -203,7 +211,7 @@ export function analyzeFinances(
       kind: "recurring",
       severity: "leak",
       title: "Ricorrenti pesanti sul reddito",
-      detail: `${formatEur(recurringMonthly)}/mese di abbonamenti Ôëê ${pct}% delle entrate medie nel periodo.`,
+      detail: `${formatEur(recurringMonthly)}/mese di abbonamenti ≈ ${pct}% delle entrate medie nel periodo.`,
       impactEur: recurringMonthly,
       action: "Apri Abbonamenti e segna cosa puoi tagliare.",
     });
@@ -226,10 +234,10 @@ export function analyzeFinances(
       id: "could-cancel",
       kind: "recurring",
       severity: "info",
-      title: "Hai gi├á segnalato tagli possibili",
-      detail: `${couldCancel.length} voci ┬À potenziale ${formatEur(couldCancelSum)}/mese.`,
+      title: "Hai già segnalato tagli possibili",
+      detail: `${couldCancel.length} voci · potenziale ${formatEur(couldCancelSum)}/mese.`,
       impactEur: couldCancelSum,
-      action: "Conferma cancellazione quando lÔÇÖhai fatta.",
+      action: "Conferma cancellazione quando l’hai fatta.",
     });
   }
 
@@ -242,14 +250,14 @@ export function analyzeFinances(
       kind: "recurring",
       severity: "warn",
       title: "Abbonamenti da revisionare",
-      detail: unmarkedHeavy.map((r) => `${r.label} (${formatEur(r.monthlyEstimate)})`).join(" ┬À "),
+      detail: unmarkedHeavy.map((r) => `${r.label} (${formatEur(r.monthlyEstimate)})`).join(" · "),
       impactEur: unmarkedHeavy.reduce((s, r) => s + r.monthlyEstimate, 0),
-      action: "In Abbonamenti marca ÔÇ£potrei tagliareÔÇØ o ÔÇ£cancellatoÔÇØ.",
+      action: "In Abbonamenti marca “potrei tagliare” o “cancellato”.",
     });
     addPenalty(ledger, "recurring", 6);
   }
 
-  // --- Anomalies (within selected period) ---
+  // --- Anomalie nel periodo selezionato ---
   const months = monthlySeries(filtered);
   const lastMonth = months.length > 0 ? months[months.length - 1]!.month : null;
   const thisMonthTx =
@@ -274,7 +282,7 @@ export function analyzeFinances(
         title: `Spike: ${row.category}`,
         detail: `${lastMonth ?? "Periodo"}: ${formatEur(row.total)} vs media ~${formatEur(hist)}/mese.`,
         impactEur: round2(row.total - hist),
-        action: "Verifica in Movimenti se ├¿ one-off o nuova abitudine.",
+        action: "Verifica in Movimenti se è one-off o nuova abitudine.",
       });
       addPenalty(ledger, "anomaly", 5);
     }
@@ -287,10 +295,10 @@ export function analyzeFinances(
       id: "uncategorized",
       kind: "anomaly",
       severity: "warn",
-      title: "Troppe uscite in ÔÇ£AltroÔÇØ",
+      title: "Troppe uscite in “Altro”",
       detail: `${formatEur(altro.total)} (${round2((100 * altro.total) / periodExpTotal)}% del periodo) senza categoria utile.`,
       impactEur: altro.total,
-      action: "In Movimenti assegna categorie pi├╣ precise.",
+      action: "In Movimenti assegna categorie più precise.",
     });
     addPenalty(ledger, "anomaly", 7);
   }
@@ -307,7 +315,7 @@ export function analyzeFinances(
       kind: "anomaly",
       severity: "leak",
       title: "Molto contante / prelievi",
-      detail: `${formatEur(cashSum)} in prelievi nel periodo ÔÇö difficile da tracciare.`,
+      detail: `${formatEur(cashSum)} in prelievi nel periodo — difficile da tracciare.`,
       impactEur: cashSum,
       action: "Preferisci carta dove puoi, o annota a cosa serve il cash.",
     });
@@ -326,14 +334,14 @@ export function analyzeFinances(
         kind: "anomaly",
         severity: "info",
         title: "Uscita straordinaria rilevante",
-        detail: `${top.date} ┬À ${top.description} ┬À ${formatEur(top.amount)}`,
+        detail: `${top.date} · ${top.description} · ${formatEur(top.amount)}`,
         impactEur: -top.amount,
-        action: "Se ├¿ one-off, ok; se si ripete, mettila nei ricorrenti.",
+        action: "Se è one-off, ok; se si ripete, mettila nei ricorrenti.",
       });
     }
   }
 
-  // --- Cash flow / commitments ---
+  // --- Cash flow / impegni ---
   if (avgIncome > 0 && monthlyBurden / avgIncome > 0.35) {
     insights.push({
       id: "commitments-monthly-high",
@@ -342,7 +350,7 @@ export function analyzeFinances(
       title: "Impegni mensili alti vs entrate",
       detail: `Rate mutui ${formatEur(loanMonthly)} + ricorrenti ${formatEur(recurringMonthly)} + PayPal ${formatEur(paypalMonthly)} = ${formatEur(monthlyBurden)}/mese (~${round2((100 * monthlyBurden) / avgIncome)}% entrate medie).`,
       impactEur: monthlyBurden,
-      action: "Evita nuovi abbonamenti finch├® non alleggerisci il carico.",
+      action: "Evita nuovi abbonamenti finché non alleggerisci il carico.",
     });
     addPenalty(ledger, "cashflow", 14);
   }
@@ -367,9 +375,9 @@ export function analyzeFinances(
       kind: "cashflow",
       severity: "warn",
       title: "Debito residuo elevato",
-      detail: `PayPal ${formatEur(paypalDebt)} + mutui ${formatEur(loanDebt)} = ${formatEur(debtStock)} (>${formatEur(avgIncome * 6)} Ôëê 6├ù entrate medie).`,
+      detail: `PayPal ${formatEur(paypalDebt)} + mutui ${formatEur(loanDebt)} = ${formatEur(debtStock)} (>${formatEur(avgIncome * 6)} ≈ 6× entrate medie).`,
       impactEur: debtStock,
-      action: "Priorit├á: chiudere piani PayPal e monitorare estinzione mutui.",
+      action: "Priorità: chiudere piani PayPal e monitorare estinzione mutui.",
     });
     addPenalty(ledger, "cashflow", 7);
   } else if (paypalDebt > 100) {
@@ -404,7 +412,7 @@ export function analyzeFinances(
       severity: "leak",
       title: "Savings rate molto basso",
       detail: `Risparmi ~${savingsRate}% nel periodo (netto ${formatEur(kpis.net)}).`,
-      action: "Taglia 1ÔÇô2 ricorrenti o riduci la categoria pi├╣ cara.",
+      action: "Taglia 1–2 ricorrenti o riduci la categoria più cara.",
     });
     addPenalty(ledger, "cashflow", 16);
   } else if (kpis.income > 0 && savingsRate < 15) {
@@ -413,7 +421,7 @@ export function analyzeFinances(
       kind: "cashflow",
       severity: "warn",
       title: "Margine di risparmio stretto",
-      detail: `Savings rate ${savingsRate}% nel periodo. Un imprevisto pu├▓ mettere in rosso il mese.`,
+      detail: `Savings rate ${savingsRate}% nel periodo. Un imprevisto può mettere in rosso il mese.`,
       action: "Obiettivo soft: avvicinarsi al 20%.",
     });
     addPenalty(ledger, "cashflow", 8);
@@ -423,7 +431,7 @@ export function analyzeFinances(
       kind: "cashflow",
       severity: "info",
       title: "Buon ritmo di risparmio",
-      detail: `Savings rate ${savingsRate}% nel periodo ÔÇö tieni dÔÇÖocchio impegni e mutui.`,
+      detail: `Savings rate ${savingsRate}% nel periodo — tieni d’occhio impegni e mutui.`,
     });
     bonus += 4;
   }
@@ -434,7 +442,7 @@ export function analyzeFinances(
       id: "red-months",
       kind: "cashflow",
       severity: "warn",
-      title: "Pi├╣ mesi in rosso",
+      title: "Più mesi in rosso",
       detail: `${redMonths.length} mesi con netto negativo (${redMonths.map((m) => m.month.slice(5)).join(", ")}).`,
       action: "Confronta entrate vs uscite in quei mesi sulla Dashboard.",
     });
@@ -449,11 +457,11 @@ export function analyzeFinances(
       kind: "cashflow",
       severity: "info",
       title: "Pochi movimenti per un consiglio fine",
-      detail: "Importa pi├╣ mesi di CSV o allarga il periodo per analisi pi├╣ affidabili.",
+      detail: "Importa più mesi di CSV o allarga il periodo per analisi più affidabili.",
     });
   }
 
-  // --- Budget (current month, even if advisor period differs) ---
+  // --- Budget mese corrente (indipendente dal periodo advisor) ---
   if (Object.keys(categoryBudgets).length > 0) {
     const budget = buildBudgetReport(txns, categoryBudgets, now);
     const flagged = budget.rows.filter((r) => r.status !== "ok").slice(0, 4);
@@ -474,7 +482,7 @@ export function analyzeFinances(
     }
   }
 
-  // --- Patrimonio (optional portfolio) ---
+  // --- Patrimonio investimenti (opzionale) ---
   if (portfolio && portfolio.totalContributed > 0) {
     if (savingsRate < 10 && kpis.income > 0) {
       insights.push({
@@ -493,7 +501,7 @@ export function analyzeFinances(
         kind: "patrimonio",
         severity: "info",
         title: "Risparmio e investimenti in equilibrio",
-        detail: `Savings ${savingsRate}% ┬À patrimonio investito ${formatEur(portfolio.totalValue)}.`,
+        detail: `Savings ${savingsRate}% · patrimonio investito ${formatEur(portfolio.totalValue)}.`,
       });
     }
 
@@ -506,8 +514,8 @@ export function analyzeFinances(
         kind: "patrimonio",
         severity: "info",
         title: "Controvalore sotto il versato",
-        detail: `P&L ${formatEur(portfolio.pnl)} su ${formatEur(portfolio.totalContributed)} versati ÔÇö orizzonte lungo.`,
-        action: "Controlla in Investimenti; la volatilit├á PAC ├¿ normale a breve.",
+        detail: `P&L ${formatEur(portfolio.pnl)} su ${formatEur(portfolio.totalContributed)} versati — orizzonte lungo.`,
+        action: "Controlla in Investimenti; la volatilità PAC è normale a breve.",
       });
     }
   }
@@ -567,6 +575,7 @@ function computeScoreDelta(
   return currentScore - prevReport.score;
 }
 
+/** Etichetta italiana categoria insight per UI. */
 export function kindLabel(kind: InsightKind): string {
   if (kind === "recurring") return "Ricorrenti";
   if (kind === "anomaly") return "Anomalie";

@@ -186,7 +186,7 @@ function planFromBucket(key: string, list: Transaction[]): PaypalPlan {
   return {
     key,
     kind,
-    label: `${kindLabel(kind)} ┬À ${formatEur(installmentAmount)}`,
+    label: `${kindLabel(kind)} · ${formatEur(installmentAmount)}`,
     merchantLabel: null,
     installmentAmount,
     paidCount,

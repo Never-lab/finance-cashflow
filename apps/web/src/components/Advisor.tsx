@@ -145,7 +145,7 @@ export function Advisor({
             {onGoPiano && (
               <>
                 {" · "}
-                <button type="button" className="linkish" onClick={onGoPiano}>
+                <button type="button" className="link-btn" onClick={onGoPiano}>
                   Apri Piano liberazione
                 </button>
               </>

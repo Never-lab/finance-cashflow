@@ -64,8 +64,8 @@ describe("stats", () => {
     expect(filterByPeriod(txns, "all", now)).toHaveLength(3);
   });
 
-  it("filters 30d as inclusive rolling window (end ÔêÆ 29 days)", () => {
-    const now = new Date(2026, 1, 15); // Feb 15 ÔåÆ start Feb 15 ÔêÆ 29 = Jan 17
+  it("filters 30d as inclusive rolling window (end − 29 days)", () => {
+    const now = new Date(2026, 1, 15); // Feb 15 → start Feb 15 − 29 = Jan 17
     const windowTxns: Transaction[] = [
       { ...txns[0]!, id: "before", date: "2026-01-16", amount: -1 }, // day before start
       { ...txns[0]!, id: "edge", date: "2026-01-17", amount: -2 }, // inclusive start
@@ -92,7 +92,7 @@ describe("stats", () => {
     expect(heat.months.length).toBe(2);
   });
 
-  it("builds sankey income ÔåÆ hub ÔåÆ expenses + savings", () => {
+  it("builds sankey income → hub → expenses + savings", () => {
     const s = cashflowSankey(txns, 6);
     expect(s).not.toBeNull();
     expect(s!.links.length).toBeGreaterThan(1);

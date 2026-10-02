@@ -86,7 +86,7 @@ export function BudgetTab({ transactions, budgets, onSave, onUpload, onGoConsigl
         {onGoConsigli ? (
           <>
             {" · "}
-            <button type="button" className="linkish" onClick={onGoConsigli}>
+            <button type="button" className="link-btn" onClick={onGoConsigli}>
               Apri Consigli
             </button>
           </>

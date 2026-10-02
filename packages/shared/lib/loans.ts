@@ -1,29 +1,33 @@
-﻿import type { Transaction } from "../types";
+/**
+ * Aggregazione rate mutui/prestiti da CSV con target contrattuali (`knownLoans`).
+ *
+ * Output per tab Mutui e impegni advisor; debito residuo preferisce dato banca su stima rate.
+ */
+import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
 import { recurringKey } from "./recurring";
 import { carLoanKeyFromDescription, isCarLoanTransaction } from "./carLoan";
 
+/** Metadati contratto editabili (default + override DB). */
 export type LoanTarget = {
-  /** Total scheduled installments (e.g. 36 for Selfycredit) */
+  /** Numero rate previste (es. 36 Selfycredit) */
   totalInstallments?: number;
-  /** Optional display label */
   label?: string;
-  /** Original disbursed amount (EUR) */
+  /** Capitale erogato EUR */
   principalAmount?: number;
-  /** Contract end YYYY-MM-DD */
+  /** Fine contratto YYYY-MM-DD */
   endDate?: string;
-  /** Debito residuo from bank (preferred over rate ├ù count estimate) */
+  /** Debito residuo banca (preferito vs rate × count) */
   remainingDebt?: number;
-  /** Totale restituito from bank sintesi */
+  /** Totale restituito da sintesi banca */
   totalRepaid?: number;
-  /** Next installment YYYY-MM-DD */
   nextPaymentDate?: string;
-  /** Contract start YYYY-MM-DD */
   startDate?: string;
-  /** Display-only reference TAN (not from contract PDF) */
+  /** TAN indicativo % solo display */
   indicativeTan?: number;
 };
 
+/** Piano prestito derivato da CSV + target (rate pagate, residuo, date). */
 export type LoanPlan = {
   key: string;
   label: string;
@@ -38,18 +42,19 @@ export type LoanPlan = {
   totalInstallments: number | null;
   remainingInstallments: number | null;
   remainingEstimate: number | null;
-  /** bank = debito residuo banca; estimate = rate mancanti ├ù rata */
+  /** bank = debito residuo banca; estimate = rate rimanenti × rata */
   remainingSource: "bank" | "estimate" | null;
   principalAmount: number | null;
   endDate: string | null;
   totalRepaidBank: number | null;
   nextPaymentDate: string | null;
   startDate: string | null;
-  /** Indicative TAN % ÔÇö not from bank extract */
+  /** TAN indicativo % — non da estratto banca */
   indicativeTan: number | null;
   transactions: Transaction[];
 };
 
+/** Totali mutui attivi per dashboard Mutui / advisor. */
 export type LoanSummary = {
   plans: LoanPlan[];
   monthlyBurden: number;
@@ -61,7 +66,7 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Extract contract ref from Mediolanum mutuo lines (NUM. 740/00136196). */
+/** Estrae chiave bucket da riga mutuo Mediolanum (NUM. 740/00136196) o Avvera. */
 export function loanKeyFromDescription(description: string): string | null {
   const carKey = carLoanKeyFromDescription(description);
   if (carKey) return carKey;
@@ -74,6 +79,7 @@ export function loanKeyFromDescription(description: string): string | null {
   return null;
 }
 
+/** Riconosce rate mutuo/prestito (categoria o pattern descrizione). */
 export function isLoanTransaction(t: Transaction): boolean {
   if (isCarLoanTransaction(t)) return true;
   if (t.category === "Mutuo" || t.category === "Finanziamento auto") return true;
@@ -95,7 +101,10 @@ function defaultLabel(ref: string | null, description: string): string {
   return short || "Prestito";
 }
 
-/** Group mutuo/prestito outflows; remaining debt needs totalInstallments in targets. */
+/**
+ * Raggruppa uscite mutuo/prestito; residuo richiede totalInstallments o remainingDebt in targets.
+ * @param targets - Map chiave → metadati contratto
+ */
 export function buildLoanSummary(
   txns: Transaction[],
   targets: Record<string, LoanTarget> = {},
@@ -140,7 +149,7 @@ export function buildLoanSummary(
         : null;
 
     if (remainingInstallments === 0) {
-      // paidCount >= totalInstallments ÔÇö ignore stale bank snapshot
+      // paidCount >= totalInstallments — ignore stale bank snapshot
       remainingEstimate = 0;
       remainingSource = bankRemaining != null ? "bank" : "estimate";
     } else if (bankRemaining != null) {
