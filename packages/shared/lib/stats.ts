@@ -8,7 +8,7 @@ import type { Period, Transaction } from "../types";
 
 /**
  * Filtra per mese corrente, ultimi 3 mesi o intero storico.
- * @param period - Finestra `month` | `3m` | `all`
+ * @param period - Finestra `month` | `30d` | `3m` | `all`
  * @param now - Riferimento “oggi” per calendario locale
  */
 export function filterByPeriod(txns: Transaction[], period: Period, now = new Date()): Transaction[] {
@@ -17,6 +17,9 @@ export function filterByPeriod(txns: Transaction[], period: Period, now = new Da
   const start = new Date(end);
   if (period === "month") {
     start.setDate(1);
+  } else if (period === "30d") {
+    // Inclusive rolling window: today and prior 29 days = 30 calendar days.
+    start.setDate(start.getDate() - 29);
   } else {
     start.setMonth(start.getMonth() - 2);
     start.setDate(1);

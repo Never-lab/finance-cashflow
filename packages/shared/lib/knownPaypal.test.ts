@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { AUTODOC_PAYIN3, matchKnownPaypalPlan, UNIEURO_PAYMONTHLY } from "./knownPaypal";
 
 describe("knownPaypal", () => {
@@ -12,5 +12,14 @@ describe("knownPaypal", () => {
     expect(matchKnownPaypalPlan("pay_in_3", 28.13, AUTODOC_PAYIN3)).toBe(true);
     expect(matchKnownPaypalPlan("pay_in_3", 10.33, AUTODOC_PAYIN3)).toBe(true);
     expect(matchKnownPaypalPlan("pay_in_3", 146.83, AUTODOC_PAYIN3)).toBe(false);
+  });
+
+  it("Unieuro and Autodoc are extinguished", () => {
+    expect(UNIEURO_PAYMONTHLY.remainingDebt).toBe(0);
+    expect(UNIEURO_PAYMONTHLY.paidCount).toBe(UNIEURO_PAYMONTHLY.totalInstallments);
+    expect(UNIEURO_PAYMONTHLY.nextPaymentDate == null).toBe(true);
+    expect(AUTODOC_PAYIN3.remainingDebt).toBe(0);
+    expect(AUTODOC_PAYIN3.paidCount).toBe(AUTODOC_PAYIN3.totalInstallments);
+    expect(AUTODOC_PAYIN3.nextPaymentDate == null).toBe(true);
   });
 });

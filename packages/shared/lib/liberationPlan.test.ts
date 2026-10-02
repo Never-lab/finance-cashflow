@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { parseMediolanum } from "./parseMediolanum";
 import { parseRevolut } from "./parseRevolut";
 import { withResolvedInternal } from "./internal";
@@ -29,15 +29,26 @@ describe("liberationPlan", () => {
 
     const paypal = plan.goals.find((g) => g.id === "paypal")!;
     expect(paypal.kind).toBe("debt");
-    expect(paypal.remaining).toBeCloseTo(397.46, 0);
-    expect(paypal.monthlyHint).toBeCloseTo(62.4, 0);
-    expect(paypal.pct).toBeGreaterThan(0);
-    expect(paypal.pct).toBeLessThan(100);
+    expect(paypal.remaining).toBe(0);
+    expect(paypal.monthlyHint).toBeNull();
+    expect(paypal.pct).toBe(100);
+    expect(plan.paypalUnder600).toBe(true);
 
     const selfy = plan.goals.find((g) => g.id === "selfy")!;
     expect(selfy.remaining).toBeCloseTo(2792.4, 0);
     expect(selfy.current).toBeCloseTo(707.6, 0);
     expect(selfy.pct).toBeCloseTo(20.2, 0);
+    expect(selfy.phase).toMatch(/Selfy|colpo/i);
+  });
+
+  it("remainingDebt 0 → PayPal goal complete, paypalUnder600 true", () => {
+    const plan = buildLiberationPlan([], {}, null);
+    const paypal = plan.goals.find((g) => g.id === "paypal")!;
+    expect(paypal.remaining).toBe(0);
+    expect(paypal.pct).toBe(100);
+    expect(paypal.monthlyHint).toBeNull();
+    expect(plan.paypalUnder600).toBe(true);
+    expect(paypal.phase).toMatch(/chiuso|Selfy/i);
   });
 
   it("tracks viaggio pocket against annual target from sample Revolut export", () => {

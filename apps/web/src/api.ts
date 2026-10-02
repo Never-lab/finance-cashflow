@@ -4,6 +4,7 @@
  * I metodi restituiscono JSON già parsato e lanciano su risposta non ok.
  */
 import type { LoanTarget } from "@shared/lib/loans";
+import type { PaypalTarget } from "@shared/lib/paypal";
 import type { RecomputeReport } from "@shared/lib/recompute";
 import type {
   AppState,
@@ -262,6 +263,13 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ key, target }),
     }).then((r) => json<Record<string, LoanTarget>>(r)),
+  getPaypalTargets: () =>
+    apiFetch("/api/paypal/targets").then((r) => json<Record<string, PaypalTarget>>(r)),
+  putPaypalTarget: (key: string, target: PaypalTarget | null) =>
+    apiFetch("/api/paypal/targets", {
+      method: "PUT",
+      body: JSON.stringify({ key, target }),
+    }).then((r) => json<Record<string, PaypalTarget>>(r)),
   /** GET /api/vault/balances — saldi manuali obiettivi Revolut Vault. */
   getVaultBalances: () =>
     apiFetch("/api/vault/balances").then((r) => json<VaultBalancesOverride>(r)),

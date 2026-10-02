@@ -17,6 +17,7 @@ import { AppShell, type AppTab } from "./components/AppShell";
 import { PrivacyProvider } from "./components/PrivacyProvider";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import type { LoanTarget } from "@shared/lib/loans";
+import type { PaypalTarget } from "@shared/lib/paypal";
 import type { VaultBalancesOverride, VaultId } from "@shared/lib/vaultGoals";
 import type { CategoryBudgets } from "@shared/lib/budget";
 
@@ -65,6 +66,7 @@ export default function App() {
   /** Stato IndexedDB da proporre se il server non ha movimenti ma il browser sì. */
   const [migrateCandidate, setMigrateCandidate] = useState<AppState | null>(null);
   const [loanTargets, setLoanTargets] = useState<Record<string, LoanTarget>>({});
+  const [paypalTargets, setPaypalTargets] = useState<Record<string, PaypalTarget>>({});
   const [vaultBalances, setVaultBalances] = useState<VaultBalancesOverride>({});
   const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudgets>({});
   /** Incrementato dopo migrate/recompute per forzare reload tab che dipendono solo da API (buste paga, investimenti). */
@@ -86,6 +88,11 @@ export default function App() {
       setLoanTargets(await api.getLoanTargets());
     } catch {
       setLoanTargets({});
+    }
+    try {
+      setPaypalTargets(await api.getPaypalTargets());
+    } catch {
+      setPaypalTargets({});
     }
     try {
       setVaultBalances(await api.getVaultBalances());
@@ -154,6 +161,7 @@ export default function App() {
       setState(null);
       setLiquidity(null);
       setLoanTargets({});
+      setPaypalTargets({});
       setVaultBalances({});
       setCategoryBudgets({});
       setMigrateCandidate(null);
@@ -202,6 +210,13 @@ export default function App() {
     void api
       .setLoanTarget(key, target)
       .then(setLoanTargets)
+      .catch(() => showToast("Errore di connessione al server"));
+  }
+
+  function onPaypalTarget(key: string, target: PaypalTarget | null) {
+    void api
+      .putPaypalTarget(key, target)
+      .then(setPaypalTargets)
       .catch(() => showToast("Errore di connessione al server"));
   }
 
@@ -320,6 +335,7 @@ export default function App() {
             liquidity={liquidity}
             recurringMarks={state.recurringMarks}
             loanTargets={loanTargets}
+            paypalTargets={paypalTargets}
             vaultBalances={vaultBalances}
             onVaultBalance={onVaultBalance}
             onUpload={() => setUploadOpen(true)}
@@ -337,6 +353,7 @@ export default function App() {
             budgets={categoryBudgets}
             onSave={onCategoryBudget}
             onUpload={() => setUploadOpen(true)}
+            onGoConsigli={() => setTab("consigli")}
           />
         )}
         {tab === "bustepaga" && (
@@ -370,13 +387,19 @@ export default function App() {
           />
         )}
         {tab === "paypal" && (
-          <PaypalTab transactions={txns} onUpload={() => setUploadOpen(true)} />
+          <PaypalTab
+            transactions={txns}
+            paypalTargets={paypalTargets}
+            onSaveTarget={onPaypalTarget}
+            onUpload={() => setUploadOpen(true)}
+          />
         )}
         {tab === "consigli" && (
           <Advisor
             transactions={txns}
             recurringMarks={state.recurringMarks}
             loanTargets={loanTargets}
+            paypalTargets={paypalTargets}
             categoryBudgets={categoryBudgets}
             onGoAbbonamenti={() => setTab("abbonamenti")}
             onGoPaypal={() => setTab("paypal")}
@@ -385,6 +408,7 @@ export default function App() {
             onGoInvestimenti={() => setTab("investimenti")}
             onGoDashboard={() => setTab("dashboard")}
             onGoBudget={() => setTab("budget")}
+            onGoPiano={() => setTab("piano")}
             onUpload={() => setUploadOpen(true)}
           />
         )}

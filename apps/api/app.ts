@@ -18,6 +18,7 @@ import { portfolioRoutes } from "./routes/portfolio";
 import { quotesRoutes } from "./routes/quotes";
 import { settingsRoutes } from "./routes/settings";
 import { loansRoutes } from "./routes/loans";
+import { paypalRoutes } from "./routes/paypal";
 import { payslipsRoutes } from "./routes/payslips";
 import { vaultRoutes } from "./routes/vault";
 import { budgetRoutes } from "./routes/budget";
@@ -55,6 +56,7 @@ export function createApp(): Hono {
   app.route("/api", quotesRoutes);
   app.route("/api", settingsRoutes);
   app.route("/api", loansRoutes);
+  app.route("/api", paypalRoutes);
   app.route("/api", payslipsRoutes);
   app.route("/api", vaultRoutes);
   app.route("/api", budgetRoutes);

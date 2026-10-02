@@ -148,13 +148,19 @@ export function buildLoanSummary(
         ? round2(target.remainingDebt)
         : null;
 
-    if (bankRemaining != null) {
+    if (remainingInstallments === 0) {
+      // paidCount >= totalInstallments — ignore stale bank snapshot
+      remainingEstimate = 0;
+      remainingSource = bankRemaining != null ? "bank" : "estimate";
+    } else if (bankRemaining != null) {
       remainingEstimate = bankRemaining;
       remainingSource = "bank";
     } else if (remainingInstallments != null) {
       remainingEstimate = round2(remainingInstallments * installmentAmount);
       remainingSource = "estimate";
     }
+
+    const monthlyBurden = remainingEstimate === 0 ? 0 : installmentAmount;
 
     plans.push({
       key,
@@ -163,7 +169,7 @@ export function buildLoanSummary(
       installmentAmount,
       paidCount,
       totalPaid,
-      monthlyBurden: installmentAmount,
+      monthlyBurden,
       firstDate: dates[0] ?? "",
       lastDate: dates.at(-1) ?? "",
       dates,

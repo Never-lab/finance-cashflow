@@ -1,9 +1,4 @@
-/**
- * Analisi movimenti PayPal su estratto Mediolanum (Paga in 3, Pay Monthly, SDD).
- *
- * Accoppia regex descrizione con piani noti `knownPaypal`; KPI debito usa solo merchant etichettati.
- */
-import type { Transaction } from "../types";
+﻿import type { Transaction } from "../types";
 import {
   KNOWN_PAYPAL_PLANS,
   matchKnownPaypalPlan,
@@ -11,10 +6,14 @@ import {
 } from "./knownPaypal";
 import { formatEur } from "./stats";
 
-/** Tipo riga PayPal classificata da descrizione banca. */
 export type PaypalKind = "pay_in_3" | "pay_monthly" | "sdd" | "other" | "in";
 
-/** Piano rate aggregato (note + transazioni collegate). */
+/** Stored overrides for known PayPal plans (settings key paypal_targets). */
+export type PaypalTarget = {
+  remainingDebt?: number;
+  paidCount?: number;
+};
+
 export type PaypalPlan = {
   key: string;
   kind: PaypalKind;
@@ -22,7 +21,7 @@ export type PaypalPlan = {
   merchantLabel: string | null;
   installmentAmount: number;
   paidCount: number;
-  /** Rate attese se note (3 per Paga in 3); null se open-ended */
+  /** Expected installments if known (3 for Paga in 3); null for open-ended */
   expectedCount: number | null;
   remainingEstimate: number | null;
   remainingSource: "paypal" | "estimate" | null;
@@ -39,7 +38,6 @@ export type PaypalPlan = {
   transactions: Transaction[];
 };
 
-/** Riepilogo tab PayPal e KPI advisor. */
 export type PaypalSummary = {
   plans: PaypalPlan[];
   otherOut: Transaction[];
@@ -50,7 +48,6 @@ export type PaypalSummary = {
   monthlyBurden: number;
 };
 
-/** True se descrizione indica PayPal o prodotti rateizzati PayPal. */
 export function isPaypalTransaction(t: Transaction): boolean {
   const d = t.description.toLowerCase();
   return (
@@ -61,7 +58,6 @@ export function isPaypalTransaction(t: Transaction): boolean {
   );
 }
 
-/** Classifica uscita/entrata PayPal per aggregazione piani. */
 export function classifyPaypal(t: Transaction): PaypalKind {
   const d = t.description.toLowerCase();
   if (t.amount > 0) return "in";
@@ -102,29 +98,43 @@ function countInstallmentDates(txs: Transaction[], installmentAmount: number): n
   return count;
 }
 
+function withOverride(known: KnownPaypalPlan, ov?: PaypalTarget): KnownPaypalPlan {
+  if (!ov) return known;
+  return {
+    ...known,
+    ...(ov.remainingDebt != null ? { remainingDebt: ov.remainingDebt } : {}),
+    ...(ov.paidCount != null ? { paidCount: ov.paidCount } : {}),
+  };
+}
+
 function planFromKnown(known: KnownPaypalPlan, txs: Transaction[]): PaypalPlan {
   const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date));
   const dates = sorted.map((t) => t.date);
   const csvPaid = countInstallmentDates(sorted, known.installmentAmount);
-  const paidCount = known.paidCount ?? csvPaid;
+  const paidCount = Math.max(csvPaid, known.paidCount ?? 0);
   const totalPaid = round2(sorted.reduce((s, t) => s + -t.amount, 0));
-  const remainingInstallments = Math.max(0, known.totalInstallments - paidCount);
+  const done =
+    paidCount >= known.totalInstallments || known.remainingDebt === 0;
 
   let remainingEstimate: number | null = null;
   let remainingSource: PaypalPlan["remainingSource"] = null;
-  if (known.remainingDebt != null && known.remainingDebt >= 0) {
+  let status: PaypalPlan["status"];
+
+  if (done) {
+    remainingEstimate = 0;
+    remainingSource =
+      known.remainingDebt === 0 ? "paypal" : "estimate";
+    status = "likely_done";
+  } else if (known.remainingDebt != null && known.remainingDebt > 0) {
     remainingEstimate = round2(known.remainingDebt);
     remainingSource = "paypal";
-  } else if (remainingInstallments > 0) {
-    remainingEstimate = round2(remainingInstallments * known.installmentAmount);
-    remainingSource = "estimate";
+    status = "active";
   } else {
-    remainingEstimate = 0;
+    const left = Math.max(0, known.totalInstallments - paidCount);
+    remainingEstimate = round2(left * known.installmentAmount);
     remainingSource = "estimate";
+    status = left === 0 ? "likely_done" : "active";
   }
-
-  const status: PaypalPlan["status"] =
-    remainingInstallments === 0 ? "likely_done" : "active";
 
   return {
     key: known.key,
@@ -140,7 +150,7 @@ function planFromKnown(known: KnownPaypalPlan, txs: Transaction[]): PaypalPlan {
     totalRepaidPaypal: known.totalRepaid != null ? round2(known.totalRepaid) : null,
     dates,
     lastDate: dates.at(-1) ?? "",
-    nextPaymentDate: known.nextPaymentDate ?? null,
+    nextPaymentDate: done ? null : (known.nextPaymentDate ?? null),
     startDate: known.startDate ?? null,
     principalAmount: known.principalAmount ?? null,
     totalAmount: known.totalAmount ?? null,
@@ -197,10 +207,11 @@ function planFromBucket(key: string, list: Transaction[]): PaypalPlan {
   };
 }
 
-/**
- * Raggruppa uscite PayPal in piani per kind + importo; merge piani known anche senza CSV match.
- */
-export function buildPaypalSummary(txns: Transaction[]): PaypalSummary {
+/** Group PayPal outflows into installment plans by kind + amount. */
+export function buildPaypalSummary(
+  txns: Transaction[],
+  overrides: Record<string, PaypalTarget> = {},
+): PaypalSummary {
   const paypal = txns.filter(isPaypalTransaction);
   const income = paypal.filter((t) => t.amount > 0).sort((a, b) => b.date.localeCompare(a.date));
   const out = paypal.filter((t) => t.amount < 0);
@@ -217,9 +228,7 @@ export function buildPaypalSummary(txns: Transaction[]): PaypalSummary {
     });
     for (const t of matched) assigned.add(t.id);
     if (matched.length > 0) {
-      plans.push(planFromKnown(known, matched));
-    } else {
-      plans.push(planFromKnown(known, []));
+      plans.push(planFromKnown(withOverride(known, overrides[known.key]), matched));
     }
   }
 

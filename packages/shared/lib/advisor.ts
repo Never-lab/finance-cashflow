@@ -10,7 +10,7 @@ import { forConsumption } from "./consumptionView";
 import { buildLoanSummary } from "./loans";
 import { mergeLoanTargets } from "./knownLoans";
 import { findRecurring, isSubscriptionLike } from "./recurring";
-import { buildPaypalSummary } from "./paypal";
+import { buildPaypalSummary, type PaypalTarget } from "./paypal";
 import {
   categoryBreakdown,
   computeKpis,
@@ -44,7 +44,10 @@ export type Insight = {
 
 /** Debiti e carico fisso mensile aggregato. */
 export type ImpegniSnapshot = {
+  /** Stock/all-time — not filtered by advisor period */
+  scope: "all";
   paypalDebt: number;
+  paypalMonthly: number;
   loanDebt: number;
   loanMonthly: number;
   recurringMonthly: number;
@@ -97,24 +100,50 @@ function avgMonthlyIncome(cash: Transaction[]): number {
   return round2(total / months.length);
 }
 
+function paypalKindLabel(kind: string): string {
+  if (kind === "pay_in_3") return "Paga in 3";
+  if (kind === "pay_monthly") return "Pay Monthly";
+  if (kind === "sdd") return "Addebito PayPal (SDD)";
+  return "Altro PayPal";
+}
+
+function paypalActiveKindsLabel(
+  txns: Transaction[],
+  paypalTargets: Record<string, PaypalTarget> = {},
+): string {
+  const paypal = buildPaypalSummary(txns, paypalTargets);
+  const labels = [
+    ...new Set(
+      paypal.plans
+        .filter((p) => p.status === "active")
+        .map((p) => paypalKindLabel(p.kind)),
+    ),
+  ];
+  return labels.length > 0 ? labels.join(" · ") : "piani PayPal";
+}
+
 function buildImpegni(
   txns: Transaction[],
   marks: Record<string, RecurringMark>,
   loanTargets: Record<string, LoanTarget>,
+  paypalTargets: Record<string, PaypalTarget> = {},
 ): ImpegniSnapshot {
-  const paypal = buildPaypalSummary(txns);
+  const paypal = buildPaypalSummary(txns, paypalTargets);
   const loans = buildLoanSummary(txns, mergeLoanTargets(loanTargets));
   const recurringMonthly = findRecurring(txns)
     .filter(isSubscriptionLike)
     .filter((r) => marks[r.key] !== "cancelled")
     .reduce((s, r) => s + r.monthlyEstimate, 0);
   const loanMonthly = loans.monthlyBurden;
+  const paypalMonthly = paypal.monthlyBurden;
   return {
+    scope: "all",
     paypalDebt: paypal.remainingDebt,
+    paypalMonthly,
     loanDebt: loans.remainingDebt,
     loanMonthly,
     recurringMonthly: round2(recurringMonthly),
-    monthlyBurden: round2(recurringMonthly + loanMonthly),
+    monthlyBurden: round2(recurringMonthly + loanMonthly + paypalMonthly),
   };
 }
 
@@ -138,6 +167,7 @@ export function analyzeFinances(
   opts: {
     recurringMarks?: Record<string, RecurringMark>;
     loanTargets?: Record<string, LoanTarget>;
+    paypalTargets?: Record<string, PaypalTarget>;
     categoryBudgets?: CategoryBudgets;
     period?: Period;
     portfolio?: PortfolioSnapshot | null;
@@ -147,6 +177,7 @@ export function analyzeFinances(
 ): AdvisorReport {
   const marks = opts.recurringMarks ?? {};
   const loanTargets = opts.loanTargets ?? {};
+  const paypalTargets = opts.paypalTargets ?? {};
   const categoryBudgets = opts.categoryBudgets ?? {};
   const period = opts.period ?? "3m";
   const portfolio = opts.portfolio ?? null;
@@ -162,8 +193,9 @@ export function analyzeFinances(
   const ledger: PenaltyLedger = { recurring: 0, anomaly: 0, cashflow: 0, patrimonio: 0 };
   let bonus = 0;
 
-  const impegni = buildImpegni(txns, marks, loanTargets);
-  const { recurringMonthly, loanMonthly, monthlyBurden, paypalDebt, loanDebt } = impegni;
+  const impegni = buildImpegni(txns, marks, loanTargets, paypalTargets);
+  const { recurringMonthly, loanMonthly, paypalMonthly, monthlyBurden, paypalDebt, loanDebt } =
+    impegni;
 
   const recurring = findRecurring(filtered);
   const activeRecurring = recurring.filter((r) => marks[r.key] !== "cancelled");
@@ -316,7 +348,7 @@ export function analyzeFinances(
       kind: "cashflow",
       severity: "leak",
       title: "Impegni mensili alti vs entrate",
-      detail: `Rate mutui ${formatEur(loanMonthly)} + ricorrenti ${formatEur(recurringMonthly)} = ${formatEur(monthlyBurden)}/mese (~${round2((100 * monthlyBurden) / avgIncome)}% entrate medie).`,
+      detail: `Rate mutui ${formatEur(loanMonthly)} + ricorrenti ${formatEur(recurringMonthly)} + PayPal ${formatEur(paypalMonthly)} = ${formatEur(monthlyBurden)}/mese (~${round2((100 * monthlyBurden) / avgIncome)}% entrate medie).`,
       impactEur: monthlyBurden,
       action: "Evita nuovi abbonamenti finché non alleggerisci il carico.",
     });
@@ -354,7 +386,7 @@ export function analyzeFinances(
       kind: "cashflow",
       severity: "warn",
       title: "Rate PayPal ancora aperte",
-      detail: `Debito stimato ${formatEur(paypalDebt)} su piani Paga in 3.`,
+      detail: `Debito stimato ${formatEur(paypalDebt)} su ${paypalActiveKindsLabel(txns, paypalTargets)}.`,
       impactEur: paypalDebt,
       action: "Apri tab PayPal per lo stato rate.",
     });
@@ -527,6 +559,7 @@ function computeScoreDelta(
   opts: {
     recurringMarks?: Record<string, RecurringMark>;
     loanTargets?: Record<string, LoanTarget>;
+    paypalTargets?: Record<string, PaypalTarget>;
     categoryBudgets?: CategoryBudgets;
     period?: Period;
     portfolio?: PortfolioSnapshot | null;
@@ -534,6 +567,8 @@ function computeScoreDelta(
   currentScore: number,
   now: Date,
 ): number | null {
+  const period = opts.period ?? "3m";
+  if (period !== "month" && period !== "30d") return null;
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 15);
   const prevReport = analyzeFinances(txns, { ...opts, now: prev, skipScoreDelta: true });
   if (prevReport.summary.income === 0 && prevReport.summary.expense === 0) return null;

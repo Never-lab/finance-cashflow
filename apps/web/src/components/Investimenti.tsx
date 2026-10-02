@@ -256,6 +256,8 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
       <p className="muted kpi-note">
         Valore = quantità × ultimo prezzo disponibile per gli strumenti con ticker
         quotato; altrimenti fallback sul versato.
+        Tier rendimento: T0 liquidità (risparmio/deposito) · T1 investito (PAC/ETF/fondo) ·
+        T2 altro — mapping leggero in arrivo.
       </p>
 
       {error && <p className="error">{error}</p>}

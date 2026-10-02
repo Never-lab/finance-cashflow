@@ -7,7 +7,7 @@ import type { Transaction } from "../types";
 import type { LiquidityView } from "./liquidity";
 import { SELFYCREDIT_00136196, mergeLoanTargets } from "./knownLoans";
 import { buildLoanSummary, type LoanTarget } from "./loans";
-import { buildPaypalSummary } from "./paypal";
+import { buildPaypalSummary, type PaypalTarget } from "./paypal";
 import { formatEur } from "./stats";
 
 /** Target EUR e soglie fase (PayPal → Selfy) configurati owner. */
@@ -70,8 +70,9 @@ export function buildLiberationPlan(
   transactions: Transaction[],
   loanTargets: Record<string, LoanTarget>,
   liquidity: LiquidityView | null,
+  paypalTargets: Record<string, PaypalTarget> = {},
 ): LiberationPlan {
-  const paypal = buildPaypalSummary(transactions);
+  const paypal = buildPaypalSummary(transactions, paypalTargets);
   const loans = buildLoanSummary(transactions, mergeLoanTargets(loanTargets));
 
   const paypalRepaid = round2(paypal.plans.reduce((s, p) => s + p.totalPaid, 0));
@@ -109,13 +110,18 @@ export function buildLiberationPlan(
       target: paypalTotal,
       remaining: paypalRemaining,
       monthlyHint: paypal.monthlyBurden > 0 ? paypal.monthlyBurden : null,
-      pct: pct(paypalRepaid, paypalTotal),
+      // remainingDebt 0 → goal complete (incl. empty / extinguished known plans)
+      pct: paypalRemaining <= 0 ? 100 : pct(paypalRepaid, paypalTotal),
       hint:
         activePaypal > 0
           ? `${activePaypal} piani attivi · ${formatEur(paypal.monthlyBurden)}/m stimati`
-          : "Nessun piano attivo nei CSV",
+          : paypalRemaining <= 0
+            ? "Residuo 0 · goal PayPal completo"
+            : "Nessun piano attivo nei CSV",
       phase: paypalUnder600
-        ? "Fase Selfy: valuta colpo parziale"
+        ? paypalRemaining <= 0
+          ? "PayPal chiuso · focus Selfy"
+          : "Fase Selfy: valuta colpo parziale"
         : `Prima chiudi sotto ${formatEur(LIBERATION_DEFAULTS.paypalPhaseThreshold)} residuo`,
     },
     {
