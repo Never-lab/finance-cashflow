@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { parseMediolanum } from "./parseMediolanum";
 import { parseRevolut } from "./parseRevolut";
 import { withResolvedInternal } from "./internal";
@@ -29,15 +29,26 @@ describe("liberationPlan", () => {
 
     const paypal = plan.goals.find((g) => g.id === "paypal")!;
     expect(paypal.kind).toBe("debt");
-    expect(paypal.remaining).toBeCloseTo(397.46, 0);
-    expect(paypal.monthlyHint).toBeCloseTo(62.4, 0);
-    expect(paypal.pct).toBeGreaterThan(0);
-    expect(paypal.pct).toBeLessThan(100);
+    expect(paypal.remaining).toBe(0);
+    expect(paypal.monthlyHint).toBeNull();
+    expect(paypal.pct).toBe(100);
+    expect(plan.paypalUnder600).toBe(true);
 
     const selfy = plan.goals.find((g) => g.id === "selfy")!;
     expect(selfy.remaining).toBeCloseTo(2792.4, 0);
     expect(selfy.current).toBeCloseTo(707.6, 0);
     expect(selfy.pct).toBeCloseTo(20.2, 0);
+    expect(selfy.phase).toMatch(/Selfy|colpo/i);
+  });
+
+  it("remainingDebt 0 ÔåÆ PayPal goal complete, paypalUnder600 true", () => {
+    const plan = buildLiberationPlan([], {}, null);
+    const paypal = plan.goals.find((g) => g.id === "paypal")!;
+    expect(paypal.remaining).toBe(0);
+    expect(paypal.pct).toBe(100);
+    expect(paypal.monthlyHint).toBeNull();
+    expect(plan.paypalUnder600).toBe(true);
+    expect(paypal.phase).toMatch(/chiuso|Selfy/i);
   });
 
   it("tracks viaggio pocket against annual target from sample Revolut export", () => {
@@ -57,7 +68,7 @@ describe("liberationPlan", () => {
       {
         id: "1",
         date: "2026-09-01",
-        description: "Accredita EUR Tech · Risparmi",
+        description: "Accredita EUR Tech ┬À Risparmi",
         amount: 100,
         currency: "EUR",
         source: "revolut",
@@ -66,7 +77,7 @@ describe("liberationPlan", () => {
       {
         id: "2",
         date: "2026-09-15",
-        description: "Prelievo da Pocket · Risparmi Tech",
+        description: "Prelievo da Pocket ┬À Risparmi Tech",
         amount: -50,
         currency: "EUR",
         source: "revolut",

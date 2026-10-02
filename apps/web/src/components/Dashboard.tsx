@@ -14,6 +14,7 @@ import {
   monthlySeries,
   spendingHeatmap,
 } from "@shared/lib/stats";
+import { PERIOD_LABELS } from "@shared/lib/periodLabels";
 import { formatEurDisplay } from "../lib/privacyAmounts";
 import { forConsumption } from "@shared/lib/consumptionView";
 import type { LiquidityView } from "@shared/lib/liquidity";
@@ -24,6 +25,8 @@ import {
   IncomeExpenseBars,
   SpendingHeatmap,
 } from "./charts/CashflowCharts";
+
+const PERIOD_ORDER: Period[] = ["month", "30d", "3m", "all"];
 
 type Props = {
   transactions: Transaction[];
@@ -67,13 +70,7 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
     <div className="dashboard">
       <div className="toolbar">
         <div className="period">
-          {(
-            [
-              ["month", "Questo mese"],
-              ["3m", "Ultimi 3 mesi"],
-              ["all", "Tutto"],
-            ] as const
-          ).map(([k, label]) => (
+          {PERIOD_ORDER.map((k) => (
             <button
               key={k}
               type="button"
@@ -81,7 +78,7 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
               aria-pressed={period === k}
               onClick={() => onPeriod(k)}
             >
-              {label}
+              {PERIOD_LABELS[k]}
             </button>
           ))}
         </div>

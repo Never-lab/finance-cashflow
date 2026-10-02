@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Period, RecurringMark, Transaction } from "@shared/types";
 import type { LoanTarget } from "@shared/lib/loans";
+import type { PaypalTarget } from "@shared/lib/paypal";
 import type { CategoryBudgets } from "@shared/lib/budget";
 import { api, type PortfolioSummary } from "../api";
 import {
@@ -13,12 +14,14 @@ import {
   type Insight,
   type InsightKind,
 } from "@shared/lib/advisor";
+import { PERIOD_LABELS_SHORT } from "@shared/lib/periodLabels";
 import { formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
   recurringMarks: Record<string, RecurringMark>;
   loanTargets: Record<string, LoanTarget>;
+  paypalTargets?: Record<string, PaypalTarget>;
   categoryBudgets?: CategoryBudgets;
   onGoAbbonamenti: () => void;
   onGoPaypal: () => void;
@@ -27,14 +30,11 @@ type Props = {
   onGoInvestimenti: () => void;
   onGoDashboard: () => void;
   onGoBudget?: () => void;
+  onGoPiano?: () => void;
   onUpload: () => void;
 };
 
-const PERIOD_LABELS: Record<Period, string> = {
-  month: "Questo mese",
-  "3m": "3 mesi",
-  all: "Tutto",
-};
+const PERIOD_ORDER: Period[] = ["month", "30d", "3m", "all"];
 
 const FILTER_KINDS: { id: "all" | InsightKind; label: string }[] = [
   { id: "all", label: "Tutti" },
@@ -48,6 +48,7 @@ export function Advisor({
   transactions,
   recurringMarks,
   loanTargets,
+  paypalTargets = {},
   categoryBudgets = {},
   onGoAbbonamenti,
   onGoPaypal,
@@ -56,6 +57,7 @@ export function Advisor({
   onGoInvestimenti,
   onGoDashboard,
   onGoBudget,
+  onGoPiano,
   onUpload,
 }: Props) {
   const [period, setPeriod] = useState<Period>("3m");
@@ -84,11 +86,12 @@ export function Advisor({
       analyzeFinances(transactions, {
         recurringMarks,
         loanTargets,
+        paypalTargets,
         categoryBudgets,
         period,
         portfolio: portfolioSnap,
       }),
-    [transactions, recurringMarks, loanTargets, categoryBudgets, period, portfolioSnap],
+    [transactions, recurringMarks, loanTargets, paypalTargets, categoryBudgets, period, portfolioSnap],
   );
 
   const visibleInsights = useMemo(
@@ -114,7 +117,7 @@ export function Advisor({
   return (
     <div className="advisor">
       <div className="period">
-        {(Object.keys(PERIOD_LABELS) as Period[]).map((k) => (
+        {PERIOD_ORDER.map((k) => (
           <button
             key={k}
             type="button"
@@ -122,7 +125,7 @@ export function Advisor({
             aria-pressed={period === k}
             onClick={() => setPeriod(k)}
           >
-            {PERIOD_LABELS[k]}
+            {PERIOD_LABELS_SHORT[k]}
           </button>
         ))}
       </div>
@@ -139,6 +142,14 @@ export function Advisor({
                 {report.scoreDelta >= 0 ? "▲" : "▼"} {Math.abs(report.scoreDelta)}
               </span>
             )}
+            {onGoPiano && (
+              <>
+                {" · "}
+                <button type="button" className="linkish" onClick={onGoPiano}>
+                  Apri Piano liberazione
+                </button>
+              </>
+            )}
           </span>
         </div>
         <div className="stat-card">
@@ -154,7 +165,10 @@ export function Advisor({
           <span className="stat-hint">
             {report.impegni.paypalDebt > 0
               ? `+ PayPal residuo ${formatEurDisplay(report.impegni.paypalDebt)}`
-              : "Mutui + ricorrenti"}
+              : "Mutui + ricorrenti + PayPal"}
+          </span>
+          <span className="stat-hint muted">
+            Rate/residui: storico completo, non filtrati dal periodo chip
           </span>
         </div>
         <div className="stat-card">
