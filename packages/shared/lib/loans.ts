@@ -1,33 +1,29 @@
-/**
- * Aggregazione rate mutui/prestiti da CSV con target contrattuali (`knownLoans`).
- *
- * Output per tab Mutui e impegni advisor; debito residuo preferisce dato banca su stima rate.
- */
-import type { Transaction } from "../types";
+﻿import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
 import { recurringKey } from "./recurring";
 import { carLoanKeyFromDescription, isCarLoanTransaction } from "./carLoan";
 
-/** Metadati contratto editabili (default + override DB). */
 export type LoanTarget = {
-  /** Numero rate previste (es. 36 Selfycredit) */
+  /** Total scheduled installments (e.g. 36 for Selfycredit) */
   totalInstallments?: number;
+  /** Optional display label */
   label?: string;
-  /** Capitale erogato EUR */
+  /** Original disbursed amount (EUR) */
   principalAmount?: number;
-  /** Fine contratto YYYY-MM-DD */
+  /** Contract end YYYY-MM-DD */
   endDate?: string;
-  /** Debito residuo banca (preferito vs rate × count) */
+  /** Debito residuo from bank (preferred over rate ├ù count estimate) */
   remainingDebt?: number;
-  /** Totale restituito da sintesi banca */
+  /** Totale restituito from bank sintesi */
   totalRepaid?: number;
+  /** Next installment YYYY-MM-DD */
   nextPaymentDate?: string;
+  /** Contract start YYYY-MM-DD */
   startDate?: string;
-  /** TAN indicativo % solo display */
+  /** Display-only reference TAN (not from contract PDF) */
   indicativeTan?: number;
 };
 
-/** Piano prestito derivato da CSV + target (rate pagate, residuo, date). */
 export type LoanPlan = {
   key: string;
   label: string;
@@ -42,19 +38,18 @@ export type LoanPlan = {
   totalInstallments: number | null;
   remainingInstallments: number | null;
   remainingEstimate: number | null;
-  /** bank = debito residuo banca; estimate = rate rimanenti × rata */
+  /** bank = debito residuo banca; estimate = rate mancanti ├ù rata */
   remainingSource: "bank" | "estimate" | null;
   principalAmount: number | null;
   endDate: string | null;
   totalRepaidBank: number | null;
   nextPaymentDate: string | null;
   startDate: string | null;
-  /** TAN indicativo % — non da estratto banca */
+  /** Indicative TAN % ÔÇö not from bank extract */
   indicativeTan: number | null;
   transactions: Transaction[];
 };
 
-/** Totali mutui attivi per dashboard Mutui / advisor. */
 export type LoanSummary = {
   plans: LoanPlan[];
   monthlyBurden: number;
@@ -66,7 +61,7 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Estrae chiave bucket da riga mutuo Mediolanum (NUM. 740/00136196) o Avvera. */
+/** Extract contract ref from Mediolanum mutuo lines (NUM. 740/00136196). */
 export function loanKeyFromDescription(description: string): string | null {
   const carKey = carLoanKeyFromDescription(description);
   if (carKey) return carKey;
@@ -79,7 +74,6 @@ export function loanKeyFromDescription(description: string): string | null {
   return null;
 }
 
-/** Riconosce rate mutuo/prestito (categoria o pattern descrizione). */
 export function isLoanTransaction(t: Transaction): boolean {
   if (isCarLoanTransaction(t)) return true;
   if (t.category === "Mutuo" || t.category === "Finanziamento auto") return true;
@@ -101,10 +95,7 @@ function defaultLabel(ref: string | null, description: string): string {
   return short || "Prestito";
 }
 
-/**
- * Raggruppa uscite mutuo/prestito; residuo richiede totalInstallments o remainingDebt in targets.
- * @param targets - Map chiave → metadati contratto
- */
+/** Group mutuo/prestito outflows; remaining debt needs totalInstallments in targets. */
 export function buildLoanSummary(
   txns: Transaction[],
   targets: Record<string, LoanTarget> = {},
@@ -148,13 +139,19 @@ export function buildLoanSummary(
         ? round2(target.remainingDebt)
         : null;
 
-    if (bankRemaining != null) {
+    if (remainingInstallments === 0) {
+      // paidCount >= totalInstallments ÔÇö ignore stale bank snapshot
+      remainingEstimate = 0;
+      remainingSource = bankRemaining != null ? "bank" : "estimate";
+    } else if (bankRemaining != null) {
       remainingEstimate = bankRemaining;
       remainingSource = "bank";
     } else if (remainingInstallments != null) {
       remainingEstimate = round2(remainingInstallments * installmentAmount);
       remainingSource = "estimate";
     }
+
+    const monthlyBurden = remainingEstimate === 0 ? 0 : installmentAmount;
 
     plans.push({
       key,
@@ -163,7 +160,7 @@ export function buildLoanSummary(
       installmentAmount,
       paidCount,
       totalPaid,
-      monthlyBurden: installmentAmount,
+      monthlyBurden,
       firstDate: dates[0] ?? "",
       lastDate: dates.at(-1) ?? "",
       dates,

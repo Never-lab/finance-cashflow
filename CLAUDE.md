@@ -208,6 +208,7 @@ Non serve: Open Banking, sync cloud, auth, rewrite React Native.
 - Backup SQLite: copia `data/finance.db` o export JSON da Settings.  
 - API key Finnhub: opzionale in Settings; senza chiave resta Yahoo.  
 - Periodo default `month`: fixture di test devono avere date nel mese corrente se si fa smoke “Questo mese”.  
+- **PayPal `knownPaypal`:** snapshot piani può restare stale. Usare **Segna estinto** in UI o riconciliare con CSV — non fidarsi solo dello stato cached.  
 - Chunk recharts grande al build: ok per v1; code-split solo se diventa problema.
 
 ## Definition of done (cambio tipico)

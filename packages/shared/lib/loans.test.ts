@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   buildLoanSummary,
   isLoanTransaction,
@@ -87,6 +87,32 @@ describe("loans", () => {
     const s = buildLoanSummary(rows, { "mutuo-740/00136196": { totalInstallments: 36 } });
     expect(s.plans[0]?.remainingEstimate).toBe(3726.4);
     expect(s.plans[0]?.remainingSource).toBe("estimate");
+  });
+
+  it("forces remaining 0 and drops burden when paidCount covers totalInstallments", () => {
+    const rows = Array.from({ length: 36 }, (_, i) => {
+      const month = (i % 12) + 1;
+      const year = 2023 + Math.floor(i / 12);
+      return tx({
+        id: `p${i}`,
+        date: `${year}-${String(month).padStart(2, "0")}-28`,
+        description: MUTUO_DESC,
+        amount: -109.6,
+      });
+    });
+    const s = buildLoanSummary(rows, {
+      "mutuo-740/00136196": {
+        totalInstallments: 36,
+        remainingDebt: 500,
+      },
+    });
+    const plan = s.plans[0]!;
+    expect(plan.paidCount).toBe(36);
+    expect(plan.remainingInstallments).toBe(0);
+    expect(plan.remainingEstimate).toBe(0);
+    expect(plan.monthlyBurden).toBe(0);
+    expect(s.remainingDebt).toBe(0);
+    expect(s.monthlyBurden).toBe(0);
   });
 
   it("groups Avvera car loan by contract number", () => {

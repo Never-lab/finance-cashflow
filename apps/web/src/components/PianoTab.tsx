@@ -9,7 +9,7 @@ import { filterByPeriod } from "@shared/lib/stats";
 import { formatEurDisplay } from "../lib/privacyAmounts";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import { sumEmergencyFundOutflows } from "@shared/lib/knownAccounts";
-import { buildPaypalSummary } from "@shared/lib/paypal";
+import { buildPaypalSummary, type PaypalTarget } from "@shared/lib/paypal";
 import { buildLoanSummary, type LoanTarget } from "@shared/lib/loans";
 import { mergeLoanTargets } from "@shared/lib/knownLoans";
 import { buildLiberationPlan, LIBERATION_DEFAULTS } from "@shared/lib/liberationPlan";
@@ -37,6 +37,7 @@ type Props = {
   liquidity: LiquidityView | null;
   recurringMarks: Record<string, RecurringMark>;
   loanTargets: Record<string, LoanTarget>;
+  paypalTargets?: Record<string, PaypalTarget>;
   vaultBalances: VaultBalancesOverride;
   onVaultBalance: (id: VaultId, amount: number | null) => void;
   onUpload: () => void;
@@ -59,6 +60,7 @@ export function PianoTab({
   liquidity,
   recurringMarks,
   loanTargets,
+  paypalTargets = {},
   vaultBalances,
   onVaultBalance,
   onUpload,
@@ -99,7 +101,7 @@ export function PianoTab({
 
   /** Aggregati mensili/residui per deep-link PayPal, mutui, abbonamenti. */
   const impegni = useMemo(() => {
-    const paypal = buildPaypalSummary(transactions);
+    const paypal = buildPaypalSummary(transactions, paypalTargets);
     const loans = buildLoanSummary(transactions, mergeLoanTargets(loanTargets));
     const recurringMonthly = findRecurring(transactions)
       .filter(isSubscriptionLike)
@@ -113,11 +115,11 @@ export function PianoTab({
       recurringMonthly,
       planCount: paypal.plans.filter((p) => p.status === "active").length,
     };
-  }, [transactions, recurringMarks, loanTargets]);
+  }, [transactions, recurringMarks, loanTargets, paypalTargets]);
 
   const liberation = useMemo(
-    () => buildLiberationPlan(transactions, loanTargets, liquidity),
-    [transactions, loanTargets, liquidity],
+    () => buildLiberationPlan(transactions, loanTargets, liquidity, paypalTargets),
+    [transactions, loanTargets, liquidity, paypalTargets],
   );
 
   const mediolanumBuffer = useMemo(

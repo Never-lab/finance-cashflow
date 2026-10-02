@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Composizione applicazione Hono: health, auth, API protette e (opzionale) static UI.
- * Ruolo: wiring route → monta `/api/auth`, middleware sessione su `/api/*`, domini state/instruments/portfolio/quotes/settings/loans/payslips/vault/budget.
+ * Ruolo: wiring route â†’ monta `/api/auth`, middleware sessione su `/api/*`, domini state/instruments/portfolio/quotes/settings/loans/payslips/vault/budget.
  * Path: `__dirname` = cartella compilata di questo file; ROOT = monorepo (due livelli sopra); DIST_DIR = build frontend in `ROOT/dist`.
  * Privacy: con FINANCE_AUTH=on tutte le API (tranne health e login/register) richiedono Bearer token; i cedolini passano da payslips (PDF su volume + SQLite).
  */
@@ -18,13 +18,14 @@ import { portfolioRoutes } from "./routes/portfolio";
 import { quotesRoutes } from "./routes/quotes";
 import { settingsRoutes } from "./routes/settings";
 import { loansRoutes } from "./routes/loans";
+import { paypalRoutes } from "./routes/paypal";
 import { payslipsRoutes } from "./routes/payslips";
 import { vaultRoutes } from "./routes/vault";
 import { budgetRoutes } from "./routes/budget";
 import { bankSyncRoutes } from "./routes/bankSync";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-/** Radice del repository (apps/api → apps → repo root). */
+/** Radice del repository (apps/api â†’ apps â†’ repo root). */
 const ROOT = path.join(__dirname, "../..");
 /** Directory della build Vite del frontend; se contiene index.html si abilita SPA fallback. */
 export const DIST_DIR = path.join(ROOT, "dist");
@@ -36,7 +37,7 @@ export const DIST_DIR = path.join(ROOT, "dist");
 export function createApp(): Hono {
   const app = new Hono();
 
-  /** GET /api/health — stato servizio, storage sqlite, flag auth. */
+  /** GET /api/health â€” stato servizio, storage sqlite, flag auth. */
   app.get("/api/health", (c) =>
     c.json({
       ok: true,
@@ -55,6 +56,7 @@ export function createApp(): Hono {
   app.route("/api", quotesRoutes);
   app.route("/api", settingsRoutes);
   app.route("/api", loansRoutes);
+  app.route("/api", paypalRoutes);
   app.route("/api", payslipsRoutes);
   app.route("/api", vaultRoutes);
   app.route("/api", budgetRoutes);
@@ -87,3 +89,4 @@ export function createApp(): Hono {
 
   return app;
 }
+
