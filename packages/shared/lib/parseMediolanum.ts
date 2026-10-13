@@ -9,6 +9,7 @@ import { categorize } from "./categorize";
 import { headerIndex, parseAmount, parseCsvTable, parseDate, transactionId } from "./csv";
 import { detectInternal } from "./internal";
 import { matchKnownAccount } from "./knownAccounts";
+import { mediolanumIdKey } from "./mediolanumId";
 
 /** Riconosce riga intestazione export ufficiale (Operazione, Descrizione, Uscite/Entrate). */
 function isMediolanumHeader(headers: string[]): boolean {
@@ -104,7 +105,7 @@ export function parseMediolanum(text: string): Transaction[] {
 
     const tipologia = iTipo >= 0 ? (row[iTipo] || "").trim() : "";
     const description = cleanMediolanumDescription(rawDesc);
-    const id = transactionId("mediolanum", date, amount, rawDesc);
+    const id = transactionId("mediolanum", date, amount, mediolanumIdKey(rawDesc));
     out.push({
       id,
       date,

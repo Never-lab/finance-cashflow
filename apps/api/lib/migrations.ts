@@ -7,6 +7,7 @@
 import type Database from "better-sqlite3";
 import { hashPassword } from "./authPassword";
 import { isAuthEnabled } from "./authSession";
+import { applyMediolanumIdDedupAllUsers } from "./stateRepo";
 
 const LEGACY_USER_ID = 1;
 
@@ -259,6 +260,8 @@ export function runMigrations(db: Database.Database): void {
   migratePayslipLeaveApAc(db);
   migratePayslipNetFields(db);
   ensureBootstrapUser(db);
+  // After bootstrap user exists (FK). Safe no-op when ids already fingerprinted.
+  applyMediolanumIdDedupAllUsers(db);
 }
 
 function hasColumn(db: Database.Database, table: string, column: string): boolean {

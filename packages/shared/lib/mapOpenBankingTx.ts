@@ -6,6 +6,7 @@ import type { BankSource, Transaction } from "../types";
 import { categorize } from "./categorize";
 import { detectInternal } from "./internal";
 import { transactionId } from "./csv";
+import { mediolanumIdKey } from "./mediolanumId";
 
 /** Minimal Berlin Group booked transaction fields we read. */
 export type OpenBankingBookedTx = {
@@ -53,7 +54,8 @@ function pickAmount(raw: OpenBankingBookedTx): number | null {
 function pickId(source: BankSource, raw: OpenBankingBookedTx, date: string, amount: number, desc: string): string {
   const ref = (raw.transactionId || raw.entryReference || "").trim();
   if (ref) return `ob|${source}|${ref}`;
-  return transactionId(source, date, amount, desc);
+  const key = source === "mediolanum" ? mediolanumIdKey(desc) : desc;
+  return transactionId(source, date, amount, key);
 }
 
 /**

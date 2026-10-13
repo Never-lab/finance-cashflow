@@ -6,6 +6,7 @@
  */
 import type Database from "better-sqlite3";
 import type { AppState, RecurringMark, Transaction } from "@shared/types";
+import { dedupeMediolanumTransactions } from "@shared/lib/mediolanumId";
 
 type TxRow = {
   id: string;
@@ -236,4 +237,69 @@ export function setRecurringMarkDb(
     `INSERT INTO recurring_marks (user_id, transaction_id, mark) VALUES (?, ?, ?)
      ON CONFLICT(user_id, transaction_id) DO UPDATE SET mark = excluded.mark`,
   ).run(userId, key, mark);
+}
+
+function remapOverrideKeys<T>(
+  rec: Record<string, T>,
+  remapped: Record<string, string>,
+): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [k, v] of Object.entries(rec)) {
+    out[remapped[k] ?? k] = v;
+  }
+  return out;
+}
+
+/**
+ * Collapse Mediolanum truncation duplicates and re-key ids to stable fingerprints.
+ * Updates override maps + contributions.transaction_id. Idempotent when already clean.
+ */
+export function applyMediolanumIdDedup(
+  db: Database.Database,
+  userId: number,
+): { remapped: number; removed: number } {
+  const state = loadAppState(db, userId);
+  const result = dedupeMediolanumTransactions(state.transactions);
+  const beforeIds = new Set(state.transactions.map((t) => t.id));
+  const afterIds = new Set(result.transactions.map((t) => t.id));
+  const unchanged =
+    beforeIds.size === afterIds.size &&
+    [...afterIds].every((id) => beforeIds.has(id)) &&
+    result.transactions.length === state.transactions.length;
+  if (unchanged) return { remapped: 0, removed: 0 };
+
+  const next: AppState = {
+    ...state,
+    transactions: result.transactions,
+    categoryOverrides: remapOverrideKeys(state.categoryOverrides, result.remapped),
+    recurringMarks: remapOverrideKeys(state.recurringMarks, result.remapped),
+    internalOverrides: remapOverrideKeys(state.internalOverrides, result.remapped),
+  };
+
+  const run = db.transaction(() => {
+    replaceAppState(db, userId, next);
+    const upd = db.prepare(
+      `UPDATE contributions SET transaction_id = ? WHERE user_id = ? AND transaction_id = ?`,
+    );
+    for (const [oldId, newId] of Object.entries(result.remapped)) {
+      if (oldId === newId) continue;
+      upd.run(newId, userId, oldId);
+    }
+  });
+  run();
+
+  return {
+    remapped: Object.keys(result.remapped).length,
+    removed: result.removed.length,
+  };
+}
+
+/** Run {@link applyMediolanumIdDedup} for every user that has transactions. */
+export function applyMediolanumIdDedupAllUsers(db: Database.Database): void {
+  const users = db
+    .prepare(`SELECT DISTINCT user_id AS userId FROM transactions`)
+    .all() as { userId: number }[];
+  for (const { userId } of users) {
+    applyMediolanumIdDedup(db, userId);
+  }
 }
