@@ -45,6 +45,9 @@ const Investimenti = lazy(() =>
 const LoansTab = lazy(() =>
   import("./components/LoansTab").then((m) => ({ default: m.LoansTab })),
 );
+const ScadenzarioTab = lazy(() =>
+  import("./components/ScadenzarioTab").then((m) => ({ default: m.ScadenzarioTab })),
+);
 const PayslipTab = lazy(() =>
   import("./components/PayslipTab").then((m) => ({ default: m.PayslipTab })),
 );
@@ -234,6 +237,20 @@ export default function App() {
       .catch(() => showToast("Errore di connessione al server"));
   }
 
+  /** Apply many budget seeds sequentially — parallel PUTs race on settings JSON. */
+  async function onCategoryBudgetsSuggest(patch: CategoryBudgets) {
+    try {
+      let current = { ...categoryBudgets };
+      for (const [category, limit] of Object.entries(patch)) {
+        if (current[category] != null) continue;
+        current = await api.setCategoryBudget(category, limit);
+      }
+      setCategoryBudgets(current);
+    } catch {
+      showToast("Errore di connessione al server");
+    }
+  }
+
   function onReplace(next: AppState) {
     void api
       .migrate(next, true)
@@ -352,6 +369,7 @@ export default function App() {
             transactions={txns}
             budgets={categoryBudgets}
             onSave={onCategoryBudget}
+            onSuggestBatch={onCategoryBudgetsSuggest}
             onUpload={() => setUploadOpen(true)}
             onGoConsigli={() => setTab("consigli")}
           />
@@ -366,6 +384,17 @@ export default function App() {
             onCategoryChange={onCategory}
             onInternalChange={onInternal}
             onUpload={() => setUploadOpen(true)}
+          />
+        )}
+        {tab === "scadenzario" && (
+          <ScadenzarioTab
+            transactions={txns}
+            marks={state.recurringMarks}
+            loanTargets={loanTargets}
+            paypalTargets={paypalTargets}
+            vaultBalances={vaultBalances}
+            onUpload={() => setUploadOpen(true)}
+            onGo={setTab}
           />
         )}
         {tab === "abbonamenti" && (

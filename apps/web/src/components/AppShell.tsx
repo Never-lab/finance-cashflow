@@ -12,6 +12,7 @@ export type AppTab =
   | "budget"
   | "bustepaga"
   | "movimenti"
+  | "scadenzario"
   | "abbonamenti"
   | "mutui"
   | "paypal"
@@ -46,6 +47,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Impegni",
     items: [
+      { id: "scadenzario", label: "Scadenzario" },
       { id: "abbonamenti", label: "Abbonamenti" },
       { id: "mutui", label: "Mutui" },
       { id: "paypal", label: "PayPal" },
@@ -63,6 +65,7 @@ const PAGE_TITLES: Record<AppTab, string> = {
   budget: "Budget",
   bustepaga: "Buste paga",
   movimenti: "Movimenti",
+  scadenzario: "Scadenzario",
   abbonamenti: "Abbonamenti",
   mutui: "Mutui",
   paypal: "PayPal",

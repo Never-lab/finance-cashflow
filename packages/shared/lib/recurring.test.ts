@@ -23,8 +23,11 @@ describe("findRecurring", () => {
       tx({ id: "4", date: "2026-08-02", description: "Esselunga", amount: -40, category: "Spesa" }),
     ];
     const found = findRecurring(rows);
+    const netflix = found.find((f) => f.label === "Netflix");
     expect(found.some((f) => recurringKey(f.label) === "netflix")).toBe(true);
-    expect(found.find((f) => f.label === "Netflix")?.months.length).toBe(3);
+    expect(netflix?.months.length).toBe(3);
+    expect(netflix?.nextDue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(netflix!.nextDue! > netflix!.lastDate).toBe(true);
   });
 
   it("ignores internal transfers", () => {

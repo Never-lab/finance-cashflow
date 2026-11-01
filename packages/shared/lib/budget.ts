@@ -93,3 +93,46 @@ export const BUDGET_EXCLUDED_CATEGORIES = new Set([
   "Prelievi",
   "Investimenti",
 ]);
+
+const SUGGEST_MIN_AVG = 10;
+
+function roundNearest5(n: number): number {
+  return Math.round(n / 5) * 5;
+}
+
+/**
+ * Suggest monthly category limits from average spend over the 3 full
+ * calendar months before `now`'s month (consumption view only).
+ */
+export function suggestCategoryBudgets(
+  transactions: Transaction[],
+  now: Date = new Date(),
+): CategoryBudgets {
+  const endExclusive = new Date(now.getFullYear(), now.getMonth(), 1);
+  const start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  const from = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
+  const toExclusive = `${endExclusive.getFullYear()}-${String(endExclusive.getMonth() + 1).padStart(2, "0")}-01`;
+
+  const windowTx = forConsumption(
+    transactions.filter((t) => t.date >= from && t.date < toExclusive),
+  );
+  const monthsByCat = new Map<string, Set<string>>();
+  for (const t of windowTx) {
+    if (t.amount >= 0) continue;
+    const set = monthsByCat.get(t.category) ?? new Set();
+    set.add(t.date.slice(0, 7));
+    monthsByCat.set(t.category, set);
+  }
+
+  const out: CategoryBudgets = {};
+  for (const { category, total } of categoryBreakdown(windowTx)) {
+    if (BUDGET_EXCLUDED_CATEGORIES.has(category)) continue;
+    const monthCount = Math.max(1, monthsByCat.get(category)?.size ?? 1);
+    const avg = total / monthCount;
+    if (avg < SUGGEST_MIN_AVG) continue;
+    const limit = roundNearest5(avg);
+    if (limit < SUGGEST_MIN_AVG) continue;
+    out[category] = limit;
+  }
+  return out;
+}

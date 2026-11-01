@@ -8,6 +8,7 @@ import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
 import { isFuelPurchase } from "./fuel";
 import { isHospitalityVenue } from "./hospitality";
+import { deriveNextDue } from "./nextDue";
 
 /** Gruppo ricorrente aggregato per chiave merchant normalizzata. */
 export type RecurringItem = {
@@ -18,6 +19,8 @@ export type RecurringItem = {
   months: string[];
   count: number;
   lastDate: string;
+  /** Prossima scadenza stimata da lastDate + gap mediano */
+  nextDue?: string | null;
   /** Carico mensile equivalente (semestrale/trimestrale ammortizzato) */
   monthlyEstimate: number;
   transactionIds: string[];
@@ -152,10 +155,11 @@ export function findRecurring(txns: Transaction[]): RecurringItem[] {
 
     const avg =
       similar.reduce((s, t) => s + -t.amount, 0) / Math.max(similar.length, 1);
-    const dates = similar.map((t) => t.date);
+    const dates = similar.map((t) => t.date).sort();
     const label = similar[0]?.description ?? key;
     const category = similar[0]?.category ?? "Altro";
-    const lastDate = dates.sort().at(-1) ?? "";
+    const lastDate = dates.at(-1) ?? "";
+    const gap = medianGapDays(dates);
 
     out.push({
       key,
@@ -165,6 +169,10 @@ export function findRecurring(txns: Transaction[]): RecurringItem[] {
       months: simMonths.sort(),
       count: similar.length,
       lastDate,
+      nextDue: deriveNextDue({
+        lastDate: lastDate || null,
+        cadenceDays: Math.round(gap),
+      }),
       monthlyEstimate: estimateMonthlyBurden(avg, dates),
       transactionIds: similar.map((t) => t.id),
     });

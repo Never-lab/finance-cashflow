@@ -4,6 +4,7 @@ import {
   matchKnownPaypalPlan,
   type KnownPaypalPlan,
 } from "./knownPaypal";
+import { deriveNextDue } from "./nextDue";
 import { formatEur } from "./stats";
 
 export type PaypalKind = "pay_in_3" | "pay_monthly" | "sdd" | "other" | "in";
@@ -136,6 +137,16 @@ function planFromKnown(known: KnownPaypalPlan, txs: Transaction[]): PaypalPlan {
     status = left === 0 ? "likely_done" : "active";
   }
 
+  const lastDate = dates.at(-1) ?? "";
+  const nextPaymentDate =
+    done || remainingEstimate === 0
+      ? null
+      : deriveNextDue({
+          lastDate: lastDate || null,
+          knownNext: known.nextPaymentDate,
+          cadenceDays: 30,
+        });
+
   return {
     key: known.key,
     kind: known.kind,
@@ -149,8 +160,8 @@ function planFromKnown(known: KnownPaypalPlan, txs: Transaction[]): PaypalPlan {
     totalPaid,
     totalRepaidPaypal: known.totalRepaid != null ? round2(known.totalRepaid) : null,
     dates,
-    lastDate: dates.at(-1) ?? "",
-    nextPaymentDate: done ? null : (known.nextPaymentDate ?? null),
+    lastDate,
+    nextPaymentDate,
     startDate: known.startDate ?? null,
     principalAmount: known.principalAmount ?? null,
     totalAmount: known.totalAmount ?? null,
@@ -183,6 +194,16 @@ function planFromBucket(key: string, list: Transaction[]): PaypalPlan {
   }
 
   const dates = sorted.map((t) => t.date);
+  const lastDate = dates.at(-1) ?? "";
+  const open =
+    status !== "likely_done" && (remainingEstimate == null || remainingEstimate > 0);
+  const nextPaymentDate = open
+    ? deriveNextDue({
+        lastDate: lastDate || null,
+        cadenceDays: 30,
+      })
+    : null;
+
   return {
     key,
     kind,
@@ -196,8 +217,8 @@ function planFromBucket(key: string, list: Transaction[]): PaypalPlan {
     totalPaid,
     totalRepaidPaypal: null,
     dates,
-    lastDate: dates.at(-1) ?? "",
-    nextPaymentDate: null,
+    lastDate,
+    nextPaymentDate,
     startDate: null,
     principalAmount: null,
     totalAmount: null,

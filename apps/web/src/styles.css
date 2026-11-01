@@ -1750,7 +1750,8 @@ td.leave-ap-ac {
   margin: 0 0 0.75rem;
 }
 
-.vault-p0-badge {
+.vault-p0-badge,
+.vault-manual-badge {
   display: inline-block;
   margin-left: 0.4rem;
   padding: 0.1rem 0.35rem;
@@ -1758,13 +1759,40 @@ td.leave-ap-ac {
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+.vault-p0-badge {
   background: var(--teal-dim);
   color: var(--teal);
-  vertical-align: middle;
+}
+
+.vault-manual-badge {
+  background: color-mix(in srgb, var(--clay) 22%, transparent);
+  color: var(--clay);
 }
 
 .liberation-card.vault-p0 {
   border-color: color-mix(in srgb, var(--teal) 45%, transparent);
+}
+
+.vault-correct {
+  margin-top: 0.5rem;
+}
+
+.vault-correct > summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--muted);
+  list-style: none;
+}
+
+.vault-correct > summary::-webkit-details-marker {
+  display: none;
+}
+
+.vault-correct[open] > summary {
+  margin-bottom: 0.35rem;
 }
 
 .vault-override {
@@ -1773,6 +1801,10 @@ td.leave-ap-ac {
   align-items: flex-end;
   gap: 0.5rem;
   margin-top: 0.65rem;
+}
+
+.vault-correct .vault-override {
+  margin-top: 0;
 }
 
 .vault-override-label {

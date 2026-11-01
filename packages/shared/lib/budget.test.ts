@@ -5,6 +5,7 @@ import {
   BUDGET_WARN_PCT,
   budgetStatus,
   buildBudgetReport,
+  suggestCategoryBudgets,
 } from "./budget";
 
 function tx(
@@ -88,5 +89,70 @@ describe("buildBudgetReport", () => {
   it("exposes warn threshold constants", () => {
     expect(BUDGET_WARN_PCT).toBe(80);
     expect(BUDGET_OVER_PCT).toBe(100);
+  });
+});
+
+describe("suggestCategoryBudgets", () => {
+  const now = new Date(2026, 8, 15); // Sep 2026 → window Jun–Aug full months
+
+  it("averages spend over prior 3 complete months, rounds to nearest 5", () => {
+    const rows = [
+      tx({ id: "1", date: "2026-06-10", description: "A", amount: -100, category: "Spesa" }),
+      tx({ id: "2", date: "2026-07-10", description: "B", amount: -100, category: "Spesa" }),
+      tx({ id: "3", date: "2026-08-10", description: "C", amount: -50, category: "Spesa" }),
+      // current month ignored
+      tx({ id: "4", date: "2026-09-05", description: "D", amount: -500, category: "Spesa" }),
+      // May (4th prior) ignored
+      tx({ id: "5", date: "2026-05-20", description: "E", amount: -200, category: "Spesa" }),
+    ];
+    // total 250 / 3 ≈ 83.33 → 85
+    expect(suggestCategoryBudgets(rows, now)).toEqual({ Spesa: 85 });
+  });
+
+  it("skips excluded categories and avgs under 10 EUR", () => {
+    const rows = [
+      tx({ id: "1", date: "2026-07-01", description: "Pay", amount: -300, category: "Stipendio" }),
+      tx({
+        id: "2",
+        date: "2026-07-02",
+        description: "Move",
+        amount: -200,
+        category: "Trasferimenti",
+        internal: true,
+      }),
+      tx({ id: "3", date: "2026-07-03", description: "Tiny", amount: -5, category: "Shopping" }),
+      tx({ id: "4", date: "2026-08-03", description: "Tiny2", amount: -5, category: "Shopping" }),
+      tx({ id: "5", date: "2026-06-03", description: "Tiny3", amount: -5, category: "Shopping" }),
+      tx({ id: "6", date: "2026-06-15", description: "Netflix", amount: -30, category: "Abbonamenti" }),
+      tx({ id: "7", date: "2026-07-15", description: "Netflix", amount: -30, category: "Abbonamenti" }),
+      tx({ id: "8", date: "2026-08-15", description: "Netflix", amount: -30, category: "Abbonamenti" }),
+    ];
+    expect(suggestCategoryBudgets(rows, now)).toEqual({ Abbonamenti: 30 });
+  });
+
+  it("uses forConsumption (drops internal) and ignores income", () => {
+    const rows = [
+      tx({
+        id: "1",
+        date: "2026-07-01",
+        description: "Internal",
+        amount: -90,
+        category: "Spesa",
+        internal: true,
+      }),
+      tx({ id: "2", date: "2026-07-02", description: "Refund", amount: 40, category: "Spesa" }),
+      tx({ id: "3", date: "2026-06-01", description: "Ok", amount: -60, category: "Spesa" }),
+      tx({ id: "4", date: "2026-07-10", description: "Ok", amount: -60, category: "Spesa" }),
+      tx({ id: "5", date: "2026-08-10", description: "Ok", amount: -60, category: "Spesa" }),
+    ];
+    expect(suggestCategoryBudgets(rows, now)).toEqual({ Spesa: 60 });
+  });
+
+  it("divides by months with spend, not always 3", () => {
+    const rows = [
+      tx({ id: "1", date: "2026-08-10", description: "Only Aug", amount: -90, category: "Ristoranti" }),
+    ];
+    // 90 / 1 month → 90 (not 90/3=30)
+    expect(suggestCategoryBudgets(rows, now)).toEqual({ Ristoranti: 90 });
   });
 });

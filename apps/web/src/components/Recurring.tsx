@@ -17,6 +17,13 @@ type Props = {
   onUpload: () => void;
 };
 
+function formatItDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
 export function Recurring({
   transactions,
   categoryOverrides,
@@ -99,6 +106,7 @@ export function Recurring({
               <th className="num" title="Media importi negli ultimi mesi rilevati">
                 €/mese
               </th>
+              <th>Prossima</th>
               <th>Frequenza</th>
               <th>Stato</th>
             </tr>
@@ -141,6 +149,7 @@ export function Recurring({
                     {!hasManualCategory && <span className="tag auto">auto</span>}
                   </td>
                   <td className="num neg">{formatEurDisplay(i.monthlyEstimate)}</td>
+                  <td>{formatItDate(i.nextDue)}</td>
                   <td>
                     {i.months.length} mesi
                     {i.months.length >= 2 && (

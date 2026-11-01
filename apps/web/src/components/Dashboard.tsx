@@ -18,6 +18,7 @@ import { PERIOD_LABELS } from "@shared/lib/periodLabels";
 import { formatEurDisplay } from "../lib/privacyAmounts";
 import { forConsumption } from "@shared/lib/consumptionView";
 import type { LiquidityView } from "@shared/lib/liquidity";
+import { isTransactionDataStale } from "@shared/lib/bankSyncFreshness";
 import {
   CashflowCurve,
   CashflowSankeyChart,
@@ -54,6 +55,11 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
     [periodAll, filtered],
   );
 
+  const txnStale = useMemo(
+    () => isTransactionDataStale(transactions.map((t) => t.date)),
+    [transactions],
+  );
+
   if (transactions.length === 0) {
     return (
       <div className="empty">
@@ -83,6 +89,7 @@ export function Dashboard({ transactions, liquidity, period, onPeriod, onUpload 
           ))}
         </div>
       </div>
+      {txnStale && <p className="muted tiny">CSV/sync vecchio</p>}
 
       <div className="stat-row kpi-row">
         <Kpi

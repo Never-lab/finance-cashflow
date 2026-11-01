@@ -2,8 +2,9 @@
  * Modale Dati e backup: chiave Finnhub, ricalcolo globale, export/import JSON stato,
  * svuotamento dati e logout sessione quando l'auth è attiva.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppState } from "@shared/types";
+import { bankLinksStaleMessage } from "@shared/lib/bankSyncFreshness";
 import { emptyState, exportStateJson, parseStateJson } from "../db";
 import { api, type Settings } from "../api";
 import { useDialogA11y } from "../hooks/useDialogA11y";
@@ -43,6 +44,8 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
   const [bankMsg, setBankMsg] = useState<string | null>(null);
 
   useDialogA11y(open, onClose, panelRef);
+
+  const bankStaleMsg = useMemo(() => bankLinksStaleMessage(bankLinks), [bankLinks]);
 
   async function refreshBankStatus() {
     try {
@@ -302,6 +305,7 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
                 {bankBusy ? "Sync…" : "Sincronizza ora"}
               </button>
             </div>
+            {bankStaleMsg && <p className="muted">{bankStaleMsg}</p>}
             {bankMsg && <p className="muted">{bankMsg}</p>}
           </>
         )}

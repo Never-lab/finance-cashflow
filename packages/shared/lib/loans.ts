@@ -5,6 +5,7 @@
  */
 import type { Transaction } from "../types";
 import { forCashflow } from "./internal";
+import { deriveNextDue } from "./nextDue";
 import { recurringKey } from "./recurring";
 import { carLoanKeyFromDescription, isCarLoanTransaction } from "./carLoan";
 
@@ -180,7 +181,14 @@ export function buildLoanSummary(
       principalAmount: target?.principalAmount ?? null,
       endDate: target?.endDate ?? null,
       totalRepaidBank: target?.totalRepaid != null ? round2(target.totalRepaid) : null,
-      nextPaymentDate: target?.nextPaymentDate ?? null,
+      nextPaymentDate:
+        remainingEstimate === 0 || remainingInstallments === 0
+          ? null
+          : deriveNextDue({
+              lastDate: dates.at(-1) ?? null,
+              knownNext: target?.nextPaymentDate,
+              cadenceDays: 30,
+            }),
       startDate: target?.startDate ?? null,
       indicativeTan: target?.indicativeTan ?? null,
       transactions: sorted,

@@ -8,6 +8,7 @@ import { CATEGORIES } from "@shared/lib/categorize";
 import {
   BUDGET_EXCLUDED_CATEGORIES,
   buildBudgetReport,
+  suggestCategoryBudgets,
   type BudgetRow,
   type BudgetStatus,
   type CategoryBudgets,
@@ -18,6 +19,8 @@ type Props = {
   transactions: Transaction[];
   budgets: CategoryBudgets;
   onSave: (category: string, limit: number | null) => void;
+  /** Merge suggestions sequentially (avoids parallel PUT race on settings JSON). */
+  onSuggestBatch?: (limits: CategoryBudgets) => void | Promise<void>;
   onUpload: () => void;
   onGoConsigli?: () => void;
 };
@@ -43,7 +46,14 @@ const MONTH_IT = [
   "Dicembre",
 ];
 
-export function BudgetTab({ transactions, budgets, onSave, onUpload, onGoConsigli }: Props) {
+export function BudgetTab({
+  transactions,
+  budgets,
+  onSave,
+  onSuggestBatch,
+  onUpload,
+  onGoConsigli,
+}: Props) {
   const report = useMemo(
     () => buildBudgetReport(transactions, budgets, new Date()),
     [transactions, budgets],
@@ -51,6 +61,7 @@ export function BudgetTab({ transactions, budgets, onSave, onUpload, onGoConsigl
 
   const [addCategory, setAddCategory] = useState("");
   const [addLimit, setAddLimit] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
 
   const pickerCats = useMemo(
     () =>
@@ -103,6 +114,38 @@ export function BudgetTab({ transactions, budgets, onSave, onUpload, onGoConsigl
           ))}
         </div>
       )}
+
+      <div className="budget-suggest">
+        <button
+          type="button"
+          className="btn"
+          disabled={suggesting}
+          onClick={() => {
+            const suggestions = suggestCategoryBudgets(transactions, new Date());
+            const patch: CategoryBudgets = {};
+            for (const [category, limit] of Object.entries(suggestions)) {
+              if (budgets[category] != null) continue;
+              patch[category] = limit;
+            }
+            if (Object.keys(patch).length === 0) return;
+            setSuggesting(true);
+            void Promise.resolve(
+              onSuggestBatch
+                ? onSuggestBatch(patch)
+                : Promise.all(
+                    Object.entries(patch).map(([category, limit]) =>
+                      Promise.resolve(onSave(category, limit)),
+                    ),
+                  ),
+            ).finally(() => setSuggesting(false));
+          }}
+        >
+          {suggesting ? "Applico…" : "Suggerisci da media 3 mesi"}
+        </button>
+        <p className="muted tiny">
+          Compila solo categorie senza limite, media degli ultimi 3 mesi completi.
+        </p>
+      </div>
 
       <section className="stat-section budget-add">
         <h3 className="stat-section-title">Aggiungi budget</h3>

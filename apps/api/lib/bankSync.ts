@@ -25,6 +25,7 @@ import {
   listBookedTransactions,
   resolveInstitutionId,
 } from "./gocardless";
+import { syncKnownInvestmentContributions } from "./investmentSync";
 import { mergeImportIntoDb } from "./stateRepo";
 
 const SOURCES: BankSource[] = ["mediolanum", "revolut"];
@@ -159,6 +160,9 @@ async function syncOneLink(db: Database.Database, link: BankLinkRow): Promise<Sy
     }
     const mapped = mapBookedTransactions(allRaw, link.source);
     const { added, updated } = mergeImportIntoDb(db, link.user_id, mapped);
+    // Same post-merge hook as CSV import (routes/state). Liquidity: OB has no balance
+    // snapshots in this path — skip (do not fake).
+    syncKnownInvestmentContributions(db, link.user_id);
     const lastSyncAt = new Date().toISOString();
     updateBankLinkSyncResult(db, link.user_id, link.source, { ok: true, lastSyncAt });
     return { source: link.source, added, updated };

@@ -5,6 +5,7 @@ import {
   loanKeyFromDescription,
 } from "./loans";
 import { defaultLoanTargets } from "./knownLoans";
+import { deriveNextDue } from "./nextDue";
 import type { Transaction } from "../types";
 
 function tx(
@@ -63,7 +64,13 @@ describe("loans", () => {
     expect(plan.remainingEstimate).toBe(2792.4);
     expect(plan.remainingSource).toBe("bank");
     expect(plan.totalRepaidBank).toBe(707.6);
-    expect(plan.nextPaymentDate).toBe("2026-08-31");
+    expect(plan.nextPaymentDate).toBe(
+      deriveNextDue({
+        lastDate: "2026-07-31",
+        knownNext: "2026-08-31",
+        cadenceDays: 30,
+      }),
+    );
     expect(s.remainingDebt).toBe(2792.4);
     expect(s.monthlyBurden).toBe(109.6);
   });
@@ -110,6 +117,7 @@ describe("loans", () => {
     expect(plan.paidCount).toBe(36);
     expect(plan.remainingInstallments).toBe(0);
     expect(plan.remainingEstimate).toBe(0);
+    expect(plan.nextPaymentDate).toBeNull();
     expect(plan.monthlyBurden).toBe(0);
     expect(s.remainingDebt).toBe(0);
     expect(s.monthlyBurden).toBe(0);

@@ -284,10 +284,39 @@ function VaultGoalCard({
     setDraft(String(goal.current));
   }, [goal.current, goal.source]);
 
+  const isManual = goal.source === "override";
   const hintParts: string[] = [];
   if (goal.deadline) hintParts.push(`deadline ${goal.deadline}`);
   if (goal.monthlyHint != null) hintParts.push(`+${formatEurDisplay(goal.monthlyHint)}/m`);
-  hintParts.push(goal.source === "override" ? "manuale" : "da CSV");
+
+  function saveDraft() {
+    const n = Number(draft.replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) return;
+    onSave(goal.id, n);
+  }
+
+  const overrideFields = (
+    <div className="vault-override">
+      <label className="vault-override-label">
+        Saldo €
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+      </label>
+      <button type="button" className="btn" onClick={saveDraft}>
+        Salva
+      </button>
+      {isManual ? (
+        <button type="button" className="btn" onClick={() => onSave(goal.id, null)}>
+          Usa stima CSV
+        </button>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className={`liberation-card savings${goal.isP0 ? " vault-p0" : ""}`}>
@@ -295,6 +324,7 @@ function VaultGoalCard({
         <span className="liberation-label">
           {goal.label}
           {goal.isP0 ? <span className="vault-p0-badge">P0</span> : null}
+          {isManual ? <span className="vault-manual-badge">manuale</span> : null}
         </span>
         <span className="liberation-pct savings">{goal.pct.toFixed(0)}%</span>
       </div>
@@ -308,35 +338,16 @@ function VaultGoalCard({
       <span className="stat-hint">
         Target {formatEurDisplay(goal.target)}
         {hintParts.length ? ` · ${hintParts.join(" · ")}` : ""}
+        {isManual ? "" : " · saldo auto da CSV"}
       </span>
-      <div className="vault-override">
-        <label className="vault-override-label">
-          Saldo €
-          <input
-            type="number"
-            min={0}
-            step={0.01}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            const n = Number(draft.replace(",", "."));
-            if (!Number.isFinite(n) || n < 0) return;
-            onSave(goal.id, n);
-          }}
-        >
-          Salva
-        </button>
-        {goal.source === "override" && (
-          <button type="button" className="btn" onClick={() => onSave(goal.id, null)}>
-            Usa stima
-          </button>
-        )}
-      </div>
+      {isManual ? (
+        overrideFields
+      ) : (
+        <details className="vault-correct">
+          <summary>Correggi saldo</summary>
+          {overrideFields}
+        </details>
+      )}
     </div>
   );
 }
