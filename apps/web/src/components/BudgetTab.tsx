@@ -13,7 +13,7 @@ import {
   type BudgetStatus,
   type CategoryBudgets,
 } from "@shared/lib/budget";
-import { formatEurDisplay } from "../lib/privacyAmounts";
+import { formatEurDisplay, formatPctDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -228,7 +228,7 @@ function BudgetRowCard({
             : `restano ${formatEurDisplay(row.remaining)}`}
         </span>
       </div>
-      <span className="stat-hint">{row.pct.toFixed(0)}% del limite</span>
+      <span className="stat-hint">{formatPctDisplay(row.pct, 0)} del limite</span>
       <div className="vault-override">
         <label className="vault-override-label">
           Limite €

@@ -173,7 +173,9 @@ export function AppShell({
             </button>
           )}
         </header>
-        <main className="main-content">{children}</main>
+        <main id="main-content" className="main-content" tabIndex={-1}>
+          {children}
+        </main>
       </div>
     </div>
   );

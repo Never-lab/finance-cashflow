@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import type { BankSource, Transaction } from "@shared/types";
 import { CATEGORIES } from "@shared/lib/categorize";
-import { formatEurDisplay } from "../lib/privacyAmounts";
+import { formatDescriptionDisplay, formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -130,8 +130,8 @@ export function Transactions({
             {filtered.map((t) => (
               <tr key={t.id} className={t.internal ? "row-internal" : undefined}>
                 <td>{t.date}</td>
-                <td title={t.description}>
-                  {t.description}
+                <td title={formatDescriptionDisplay(t.description)}>
+                  {formatDescriptionDisplay(t.description)}
                   {t.internal && <span className="tag internal">interno</span>}
                 </td>
                 <td>

@@ -5,7 +5,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Contribution, Instrument, InstrumentType, Transaction } from "@shared/types";
 import { api, type InstrumentWithHolding, type PortfolioSummary, type QuoteBar } from "../api";
-import { formatEurDisplay } from "../lib/privacyAmounts";
+import { formatDescriptionDisplay, formatEurDisplay } from "../lib/privacyAmounts";
 import { detectKnownInvestment, PAC_MS_GLOBAL_OPPORTUNITY } from "@shared/lib/knownInvestments";
 import {
   AllocationChart,
@@ -512,7 +512,8 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
                 <option value="">Seleziona movimento…</option>
                 {linkableTx.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.date} · {t.description.slice(0, 40)} · {formatEurDisplay(t.amount)}
+                    {t.date} · {formatDescriptionDisplay(t.description).slice(0, 40)} ·{" "}
+                    {formatEurDisplay(t.amount)}
                   </option>
                 ))}
               </select>

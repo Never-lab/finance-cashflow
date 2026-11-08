@@ -158,6 +158,14 @@ export default function App() {
     void bootApp();
   }, [bootApp]);
 
+  /** Move focus to main landmark after tab change (skip links / screen readers). */
+  useEffect(() => {
+    const main = document.getElementById("main-content");
+    if (main instanceof HTMLElement) {
+      main.focus({ preventScroll: true });
+    }
+  }, [tab]);
+
   /** Handle Open Banking redirect query (`?bank_sync=ok|error|missing_ref`). */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -457,6 +465,8 @@ export default function App() {
             loanTargets={loanTargets}
             paypalTargets={paypalTargets}
             categoryBudgets={categoryBudgets}
+            period={period}
+            onPeriod={setPeriod}
             onGoAbbonamenti={() => setTab("abbonamenti")}
             onGoPaypal={() => setTab("paypal")}
             onGoMovimenti={() => setTab("movimenti")}

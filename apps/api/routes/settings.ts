@@ -5,6 +5,7 @@
  */
 import { Hono } from "hono";
 import { getDb } from "../db";
+import { clearAllQuotesCache } from "../lib/quotes";
 import { deleteSetting, getSetting, setSetting } from "../lib/settingsRepo";
 import { getUserId } from "../lib/requestContext";
 import type { AppEnv } from "../lib/honoTypes";
@@ -31,6 +32,7 @@ settingsRoutes.put("/settings", async (c) => {
   const userId = getUserId(c);
   const body = await c.req.json<{ marketApiKey?: string; clearApiKey?: boolean }>();
   const db = getDb();
+  const before = currentSettings(db, userId);
   if (body.clearApiKey) {
     deleteSetting(db, userId, MARKET_API_KEY);
   } else if (body.marketApiKey !== undefined) {
@@ -38,5 +40,10 @@ settingsRoutes.put("/settings", async (c) => {
     if (trimmed === "") deleteSetting(db, userId, MARKET_API_KEY);
     else setSetting(db, userId, MARKET_API_KEY, trimmed);
   }
-  return c.json(currentSettings(db, userId));
+  const after = currentSettings(db, userId);
+  // Provider flip → drop shared cache so UI does not show stale Yahoo/Finnhub bars.
+  if (before.marketProvider !== after.marketProvider) {
+    clearAllQuotesCache(db);
+  }
+  return c.json(after);
 });

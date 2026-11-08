@@ -74,15 +74,19 @@ function LeaveApAcTable({ title, leave }: { title: string; leave: PayslipLeave }
       <table className="payslip-leave-grid">
         <thead>
           <tr>
-            <th />
-            <th className="num">AP</th>
-            <th className="num">AC</th>
+            <th scope="col">Voce</th>
+            <th scope="col" className="num">
+              AP
+            </th>
+            <th scope="col" className="num">
+              AC
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.label}>
-              <td>{row.label}</td>
+              <th scope="row">{row.label}</th>
               <td className="num">{formatLeaveHours(row.ap)}</td>
               <td className="num">{formatLeaveHours(row.ac)}</td>
             </tr>
@@ -97,21 +101,26 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [summary, setSummary] = useState<PayslipSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
   const [errors, setErrors] = useState<{ file: string; error: string }[]>([]);
+  const [preview, setPreview] = useState<PayslipRecord | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       setSummary(await api.getPayslips());
       setSelectedIds(new Set());
     } catch {
       setSummary(null);
+      setLoadError("Impossibile caricare i cedolini dal server.");
     } finally {
       setLoading(false);
     }
@@ -132,9 +141,27 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
       return;
     }
 
+    // Single PDF → preview first; multi → import batch.
+    if (files.length === 1) {
+      setImporting(true);
+      setErrors([]);
+      try {
+        const { payslip: rec } = await api.previewPayslip(files[0]!);
+        setPreview(rec);
+        setPreviewFile(files[0]!);
+      } catch (err) {
+        onToast?.(err instanceof Error ? err.message : "Anteprima PDF fallita");
+      } finally {
+        setImporting(false);
+      }
+      return;
+    }
+
     setImporting(true);
     setImportProgress({ done: 0, total: files.length });
     setErrors([]);
+    setPreview(null);
+    setPreviewFile(null);
     try {
       const res = await api.importPayslips(files, (done, total) => {
         setImportProgress({ done, total });
@@ -152,6 +179,28 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
     } finally {
       setImporting(false);
       setImportProgress(null);
+    }
+  };
+
+  const confirmPreviewImport = async () => {
+    if (!previewFile) return;
+    setImporting(true);
+    try {
+      const res = await api.importPayslips([previewFile]);
+      setSummary(res.summary);
+      setSelectedIds(new Set());
+      setErrors(res.errors);
+      setPreview(null);
+      setPreviewFile(null);
+      onToast?.(
+        res.errors.length > 0
+          ? `Importati ${res.imported} · ${res.errors.length} errori`
+          : `Importato cedolino ${preview ? periodLabel(preview) : ""}`.trim(),
+      );
+    } catch (err) {
+      onToast?.(err instanceof Error ? err.message : "Errore import PDF");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -200,8 +249,21 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
     }
   };
 
-  if (loading && !summary) {
+  if (loading && !summary && !loadError) {
     return <div className="boot">Caricamento buste paga…</div>;
+  }
+
+  if (loadError && !summary) {
+    return (
+      <div className="panel">
+        <p className="error" role="alert">
+          {loadError}
+        </p>
+        <button type="button" className="btn primary" onClick={() => void load()}>
+          Riprova
+        </button>
+      </div>
+    );
   }
 
   const latest = summary?.latest;
@@ -215,24 +277,25 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
     <div className="payslip-tab">
       <section className="panel payslip-upload">
         <h3>Importa cedolini PDF</h3>
-        <p className="muted">
-          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Puoi selezionare tanti PDF
-          insieme (es. 30): vengono elaborati a gruppi. Estrazione testo PDF (plain); netto KPI
-          da banca se match, altrimenti cedolino. I PDF restano sul
-          volume.
+        <p className="muted" id="payslip-upload-help">
+          Formato OSRA/OLUIT dal portale HR (AFEA / ITWorking). Un PDF → anteprima; più PDF →
+          import batch. Netto KPI da banca se match. I PDF restano sul volume.
         </p>
         <input
           ref={inputRef}
+          id="payslip-file-input"
           type="file"
           accept=".pdf,application/pdf"
           multiple
           hidden
+          aria-describedby="payslip-upload-help"
           onChange={(e) => void onFiles(e)}
         />
         <button
           type="button"
           className="btn primary"
           disabled={importing}
+          aria-controls="payslip-file-input"
           onClick={() => inputRef.current?.click()}
         >
           {importing && importProgress
@@ -241,8 +304,39 @@ export function PayslipTab({ refreshKey = 0, onToast }: Props) {
               ? "Importazione…"
               : "Scegli PDF (anche molti)"}
         </button>
+        {preview && (
+          <div className="panel payslip-preview">
+            <h4>Anteprima</h4>
+            <p className="muted">
+              {periodLabel(preview)} · netto {formatEurDisplay(preview.netPay ?? preview.payslipNet ?? 0)}{" "}
+              · lordo {formatEurDisplay(preview.grossTotal ?? 0)}
+            </p>
+            <p className="muted tiny">{netHint(preview)}</p>
+            <div className="toolbar">
+              <button
+                type="button"
+                className="btn primary"
+                disabled={importing}
+                onClick={() => void confirmPreviewImport()}
+              >
+                Importa
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={importing}
+                onClick={() => {
+                  setPreview(null);
+                  setPreviewFile(null);
+                }}
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
         {errors.length > 0 && (
-          <ul className="payslip-errors">
+          <ul className="payslip-errors" role="alert">
             {errors.map((err) => (
               <li key={err.file}>
                 <strong>{err.file}</strong>: {err.error}

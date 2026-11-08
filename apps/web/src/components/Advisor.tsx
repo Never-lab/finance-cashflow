@@ -16,6 +16,7 @@ import {
 } from "@shared/lib/advisor";
 import { PERIOD_LABELS_SHORT } from "@shared/lib/periodLabels";
 import { formatEurDisplay } from "../lib/privacyAmounts";
+import { EmptyState } from "./EmptyState";
 
 type Props = {
   transactions: Transaction[];
@@ -23,6 +24,8 @@ type Props = {
   loanTargets: Record<string, LoanTarget>;
   paypalTargets?: Record<string, PaypalTarget>;
   categoryBudgets?: CategoryBudgets;
+  period: Period;
+  onPeriod: (p: Period) => void;
   onGoAbbonamenti: () => void;
   onGoPaypal: () => void;
   onGoMovimenti: () => void;
@@ -50,6 +53,8 @@ export function Advisor({
   loanTargets,
   paypalTargets = {},
   categoryBudgets = {},
+  period,
+  onPeriod,
   onGoAbbonamenti,
   onGoPaypal,
   onGoMovimenti,
@@ -60,7 +65,6 @@ export function Advisor({
   onGoPiano,
   onUpload,
 }: Props) {
-  const [period, setPeriod] = useState<Period>("3m");
   const [kindFilter, setKindFilter] = useState<"all" | InsightKind>("all");
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
 
@@ -104,13 +108,9 @@ export function Advisor({
 
   if (transactions.length === 0) {
     return (
-      <div className="empty">
-        <h2>Nessun dato da analizzare</h2>
-        <p className="muted">Carica i CSV banca: l&apos;analisi gira solo in locale.</p>
-        <button type="button" className="btn primary" onClick={onUpload}>
-          Carica CSV
-        </button>
-      </div>
+      <EmptyState title="Nessun dato da analizzare" onPrimary={onUpload}>
+        <p>Carica i CSV banca: l&apos;analisi gira solo in locale.</p>
+      </EmptyState>
     );
   }
 
@@ -123,7 +123,7 @@ export function Advisor({
             type="button"
             className={period === k ? "chip active" : "chip"}
             aria-pressed={period === k}
-            onClick={() => setPeriod(k)}
+            onClick={() => onPeriod(k)}
           >
             {PERIOD_LABELS_SHORT[k]}
           </button>

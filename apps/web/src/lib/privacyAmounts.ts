@@ -6,6 +6,8 @@ import { formatEur } from "@shared/lib/stats";
 
 export const PRIVACY_AMOUNTS_KEY = "cashflow-privacy-amounts";
 export const MASKED_EUR = "••••••";
+export const MASKED_TEXT = "••••••••";
+export const MASKED_PCT = "•••%";
 
 let masked = false;
 
@@ -45,4 +47,15 @@ export function formatCompactNumber(n: number): string {
     notation: "compact",
     compactDisplay: "short",
   }).format(n);
+}
+
+/** Merchant / descrizione movimento (opzionale con privacy on). */
+export function formatDescriptionDisplay(text: string): string {
+  return masked ? MASKED_TEXT : text;
+}
+
+/** Percentuali KPI / budget (derivabili da importi). */
+export function formatPctDisplay(n: number, digits = 1): string {
+  if (masked) return MASKED_PCT;
+  return `${n.toFixed(digits)}%`;
 }

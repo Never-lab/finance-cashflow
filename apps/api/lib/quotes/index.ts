@@ -104,6 +104,16 @@ export function isFresh(fetchedAt: string, ttlMs: number = LIVE_TTL_MS): boolean
   return Date.now() - new Date(fetchedAt).getTime() < ttlMs;
 }
 
+/** Drop cached bars for a ticker (e.g. after provider switch). */
+export function clearTickerCache(db: Database.Database, ticker: string): void {
+  db.prepare(`DELETE FROM quotes_cache WHERE ticker = ?`).run(ticker);
+}
+
+/** Clear entire quotes cache (provider change). */
+export function clearAllQuotesCache(db: Database.Database): void {
+  db.prepare(`DELETE FROM quotes_cache`).run();
+}
+
 /** Upsert batch barre in quotes_cache con fetched_at comune. */
 export function upsertBars(db: Database.Database, ticker: string, bars: QuoteBar[]): void {
   if (bars.length === 0) return;

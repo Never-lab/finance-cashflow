@@ -5,7 +5,7 @@
 import { useMemo } from "react";
 import type { Transaction } from "@shared/types";
 import { buildPaypalSummary, type PaypalTarget } from "@shared/lib/paypal";
-import { formatEurDisplay } from "../lib/privacyAmounts";
+import { formatDescriptionDisplay, formatEurDisplay } from "../lib/privacyAmounts";
 
 type Props = {
   transactions: Transaction[];
@@ -228,7 +228,9 @@ export function PaypalTab({
                 {summary.otherOut.map((t) => (
                   <tr key={t.id}>
                     <td>{t.date}</td>
-                    <td title={t.description}>{t.description}</td>
+                    <td title={formatDescriptionDisplay(t.description)}>
+                      {formatDescriptionDisplay(t.description)}
+                    </td>
                     <td className="num neg">{formatEurDisplay(t.amount)}</td>
                   </tr>
                 ))}
@@ -254,7 +256,9 @@ export function PaypalTab({
                 {summary.income.map((t) => (
                   <tr key={t.id}>
                     <td>{t.date}</td>
-                    <td title={t.description}>{t.description}</td>
+                    <td title={formatDescriptionDisplay(t.description)}>
+                      {formatDescriptionDisplay(t.description)}
+                    </td>
                     <td className="num pos">{formatEurDisplay(t.amount)}</td>
                   </tr>
                 ))}

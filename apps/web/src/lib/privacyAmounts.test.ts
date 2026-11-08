@@ -2,9 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { formatEur } from "@shared/lib/stats";
 import {
   formatCompactNumber,
+  formatDescriptionDisplay,
   formatEurDisplay,
+  formatPctDisplay,
   loadPrivacyAmounts,
   MASKED_EUR,
+  MASKED_PCT,
+  MASKED_TEXT,
   PRIVACY_AMOUNTS_KEY,
   setPrivacyAmounts,
 } from "./privacyAmounts";
@@ -38,6 +42,8 @@ describe("privacyAmounts", () => {
     setPrivacyAmounts(true);
     expect(formatEurDisplay(1234.5)).toBe(MASKED_EUR);
     expect(formatCompactNumber(1200)).toBe("••••");
+    expect(formatDescriptionDisplay("Esselunga")).toBe(MASKED_TEXT);
+    expect(formatPctDisplay(12.5)).toBe(MASKED_PCT);
   });
 
   it("shows real euro when privacy off", () => {

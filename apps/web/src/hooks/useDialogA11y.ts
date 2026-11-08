@@ -49,9 +49,19 @@ export function useDialogA11y(
       }
     }
 
+    const shell = document.querySelector(".app-shell");
+    if (shell instanceof HTMLElement) {
+      shell.setAttribute("inert", "");
+      shell.setAttribute("aria-hidden", "true");
+    }
+
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      if (shell instanceof HTMLElement) {
+        shell.removeAttribute("inert");
+        shell.removeAttribute("aria-hidden");
+      }
       previouslyFocused?.focus?.();
     };
   }, [open, panelRef]);

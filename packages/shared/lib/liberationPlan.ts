@@ -57,8 +57,12 @@ export function estimateLifecycleBalance(transactions: Transaction[]): number {
   for (const t of transactions) {
     if (t.source !== "revolut") continue;
     const d = t.description.toLowerCase();
-    if (/accredita eur (tech|lifecycle|telefono)/i.test(d)) bal += t.amount;
-    else if (/prelievo da pocket/i.test(d) && /(tech|lifecycle|telefono)/i.test(d)) bal += t.amount;
+    const isLifecyclePocket =
+      /accredita eur (tech|lifecycle|telefono)/i.test(d) ||
+      (/·\s*risparmi/i.test(d) && /(tech|lifecycle|telefono)/i.test(d));
+    if (!isLifecyclePocket) continue;
+    // Credits increase balance; card/spend/withdrawals on same pocket lines decrease it.
+    bal += t.amount;
   }
   return round2(Math.max(0, bal));
 }
