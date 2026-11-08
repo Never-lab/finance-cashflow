@@ -88,6 +88,11 @@ export function createApp(): Hono {
       if (c.req.path.startsWith("/api")) {
         return c.json({ error: "Not found" }, 404);
       }
+      // Missing hashed Vite chunks must 404 as text, never SPA index.html
+      // (browsers reject dynamic import when MIME is text/html).
+      if (c.req.path.startsWith("/assets/")) {
+        return c.text("Not Found", 404);
+      }
       c.header("Cache-Control", "no-cache");
       const result = await serveStatic({ root: DIST_DIR, path: "index.html" })(
         c,

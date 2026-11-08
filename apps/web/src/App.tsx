@@ -16,6 +16,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PrivacyProvider } from "./components/PrivacyProvider";
+import { clearChunkReloadFlag } from "./lib/lazyReload";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import type { LoanTarget } from "@shared/lib/loans";
 import type { PaypalTarget } from "@shared/lib/paypal";
@@ -136,6 +137,7 @@ export default function App() {
       }
 
       await loadBootState();
+      clearChunkReloadFlag();
       setGate("app");
     } catch {
       try {
