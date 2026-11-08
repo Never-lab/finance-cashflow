@@ -483,7 +483,9 @@ export default function App() {
         )}
         </ErrorBoundary>
       </Suspense>
+    </AppShell>
 
+      {/* Portals outside shell so mobile drawer inert/main-body does not trap them. */}
       <UploadModal
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
@@ -500,7 +502,13 @@ export default function App() {
       />
 
       {migrateCandidate && (
-        <div className="toast" role="status" aria-live="polite">
+        <div
+          className="toast"
+          role="status"
+          aria-live="polite"
+          inert={uploadOpen || settingsOpen ? true : undefined}
+          aria-hidden={uploadOpen || settingsOpen ? true : undefined}
+        >
           <span>Trovati dati salvati nel browser ({migrateCandidate.transactions.length} movimenti).</span>{" "}
           <button type="button" className="btn primary" onClick={onMigrate}>
             Migra dati browser → SQLite
@@ -508,11 +516,16 @@ export default function App() {
         </div>
       )}
       {toast && (
-        <div className="toast" role="status" aria-live="polite">
+        <div
+          className="toast"
+          role="status"
+          aria-live="polite"
+          inert={uploadOpen || settingsOpen ? true : undefined}
+          aria-hidden={uploadOpen || settingsOpen ? true : undefined}
+        >
           {toast}
         </div>
       )}
-    </AppShell>
     </PrivacyProvider>
   );
 }

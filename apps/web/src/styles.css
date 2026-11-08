@@ -203,7 +203,32 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.main-head-start {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.shell-menu-btn {
+  display: none;
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.55rem;
+  line-height: 0;
+}
+
+.shell-menu-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.nav-backdrop {
+  display: none;
 }
 
 .header-logout {
@@ -733,17 +758,21 @@ body {
 
 .empty {
   text-align: center;
-  padding: 3.5rem 1.25rem;
+  padding: 2.5rem 1.25rem;
   background: transparent;
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
 }
 
 .empty h2 {
-  margin-top: 0;
+  margin: 0 0 0.5rem;
   font-family: var(--font);
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.empty .muted {
+  margin: 0 0 1rem;
 }
 
 .muted {
@@ -872,7 +901,8 @@ select {
   display: grid;
   place-items: center;
   padding: 1rem;
-  z-index: 20;
+  /* Above mobile nav drawer (backdrop 30 / sidebar 40). */
+  z-index: 50;
 }
 
 .modal {
@@ -934,7 +964,8 @@ select {
   border: 1px solid var(--line-strong);
   padding: 0.7rem 0.95rem;
   border-radius: var(--radius-sm);
-  z-index: 30;
+  /* Below modal (50) so dialogs stay on top; above drawer (40). */
+  z-index: 48;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   font-size: 0.9rem;
 }
@@ -1346,45 +1377,101 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .shell-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    background: rgba(8, 10, 9, 0.55);
+  }
+
   .sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 10;
-    height: auto;
-    max-height: none;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(18rem, 88vw);
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
     flex-direction: column;
-    padding: 0.85rem 1rem;
+    padding: 1rem 0.85rem 1.25rem;
+    border-right: 1px solid var(--line);
+    transform: translateX(-105%);
+    transition: transform 0.18s ease;
+    pointer-events: none;
+  }
+
+  .app-shell.nav-open .sidebar {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* Header (hamburger/X, logout) above backdrop + drawer so toggle stays clickable. */
+  .app-shell.nav-open .main-head {
+    position: relative;
+    z-index: 45;
   }
 
   .sidebar-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 1rem;
   }
 
   .nav-group {
-    flex: 1 1 auto;
-    min-width: 7rem;
+    flex: none;
+    min-width: 0;
   }
 
   .sidebar-foot {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
+    flex-wrap: nowrap;
   }
 
   .sidebar-upload,
   .sidebar-settings,
   .sidebar-privacy {
-    width: auto;
-    flex: 1;
+    width: 100%;
   }
 
   .main-shell {
-    padding: 1rem 1rem 2rem;
+    padding: 0.85rem 0.9rem 2rem;
+  }
+
+  .main-head {
+    margin-bottom: 1rem;
   }
 
   .page-title {
-    font-size: 1.45rem;
+    font-size: 1.25rem;
+  }
+
+  .period {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .period .chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .empty {
+    padding: 1.75rem 1rem;
   }
 }
 
@@ -1403,20 +1490,6 @@ select {
 }
 
 @media (max-width: 560px) {
-  .sidebar-nav {
-    flex-direction: column;
-  }
-
-  .sidebar-foot {
-    flex-direction: column;
-  }
-
-  .sidebar-upload,
-  .sidebar-settings,
-  .sidebar-privacy {
-    width: 100%;
-  }
-
   .stat-row.kpi-row,
   .stat-row.impegni-row,
   .stat-row.recurring-kpis,
@@ -1427,6 +1500,11 @@ select {
 
   .stat-value {
     font-size: 1.6rem;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

@@ -1,8 +1,9 @@
 /**
  * Layout principale: sidebar con navigazione a gruppi (Panoramica, Flusso, Impegni, Patrimonio),
  * titolo pagina, azioni globali (privacy importi, Carica CSV, Dati e backup, Esci se auth).
+ * ≤900px: sidebar diventa drawer overlay (hamburger + backdrop).
  */
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePrivacyAmounts } from "./PrivacyProvider";
 
 /** Identificativi tab sincronizzati con lo state `tab` in App.tsx. */
@@ -73,6 +74,11 @@ const PAGE_TITLES: Record<AppTab, string> = {
   investimenti: "Investimenti",
 };
 
+const MOBILE_NAV_MQ = "(max-width: 900px)";
+
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 type Props = {
   tab: AppTab;
   onTab: (tab: AppTab) => void;
@@ -104,6 +110,31 @@ function EyeIcon({ masked }: { masked: boolean }) {
   );
 }
 
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg className="shell-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {open ? (
+        <path
+          fill="currentColor"
+          d="M18.3 5.7 13 11l5.3 5.3-1.4 1.4L11.6 12.4 6.3 17.7 4.9 16.3 10.2 11 4.9 5.7 6.3 4.3l5.3 5.3 5.3-5.3z"
+        />
+      ) : (
+        <path
+          fill="currentColor"
+          d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"
+        />
+      )}
+    </svg>
+  );
+}
+
+function readMobileNav(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia(MOBILE_NAV_MQ).matches;
+}
+
 export function AppShell({
   tab,
   onTab,
@@ -114,10 +145,110 @@ export function AppShell({
   children,
 }: Props) {
   const { masked, toggle } = usePrivacyAmounts();
+  const [navOpen, setNavOpen] = useState(false);
+  const [isMobileNav, setIsMobileNav] = useState(readMobileNav);
+  const sidebarId = useId();
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const drawerActive = isMobileNav && navOpen;
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(MOBILE_NAV_MQ);
+    const sync = () => {
+      setIsMobileNav(mq.matches);
+      if (!mq.matches) setNavOpen(false);
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  /** External setTab (Consigli → PayPal, ecc.) must close overlay. */
+  useEffect(() => {
+    setNavOpen(false);
+  }, [tab]);
+
+  useEffect(() => {
+    if (!drawerActive) return;
+    const sidebar = sidebarRef.current;
+    const focusables = () =>
+      sidebar
+        ? Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+            (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+          )
+        : [];
+
+    const first = focusables()[0];
+    first?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      // Prefer open modal (mounted outside AppShell) over drawer trap/Escape.
+      if (document.querySelector('.modal-backdrop [role="dialog"]')) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setNavOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !sidebar) return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const firstEl = list[0]!;
+      const lastEl = list[list.length - 1]!;
+      if (e.shiftKey && document.activeElement === firstEl) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && document.activeElement === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (document.body.style.overflow === "hidden") {
+        document.body.style.overflow = prevOverflow;
+      }
+      menuBtnRef.current?.focus({ preventScroll: true });
+    };
+  }, [drawerActive]);
+
+  const selectTab = (next: AppTab) => {
+    onTab(next);
+    setNavOpen(false);
+  };
+
+  const withNavClose = (fn: () => void) => () => {
+    setNavOpen(false);
+    fn();
+  };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell${drawerActive ? " nav-open" : ""}`}>
+      {drawerActive && (
+        <button
+          type="button"
+          className="nav-backdrop"
+          tabIndex={-1}
+          aria-label="Chiudi menu"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
+      <aside
+        ref={sidebarRef}
+        id={sidebarId}
+        className="sidebar"
+        aria-label="Navigazione principale"
+        {...(drawerActive
+          ? { role: "dialog" as const, "aria-modal": true as const }
+          : {})}
+        inert={isMobileNav && !navOpen ? true : undefined}
+        aria-hidden={isMobileNav && !navOpen ? true : undefined}
+      >
         <div className="sidebar-brand">
           <p className="brand">Cash Flow</p>
         </div>
@@ -132,7 +263,7 @@ export function AppShell({
                     <button
                       type="button"
                       className={tab === item.id ? "nav-link active" : "nav-link"}
-                      onClick={() => onTab(item.id)}
+                      onClick={() => selectTab(item.id)}
                       aria-current={tab === item.id ? "page" : undefined}
                     >
                       {item.label}
@@ -155,10 +286,18 @@ export function AppShell({
             <EyeIcon masked={masked} />
             <span>{masked ? "Mostra importi" : "Nascondi importi"}</span>
           </button>
-          <button type="button" className="btn primary sidebar-upload" onClick={onUpload}>
+          <button
+            type="button"
+            className="btn primary sidebar-upload"
+            onClick={withNavClose(onUpload)}
+          >
             Carica CSV
           </button>
-          <button type="button" className="btn sidebar-settings" onClick={onSettings}>
+          <button
+            type="button"
+            className="btn sidebar-settings"
+            onClick={withNavClose(onSettings)}
+          >
             Dati e backup
           </button>
         </div>
@@ -166,16 +305,40 @@ export function AppShell({
 
       <div className="main-shell">
         <header className="main-head">
-          <h1 className="page-title">{PAGE_TITLES[tab]}</h1>
+          <div className="main-head-start">
+            <button
+              ref={menuBtnRef}
+              type="button"
+              className="btn shell-menu-btn"
+              aria-expanded={isMobileNav ? navOpen : false}
+              aria-controls={sidebarId}
+              aria-haspopup="dialog"
+              aria-label={navOpen ? "Chiudi menu" : "Apri menu"}
+              onClick={() => {
+                if (document.querySelector('.modal-backdrop [role="dialog"]')) return;
+                setNavOpen((v) => !v);
+              }}
+            >
+              <MenuIcon open={navOpen} />
+            </button>
+            <h1 className="page-title">{PAGE_TITLES[tab]}</h1>
+          </div>
           {authRequired && onLogout && (
             <button type="button" className="btn danger header-logout" onClick={onLogout}>
               Esci
             </button>
           )}
         </header>
-        <main id="main-content" className="main-content" tabIndex={-1}>
-          {children}
-        </main>
+        {/* Header stays interactive (hamburger z-index above backdrop); body inert. */}
+        <div
+          className="main-body"
+          inert={drawerActive ? true : undefined}
+          aria-hidden={drawerActive ? true : undefined}
+        >
+          <main id="main-content" className="main-content" tabIndex={-1}>
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
