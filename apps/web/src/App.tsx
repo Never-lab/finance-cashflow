@@ -5,7 +5,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { AppState, Period, RecurringMark, Transaction } from "@shared/types";
-import { loadState } from "./db";
+import { clearLegacyIdb, loadState } from "./db";
 import { withOverrides } from "@shared/lib/appState";
 import { clearAuthToken, getAuthToken } from "@shared/lib/authToken";
 import { api } from "./api";
@@ -14,6 +14,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { UploadModal } from "./components/UploadModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { AppShell, type AppTab } from "./components/AppShell";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PrivacyProvider } from "./components/PrivacyProvider";
 import type { LiquidityView } from "@shared/lib/liquidity";
 import type { LoanTarget } from "@shared/lib/loans";
@@ -157,6 +158,26 @@ export default function App() {
     void bootApp();
   }, [bootApp]);
 
+  /** Handle Open Banking redirect query (`?bank_sync=ok|error|missing_ref`). */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get("bank_sync");
+    if (!flag) return;
+    if (flag === "ok") {
+      showToast("Banca collegata. Avvia sync da Dati e backup.");
+      setSettingsOpen(true);
+    } else if (flag === "missing_ref") {
+      showToast("Collegamento banca: riferimento mancante");
+    } else {
+      const msg = params.get("msg");
+      showToast(msg ? `Collegamento banca: ${msg}` : "Collegamento banca fallito");
+    }
+    params.delete("bank_sync");
+    params.delete("msg");
+    const qs = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+  }, [showToast]);
+
   /** Evento globale emesso da apiFetch su 401: reset stato e torna al login. */
   useEffect(() => {
     const onLogout = () => {
@@ -285,9 +306,14 @@ export default function App() {
     if (!migrateCandidate) return;
     void api
       .migrate(migrateCandidate)
-      .then(({ state: applied }) => {
+      .then(async ({ state: applied, migrated }) => {
+        if (migrated === false) {
+          showToast("Migrazione saltata: database già popolato");
+          return;
+        }
         setState(applied);
         setMigrateCandidate(null);
+        await clearLegacyIdb();
         showToast("Dati migrati dal browser a SQLite");
       })
       .catch(() => showToast("Errore di connessione al server"));
@@ -336,7 +362,8 @@ export default function App() {
       authRequired={authRequired}
       onLogout={onLogout}
     >
-      <Suspense fallback={<div className="boot">Caricamento…</div>}>
+      <Suspense fallback={<div className="boot" aria-busy="true">Caricamento…</div>}>
+        <ErrorBoundary label={tab} key={tab}>
         {tab === "dashboard" && (
           <Dashboard
             transactions={txns}
@@ -444,6 +471,7 @@ export default function App() {
         {tab === "investimenti" && (
           <Investimenti transactions={txns} refreshKey={dataRefreshKey} />
         )}
+        </ErrorBoundary>
       </Suspense>
 
       <UploadModal

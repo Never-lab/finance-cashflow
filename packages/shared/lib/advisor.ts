@@ -130,9 +130,13 @@ function buildImpegni(
 ): ImpegniSnapshot {
   const paypal = buildPaypalSummary(txns, paypalTargets);
   const loans = buildLoanSummary(txns, mergeLoanTargets(loanTargets));
+  // Ignore "cancelled" mark only when last charge is older than 45 days (no score gaming).
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 45);
+  const cutoffYmd = cutoff.toISOString().slice(0, 10);
   const recurringMonthly = findRecurring(txns)
     .filter(isSubscriptionLike)
-    .filter((r) => marks[r.key] !== "cancelled")
+    .filter((r) => marks[r.key] !== "cancelled" || r.lastDate >= cutoffYmd)
     .reduce((s, r) => s + r.monthlyEstimate, 0);
   const loanMonthly = loans.monthlyBurden;
   const paypalMonthly = paypal.monthlyBurden;

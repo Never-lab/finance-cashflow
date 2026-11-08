@@ -254,12 +254,54 @@ export function ensureBootstrapUser(db: Database.Database): void {
   ).run("local", hashPassword(crypto.randomUUID()), new Date().toISOString());
 }
 
+/** Unique link contribution ↔ transaction (nullable allowed). */
+function migrateContributionTxUnique(db: Database.Database): void {
+  const table = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='contributions'`)
+    .get();
+  if (!table) return;
+
+  // Dedup: keep newest id per (user_id, transaction_id), null out the rest.
+  const dups = db
+    .prepare(
+      `SELECT user_id AS userId, transaction_id AS txId, COUNT(*) AS c
+       FROM contributions
+       WHERE transaction_id IS NOT NULL
+       GROUP BY user_id, transaction_id
+       HAVING c > 1`,
+    )
+    .all() as { userId: number; txId: string; c: number }[];
+  const clear = db.prepare(
+    `UPDATE contributions SET transaction_id = NULL
+     WHERE user_id = ? AND transaction_id = ? AND id != ?`,
+  );
+  for (const d of dups) {
+    const keep = db
+      .prepare(
+        `SELECT id FROM contributions WHERE user_id = ? AND transaction_id = ? ORDER BY date DESC, id DESC LIMIT 1`,
+      )
+      .get(d.userId, d.txId) as { id: string } | undefined;
+    if (keep) clear.run(d.userId, d.txId, keep.id);
+  }
+
+  db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_contributions_user_tx
+     ON contributions(user_id, transaction_id)
+     WHERE transaction_id IS NOT NULL`,
+  );
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_transactions_user_date
+     ON transactions(user_id, date DESC)`,
+  );
+}
+
 /** Esegue tutte le migrazioni idempotenti sull'istanza DB aperta. */
 export function runMigrations(db: Database.Database): void {
   migrateToMultiUser(db);
   migratePayslipLeaveApAc(db);
   migratePayslipNetFields(db);
   ensureBootstrapUser(db);
+  migrateContributionTxUnique(db);
   // After bootstrap user exists (FK). Safe no-op when ids already fingerprinted.
   applyMediolanumIdDedupAllUsers(db);
 }

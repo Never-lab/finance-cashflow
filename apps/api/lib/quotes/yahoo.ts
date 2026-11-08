@@ -40,16 +40,19 @@ export function parseYahooChart(json: YahooChartResponse): QuoteBar[] {
     throw new Error(json.chart?.error?.description ?? "Yahoo: nessun dato");
   }
   const { timestamp, indicators } = result;
-  const quote = indicators.quote[0];
+  const quote = indicators?.quote?.[0];
+  if (!quote || !Array.isArray(timestamp) || !Array.isArray(quote.close)) {
+    throw new Error("Yahoo: payload chart incompleto");
+  }
   const bars: QuoteBar[] = [];
   for (let i = 0; i < timestamp.length; i++) {
     const close = quote.close[i];
     if (close == null) continue;
     bars.push({
       asOf: toDateString(timestamp[i]),
-      open: quote.open[i] ?? null,
-      high: quote.high[i] ?? null,
-      low: quote.low[i] ?? null,
+      open: quote.open?.[i] ?? null,
+      high: quote.high?.[i] ?? null,
+      low: quote.low?.[i] ?? null,
       close,
       source: "yahoo",
     });

@@ -8,11 +8,11 @@ Le regole parent in `~/.claude/CLAUDE.md` restano attive; qui c’è il contesto
 Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale con KPI, grafici, movimenti categorizzati.
 
 - **Owner:** Nicholas  
-- **Path:** `C:\Users\nicho\Documents\Cash` (repo `Never-lab/finance-cashflow`; ex-`Documents\Finance`)  
+- **Path:** `C:\Users\nicho\Documents\Finance` (repo `Never-lab/finance-cashflow`; alias storico `Documents\Cash`)  
 - **Architettura finanziaria personale (nodi Mediolanum/Revolut, Vault, waterfall):** [`docs/finance-stack-unified.md`](docs/finance-stack-unified.md)  
 - **Lingua UI:** italiano  
-- **Privacy:** dati locali su disco (`data/finance.db`) + API Node su localhost (`:5174`). Nessun cloud, nessun multi-utente. IndexedDB resta solo per migrazione one-shot da installazioni precedenti.  
-- **Stile UI:** tema scuro caldo (charcoal `#1c211f`, teal `#6ecfbc`, clay `#e07a4a`), sidebar raggruppata. Brand serif “Cash Flow”.
+- **Privacy:** SQLite locale (`data/finance.db`) + API Node; deploy opzionale Railway con `FINANCE_AUTH=on` (single-tenant). IndexedDB solo migrazione one-shot.  
+- **Stile UI:** tema scuro (charcoal `#1c211f` / `#0e1110`, teal `#5ed4c0`, clay `#e08a5c`), sidebar raggruppata. Brand serif “Cash Flow”.
 
 ## Obiettivo prodotto (roadmap)
 
@@ -28,6 +28,7 @@ Hub personale di **cash flow** (v1): carichi CSV bancari → dashboard locale co
 | **v2 (parziale)** | Tab **Budget** per categoria | **Fatta** (alert avanzati: backlog) |
 | **v3 (parziale)** | Tab **Investimenti**: PAC/ETF/fondi/risparmi, KPI, allocation, P&L, quote Yahoo (+ Finnhub opzionale) | **Fatta** (F1–F3) |
 | **F-deploy** | Auth + Railway + volume SQLite | **Fatta** |
+| **v3.5** | Buste paga PDF, Scadenzario, Mutui, Open Banking GoCardless | **Fatta** |
 | v3.1 | Tier rendimento (T0/T1/T2) in Investimenti | Non iniziata |
 | **v4 (parziale)** | Tab **Piano** + obiettivi Vault (saldi) | **Fatta** (waterfall visuale: backlog) |
 
@@ -140,7 +141,7 @@ Parser: `packages/shared/lib/parseRevolut.ts`.
 2. Cash flow prima di investimenti (v3 investimenti implementata come tab separata).  
 3. Categorie = keyword rules + tipologia Mediolanum; override manuale in UI.  
 4. Quote: Yahoo default; Finnhub se API key in Settings (solo server, mai nel bundle).  
-5. Stile visuale attuale = reference: teal `#1d4e4a`, clay `#c45c26`, fondo caldo `#f3efe6`.
+5. Stile visuale attuale = reference: tema scuro charcoal `#0e1110` / `#1c211f`, teal `#5ed4c0`, clay `#e08a5c` (`apps/web/src/styles.css`).
 
 ## Come lavorare qui (agent)
 
@@ -199,7 +200,7 @@ Utile avere dall’utente **solo quando serve**:
 2. Per **v2 budget:** limiti mensili desiderati o “parti da media ultimi 3 mesi”.  
 3. Opzionale: skill di progetto `finance-cashflow` che punta a questo CLAUDE.md + comandi test — **non obbligatoria**; questo file basta.
 
-Non serve: Open Banking, sync cloud, auth, rewrite React Native.
+Non serve: rewrite React Native / multi-tenant SaaS. Open Banking GoCardless e auth Railway sono già opzionali in-repo.
 
 ## Pitfall noti
 

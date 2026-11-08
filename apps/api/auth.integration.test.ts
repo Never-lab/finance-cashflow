@@ -75,6 +75,7 @@ describe("auth API", () => {
     resetLoginRateLimitForTests();
     const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), "fin-reg-"));
     process.env.DATABASE_PATH = path.join(freshDir, "t.db");
+    process.env.FINANCE_ALLOW_REGISTER = "on";
     delete process.env.FINANCE_USERNAME;
     delete process.env.FINANCE_PASSWORD;
 

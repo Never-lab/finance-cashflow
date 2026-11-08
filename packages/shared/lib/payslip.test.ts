@@ -305,9 +305,9 @@ describe("matchBankCredit", () => {
     expect(r.bankCredit).toBe(2141.13);
   });
 
-  it("is missing when no stipend in window", () => {
+  it("is missing when no stipend in payDate window or competence month", () => {
     const r = matchBankCredit(
-      [{ ...stipend, date: "2026-06-01", amount: 100 }],
+      [{ ...stipend, date: "2026-05-01", amount: 100 }],
       {
         payDate: "2026-07-14",
         periodYear: 2026,
@@ -317,6 +317,20 @@ describe("matchBankCredit", () => {
     );
     expect(r.status).toBe("missing");
     expect(r.bankCredit).toBeNull();
+  });
+
+  it("falls back to competence month when payDate window is empty", () => {
+    const r = matchBankCredit(
+      [{ ...stipend, date: "2026-06-01", amount: 1507.43 }],
+      {
+        payDate: "2026-07-14",
+        periodYear: 2026,
+        periodMonth: 6,
+        payslipNet: 1507.43,
+      },
+    );
+    expect(r.status).toBe("matched");
+    expect(r.bankCredit).toBe(1507.43);
   });
 
   it("picks closest credit instead of summing unrelated hits", () => {

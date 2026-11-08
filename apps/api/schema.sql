@@ -85,6 +85,13 @@ CREATE TABLE IF NOT EXISTS contributions (
   FOREIGN KEY (user_id, instrument_id) REFERENCES instruments(user_id, id) ON DELETE CASCADE
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contributions_user_tx
+  ON contributions(user_id, transaction_id)
+  WHERE transaction_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_user_date
+  ON transactions(user_id, date DESC);
+
 CREATE TABLE IF NOT EXISTS quotes_cache (
   ticker TEXT NOT NULL,
   as_of TEXT NOT NULL,

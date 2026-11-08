@@ -28,6 +28,13 @@ function clientIp(c: { req: { header: (name: string) => string | undefined } }):
   );
 }
 
+/** Registration open when FINANCE_ALLOW_REGISTER=on, or when no auth_user exists yet (bootstrap). */
+function isRegistrationOpen(db: ReturnType<typeof getDb>): boolean {
+  if (process.env.FINANCE_ALLOW_REGISTER === "on") return true;
+  const row = db.prepare("SELECT 1 FROM auth_user LIMIT 1").get();
+  return !row;
+}
+
 /** POST /api/auth/register — crea utente e restituisce token sessione. */
 authRoutes.post("/register", async (c) => {
   if (!isAuthEnabled()) {
@@ -36,6 +43,14 @@ authRoutes.post("/register", async (c) => {
   const secret = getSessionSecret();
   if (!secret) {
     return c.json({ error: "Auth misconfigured" }, 503);
+  }
+
+  const db = getDb();
+  if (!isRegistrationOpen(db)) {
+    return c.json(
+      { error: "Registrazione chiusa. Imposta FINANCE_ALLOW_REGISTER=on per abilitarla." },
+      403,
+    );
   }
 
   const ip = clientIp(c);
@@ -55,7 +70,7 @@ authRoutes.post("/register", async (c) => {
   }
 
   try {
-    const user = createAuthUser(getDb(), username, password);
+    const user = createAuthUser(db, username, password);
     const token = makeSessionToken(String(user.id), secret);
     return c.json({ token, username: user.username }, 201);
   } catch (e) {

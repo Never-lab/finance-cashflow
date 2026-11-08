@@ -7,10 +7,16 @@
 import { serve } from "@hono/node-server";
 import fs from "node:fs";
 import path from "node:path";
+import { romeParts, romeYmd } from "@shared/lib/romeTime";
 import { createApp, DIST_DIR } from "./app";
 import { getDb } from "./db";
+import { getSessionSecret, isAuthEnabled } from "./lib/authSession";
 import { syncAllLinkedUsers } from "./lib/bankSync";
 import { isGoCardlessConfigured } from "./lib/gocardless";
+
+if (isAuthEnabled() && !getSessionSecret()) {
+  throw new Error("FINANCE_AUTH=on requires FINANCE_SECRET");
+}
 
 /** Inizializza il singleton DB (schema, migrazioni, utente auth da env se abilitato). */
 getDb();
@@ -32,16 +38,14 @@ function startBankSyncCron(): void {
 
   let lastRunDay = "";
   const tick = async () => {
-    const nowRome = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }),
-    );
-    const day = nowRome.toISOString().slice(0, 10);
-    if (nowRome.getHours() !== 6) return;
+    const parts = romeParts();
+    if (parts.hour !== 6) return;
+    const day = romeYmd();
     if (lastRunDay === day) return;
-    lastRunDay = day;
     try {
       console.log("[bank-sync] cron start");
       await syncAllLinkedUsers(getDb());
+      lastRunDay = day;
       console.log("[bank-sync] cron done");
     } catch (e) {
       console.error("[bank-sync] cron error", e);

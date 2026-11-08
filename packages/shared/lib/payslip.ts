@@ -77,7 +77,10 @@ export type PayslipSummary = {
   refresh?: { reparsed: number; needsReimport: number };
 };
 
+/** Loose EPS for Acc. c.c. leave totals (euro cents noise). */
 const AMOUNT_EPS = 1;
+/** Tight EPS for bank↔payslip net match (€0.02). */
+const BANK_MATCH_EPS = 0.02;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -599,28 +602,35 @@ export function matchBankCredit(
 ): { bankCredit: number | null; status: BankMatchStatus } {
   const { payDate, periodYear, periodMonth, payslipNet } = opts;
 
-  const hits = transactions.filter((t) => {
-    if (!isStipendCredit(t)) return false;
-    if (payDate) return daysBetween(t.date, payDate) <= 5;
-    if (periodMonth === 13) {
-      return t.date.startsWith(`${periodYear}-12`);
-    }
+  const inMonth = (t: Transaction): boolean => {
+    if (periodMonth === 13) return t.date.startsWith(`${periodYear}-12`);
     const prefix = `${periodYear}-${String(periodMonth).padStart(2, "0")}`;
     return t.date.startsWith(prefix);
+  };
+
+  let hits = transactions.filter((t) => {
+    if (!isStipendCredit(t)) return false;
+    if (payDate) return daysBetween(t.date, payDate) <= 5;
+    return inMonth(t);
   });
+  // Fallback: payDate window empty → try month of competence.
+  if (hits.length === 0 && payDate) {
+    hits = transactions.filter((t) => isStipendCredit(t) && inMonth(t));
+  }
 
   if (hits.length === 0) return { bankCredit: null, status: "missing" };
 
   if (payslipNet != null) {
+    const net = round2(payslipNet);
     const closest = hits.reduce((a, b) =>
-      Math.abs(a.amount - payslipNet) <= Math.abs(b.amount - payslipNet) ? a : b,
+      Math.abs(a.amount - net) <= Math.abs(b.amount - net) ? a : b,
     );
     const closestAmt = round2(closest.amount);
-    if (near(closestAmt, payslipNet)) {
+    if (near(closestAmt, net, BANK_MATCH_EPS)) {
       return { bankCredit: closestAmt, status: "matched" };
     }
     const sum = round2(hits.reduce((s, t) => s + t.amount, 0));
-    if (hits.length > 1 && near(sum, payslipNet)) {
+    if (hits.length > 1 && near(sum, net, BANK_MATCH_EPS)) {
       return { bankCredit: sum, status: "matched" };
     }
     return { bankCredit: closestAmt, status: "doubt" };

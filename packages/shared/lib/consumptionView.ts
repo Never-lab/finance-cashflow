@@ -43,11 +43,11 @@ export function isNonConsumption(t: Transaction): boolean {
 }
 
 /**
- * Sottoinsieme per KPI e grafici: cash-flow senza categoria Trasferimenti.
+ * Sottoinsieme per KPI e grafici: cash-flow senza trasferimenti/top-up (stesse regole di isNonConsumption).
  * @param txns - Tutte le transazioni (internal già risolto lato chiamante se serve)
  */
 export function forConsumption(txns: Transaction[]): Transaction[] {
-  return forCashflow(txns).filter((t) => !NON_CONSUMPTION_CATEGORIES.has(t.category));
+  return forCashflow(txns).filter((t) => !isNonConsumption(t));
 }
 
 /**

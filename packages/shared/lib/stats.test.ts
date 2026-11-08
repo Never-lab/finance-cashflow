@@ -46,6 +46,22 @@ describe("stats", () => {
     expect(computeKpis(txns)).toEqual({ income: 1000, expense: 250, net: 750, count: 3 });
   });
 
+  it("skips non-EUR currency in KPIs", () => {
+    const mixed: Transaction[] = [
+      ...txns,
+      {
+        id: "usd",
+        date: "2026-01-20",
+        description: "USD",
+        amount: 500,
+        currency: "USD",
+        source: "revolut",
+        category: "Altro",
+      },
+    ];
+    expect(computeKpis(mixed)).toEqual({ income: 1000, expense: 250, net: 750, count: 3 });
+  });
+
   it("monthly series", () => {
     const s = monthlySeries(txns);
     expect(s).toHaveLength(2);

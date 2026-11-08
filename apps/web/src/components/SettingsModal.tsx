@@ -146,6 +146,13 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
   }
 
   function download() {
+    if (
+      !confirm(
+        `Il backup JSON contiene ${state.transactions.length} movimenti con descrizioni e importi. Non condividerlo per email/chat. Continuare?`,
+      )
+    ) {
+      return;
+    }
     const blob = new Blob([exportStateJson(state)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -334,6 +341,10 @@ export function SettingsModal({ open, state, authRequired, onClose, onReplace, o
         {recomputeMsg && <p className="muted">{recomputeMsg}</p>}
 
         <h3>Backup</h3>
+        <p className="muted">
+          JSON = movimenti + override (PII finanziario). Non include strumenti/cedolini PDF — per
+          restore completo copia anche <code>data/finance.db</code> e la cartella payslips.
+        </p>
         <div className="settings-actions">
           <button type="button" className="btn primary" onClick={download}>
             Esporta backup JSON

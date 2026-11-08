@@ -98,6 +98,10 @@ export function replaceAppState(db: Database.Database, userId: number, state: Ap
     db.prepare(`DELETE FROM recurring_marks WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM internal_overrides WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM transactions WHERE user_id = ?`).run(userId);
+    // Drop stale contribution→tx links (transactions wiped above).
+    db.prepare(
+      `UPDATE contributions SET transaction_id = NULL WHERE user_id = ? AND transaction_id IS NOT NULL`,
+    ).run(userId);
 
     for (const t of s.transactions) {
       insertTx.run({
@@ -173,6 +177,8 @@ export function mergeImportIntoDb(
   });
 
   run(rows);
+  // Collapse Mediolanum truncation duplicates so re-imports cannot double KPI.
+  applyMediolanumIdDedup(db, userId);
   return { added, updated };
 }
 

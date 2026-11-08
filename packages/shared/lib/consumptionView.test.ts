@@ -49,4 +49,20 @@ describe("forConsumption", () => {
     ];
     expect(forConsumption(rows.map((t) => ({ ...t, internal: false })))).toHaveLength(1);
   });
+
+  it("excludes Mediolanum Revolut funding even if category is not Trasferimenti", () => {
+    const rows = [
+      tx({
+        id: "1",
+        date: "2026-08-01",
+        description: "Bonifico Pocket Revolut",
+        amount: -100,
+        category: "Altro",
+        source: "mediolanum",
+      }),
+      tx({ id: "2", date: "2026-08-02", description: "Esselunga", amount: -20, category: "Spesa", source: "revolut" }),
+    ];
+    expect(forConsumption(rows)).toHaveLength(1);
+    expect(forConsumption(rows)[0]!.id).toBe("2");
+  });
 });

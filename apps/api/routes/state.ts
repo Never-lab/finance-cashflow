@@ -7,6 +7,7 @@
 import { Hono } from "hono";
 import { getDb } from "../db";
 import type { AppState, RecurringMark, Transaction } from "@shared/types";
+import { validateAppState } from "@shared/lib/appState";
 import {
   loadAppState,
   replaceAppState,
@@ -112,11 +113,18 @@ stateRoutes.post("/migrate", async (c) => {
   const body = await c.req.json<AppState & { force?: boolean }>();
   const db = getDb();
   const current = loadAppState(db, userId);
-  if (body.force || current.transactions.length === 0) {
-    const { force: _force, ...state } = body;
-    replaceAppState(db, userId, state);
+  const force = Boolean(body.force);
+  if (!force && current.transactions.length > 0) {
+    return c.json({ ok: false, migrated: false, state: current }, 409);
   }
-  return c.json({ ok: true, state: loadAppState(db, userId) });
+  try {
+    const { force: _force, ...rest } = body;
+    const state = validateAppState(rest);
+    replaceAppState(db, userId, state);
+    return c.json({ ok: true, migrated: true, state: loadAppState(db, userId) });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
+  }
 });
 
 /** POST /api/recompute — ricalcola categorie/interni, cost_basis, sync investimenti, ri-parse PDF cedolini. */
@@ -149,8 +157,13 @@ stateRoutes.get("/export", (c) => {
 /** POST /api/import — replace completo stato da backup JSON. */
 stateRoutes.post("/import", async (c) => {
   const userId = getUserId(c);
-  const body = await c.req.json<AppState>();
+  const body = await c.req.json<unknown>();
   const db = getDb();
-  replaceAppState(db, userId, body);
-  return c.json(loadAppState(db, userId));
+  try {
+    const state = validateAppState(body);
+    replaceAppState(db, userId, state);
+    return c.json(loadAppState(db, userId));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
+  }
 });

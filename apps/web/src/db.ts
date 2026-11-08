@@ -3,7 +3,7 @@
  * In produzione i dati vivono su SQLite via API; questo modulo serve solo alla migrazione
  * one-shot quando il server è vuoto ma il browser ha ancora movimenti salvati localmente.
  */
-import { get, set } from "idb-keyval";
+import { del, get, set } from "idb-keyval";
 import type { AppState } from "@shared/types";
 import { normalize } from "@shared/lib/appState";
 
@@ -19,6 +19,11 @@ export async function loadState(): Promise<AppState> {
 /** Persiste lo stato su IndexedDB (path legacy, non usato dal flusso API principale). */
 export async function saveState(state: AppState): Promise<void> {
   await set(KEY, state);
+}
+
+/** Cancella lo snapshot IndexedDB dopo migrazione riuscita verso SQLite. */
+export async function clearLegacyIdb(): Promise<void> {
+  await del(KEY);
 }
 
 export * from "@shared/lib/appState";

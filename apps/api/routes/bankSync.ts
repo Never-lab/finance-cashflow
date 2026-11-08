@@ -5,7 +5,6 @@
 import { Hono } from "hono";
 import type { BankSource } from "@shared/types";
 import { getDb } from "../db";
-import { getBankLinkByReference } from "../lib/bankLinksRepo";
 import { getUserId } from "../lib/requestContext";
 import type { AppEnv } from "../lib/honoTypes";
 import {
@@ -63,6 +62,7 @@ bankSyncRoutes.post("/bank-sync/run", async (c) => {
 /**
  * GET /api/bank-sync/callback — redirect banca (pubblico, no Bearer).
  * Query: `ref` = reference impostata al create requisition.
+ * Finalize only; sync runs from authenticated UI after `?bank_sync=ok`.
  */
 bankSyncRoutes.get("/bank-sync/callback", async (c) => {
   const ref = (c.req.query("ref") || c.req.query("reference") || "").trim();
@@ -73,15 +73,6 @@ bankSyncRoutes.get("/bank-sync/callback", async (c) => {
   const result = await finalizeBankLinkByReference(getDb(), ref);
   if (!result.ok) {
     return c.redirect(`/?bank_sync=error&msg=${encodeURIComponent(result.error ?? "errore")}`);
-  }
-
-  const row = getBankLinkByReference(getDb(), ref);
-  if (row) {
-    try {
-      await syncBankLinksForUser(getDb(), row.user_id);
-    } catch {
-      /* best-effort sync after link */
-    }
   }
   return c.redirect("/?bank_sync=ok");
 });

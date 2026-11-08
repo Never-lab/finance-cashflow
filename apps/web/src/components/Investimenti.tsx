@@ -54,8 +54,25 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
   const [depAmount, setDepAmount] = useState("");
   const [depNote, setDepNote] = useState("");
   const [linkTxId, setLinkTxId] = useState("");
+  const [quotesBusy, setQuotesBusy] = useState(false);
 
   const isCashType = CASH_TYPES.has(type);
+
+  async function onRefreshQuotes() {
+    setQuotesBusy(true);
+    setError(null);
+    try {
+      const res = await api.refreshQuotes();
+      await refresh();
+      if (res.errors.length > 0) {
+        setError(`Quote: ${res.updated.length} ok, ${res.errors.length} errori`);
+      }
+    } catch {
+      setError("Aggiornamento quotazioni fallito");
+    } finally {
+      setQuotesBusy(false);
+    }
+  }
 
   async function refresh() {
     setError(null);
@@ -83,10 +100,18 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
       setContributions([]);
       return;
     }
+    let cancelled = false;
     void api
       .listContributions(selectedId)
-      .then(setContributions)
-      .catch(() => setError("Errore di connessione al server"));
+      .then((rows) => {
+        if (!cancelled) setContributions(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Errore di connessione al server");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId]);
 
   useEffect(() => {
@@ -95,10 +120,18 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
       setInstrumentQuotes([]);
       return;
     }
+    let cancelled = false;
     void api
       .getQuoteHistory(ticker)
-      .then(setInstrumentQuotes)
-      .catch(() => setInstrumentQuotes([]));
+      .then((bars) => {
+        if (!cancelled) setInstrumentQuotes(bars);
+      })
+      .catch(() => {
+        if (!cancelled) setInstrumentQuotes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId, instruments]);
 
   function resetForm() {
@@ -283,6 +316,14 @@ export function Investimenti({ transactions, refreshKey = 0 }: Props) {
 
       <div className="toolbar">
         <h3 className="stat-section-title">Strumenti</h3>
+        <button
+          type="button"
+          className="btn"
+          disabled={quotesBusy || instruments.every((i) => !i.ticker)}
+          onClick={() => void onRefreshQuotes()}
+        >
+          {quotesBusy ? "Aggiornamento…" : "Aggiorna quotazioni"}
+        </button>
         <button type="button" className="btn primary" onClick={() => setShowAdd((s) => !s)}>
           {showAdd ? "Annulla" : "+ Aggiungi strumento"}
         </button>

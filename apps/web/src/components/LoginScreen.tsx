@@ -57,9 +57,9 @@ export function LoginScreen({ onSuccess }: Props) {
   const isRegister = mode === "register";
 
   return (
-    <div className="login-screen">
+    <main className="login-screen">
       <div className="login-card panel">
-        <p className="brand login-brand">Cash Flow</p>
+        <h1 className="brand login-brand">Cash Flow</h1>
         <p className="muted login-sub">
           {isRegister ? "Crea un nuovo account" : "Accedi a Cash Flow"}
         </p>
@@ -72,6 +72,7 @@ export function LoginScreen({ onSuccess }: Props) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              disabled={busy}
             />
           </label>
           <label className="field">
@@ -83,6 +84,7 @@ export function LoginScreen({ onSuccess }: Props) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
+              disabled={busy}
             />
           </label>
           {isRegister && (
@@ -95,10 +97,15 @@ export function LoginScreen({ onSuccess }: Props) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={8}
+                disabled={busy}
               />
             </label>
           )}
-          {error && <p className="error">{error}</p>}
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
           <button type="submit" className="btn primary login-submit" disabled={busy}>
             {busy ? (isRegister ? "Registrazione…" : "Accesso…") : isRegister ? "Registrati" : "Accedi"}
           </button>
@@ -121,6 +128,6 @@ export function LoginScreen({ onSuccess }: Props) {
           )}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

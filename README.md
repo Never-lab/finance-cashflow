@@ -106,6 +106,12 @@ Open Banking (GoCardless AIS): Settings → Collega Mediolanum/Revolut → SCA �
 
 I PDF cedolini restano su `/data/payslips/{userId}/` (stesso volume). Dopo il primo import, «Ricalcola tutto» li ri-parsa senza ri-caricarli. Estrazione: `@firecrawl/anydoc` → Markdown (locale, senza OCR cloud); fallback `pdf-parse` se anydoc non disponibile.
 
-Health: `GET /api/health` → `{ "ok": true, … }`.
+Health: `GET /api/health` → `{ "ok": true, "dbOk": true, … }`.
+
+### Rollback / backup volume
+
+1. Snapshot volume Railway (`/data/finance.db`, `/data/finance.db-wal`, `/data/payslips/`) prima di deploy rischiosi.
+2. Restore: rimetti i file sul volume e riavvia il servizio; oppure Settings → Importa backup JSON (solo movimenti/override).
+3. Rollback codice: redeploy del commit precedente su `master` (Railway history).
 
 Build: `nixpacks.toml` (Node 22 + native build per `better-sqlite3`).

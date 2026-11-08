@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
+import { getDb, resolveDbPath } from "./db";
 import { authMiddleware } from "./lib/authMiddleware";
 import { isAuthEnabled } from "./lib/authSession";
 import { authRoutes } from "./routes/auth";
@@ -38,13 +39,23 @@ export function createApp(): Hono {
   const app = new Hono();
 
   /** GET /api/health — stato servizio, storage sqlite, flag auth. */
-  app.get("/api/health", (c) =>
-    c.json({
-      ok: true,
+  app.get("/api/health", (c) => {
+    let dbOk = false;
+    try {
+      getDb().prepare("SELECT 1").get();
+      dbOk = true;
+    } catch {
+      dbOk = false;
+    }
+    const dbPath = resolveDbPath();
+    return c.json({
+      ok: dbOk,
       storage: "sqlite",
+      dbOk,
+      dbPath: dbPath === ":memory:" ? ":memory:" : path.basename(dbPath),
       auth: isAuthEnabled(),
-    }),
-  );
+    });
+  });
 
   app.route("/api/auth", authRoutes);
 

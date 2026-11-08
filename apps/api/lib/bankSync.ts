@@ -95,14 +95,21 @@ export async function startBankLink(
   return { url: req.link };
 }
 
-/** After bank redirect: finalize accounts for reference. */
+/** After bank redirect: finalize accounts for reference (one-shot while pending). */
 export async function finalizeBankLinkByReference(
   db: Database.Database,
   reference: string,
-): Promise<{ ok: boolean; source?: BankSource; error?: string }> {
+): Promise<{ ok: boolean; source?: BankSource; error?: string; alreadyLinked?: boolean }> {
   const link = getBankLinkByReference(db, reference);
   if (!link?.requisition_id) {
     return { ok: false, error: "reference sconosciuta" };
+  }
+  // Replay of an already-linked ref: idempotent OK, no re-finalize.
+  if (link.status === "linked") {
+    return { ok: true, source: link.source, alreadyLinked: true };
+  }
+  if (link.status !== "pending") {
+    return { ok: false, source: link.source, error: "reference non più valida" };
   }
 
   try {

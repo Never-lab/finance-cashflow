@@ -41,21 +41,30 @@ export type Kpis = {
   count: number;
 };
 
+/** EUR-only aggregates (app KPI are euro-denominated; skip foreign currency rows). */
+export function isEurCurrency(currency: string | undefined | null): boolean {
+  return !currency || currency.trim().toUpperCase() === "EUR";
+}
+
 /** Somma entrate/uscite nette sul set passato. */
 export function computeKpis(txns: Transaction[]): Kpis {
   let income = 0;
   let expense = 0;
+  let count = 0;
   for (const t of txns) {
+    if (!isEurCurrency(t.currency)) continue;
+    count++;
     if (t.amount > 0) income += t.amount;
     else expense += -t.amount;
   }
-  return { income, expense, net: income - expense, count: txns.length };
+  return { income, expense, net: income - expense, count };
 }
 
 /** Aggregato per YYYY-MM ordinato cronologicamente. */
 export function monthlySeries(txns: Transaction[]): { month: string; income: number; expense: number; net: number }[] {
   const map = new Map<string, { income: number; expense: number }>();
   for (const t of txns) {
+    if (!isEurCurrency(t.currency)) continue;
     const month = t.date.slice(0, 7);
     const cur = map.get(month) ?? { income: 0, expense: 0 };
     if (t.amount > 0) cur.income += t.amount;
@@ -76,6 +85,7 @@ export function monthlySeries(txns: Transaction[]): { month: string; income: num
 export function categoryBreakdown(txns: Transaction[]): { category: string; total: number }[] {
   const map = new Map<string, number>();
   for (const t of txns) {
+    if (!isEurCurrency(t.currency)) continue;
     if (t.amount >= 0) continue;
     map.set(t.category, (map.get(t.category) ?? 0) + -t.amount);
   }

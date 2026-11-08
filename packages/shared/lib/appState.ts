@@ -121,11 +121,76 @@ export function exportStateJson(state: AppState): string {
   return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), ...state }, null, 2);
 }
 
-/** @throws Se struttura backup invalida */
-export function parseStateJson(text: string): AppState {
-  const raw = JSON.parse(text) as Partial<AppState> & { version?: number };
-  if (!Array.isArray(raw.transactions)) {
+const BANK_SOURCES = new Set(["mediolanum", "revolut"]);
+
+/** Runtime-validate a transaction row from backup/API JSON. */
+export function assertTransaction(raw: unknown, index: number): Transaction {
+  if (!raw || typeof raw !== "object") {
+    throw new Error(`Backup non valido: transactions[${index}] non è un oggetto.`);
+  }
+  const t = raw as Record<string, unknown>;
+  if (typeof t.id !== "string" || !t.id) {
+    throw new Error(`Backup non valido: transactions[${index}].id mancante.`);
+  }
+  if (typeof t.date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(t.date)) {
+    throw new Error(`Backup non valido: transactions[${index}].date non ISO.`);
+  }
+  if (typeof t.amount !== "number" || !Number.isFinite(t.amount)) {
+    throw new Error(`Backup non valido: transactions[${index}].amount non numerico.`);
+  }
+  if (typeof t.source !== "string" || !BANK_SOURCES.has(t.source)) {
+    throw new Error(`Backup non valido: transactions[${index}].source non valido.`);
+  }
+  if (typeof t.description !== "string") {
+    throw new Error(`Backup non valido: transactions[${index}].description mancante.`);
+  }
+  if (typeof t.category !== "string") {
+    throw new Error(`Backup non valido: transactions[${index}].category mancante.`);
+  }
+  return {
+    id: t.id,
+    date: t.date.slice(0, 10),
+    description: t.description,
+    amount: t.amount,
+    currency: typeof t.currency === "string" && t.currency ? t.currency : "EUR",
+    source: t.source as Transaction["source"],
+    category: t.category,
+    internal: typeof t.internal === "boolean" ? t.internal : undefined,
+  };
+}
+
+/** Normalize + validate AppState from untrusted JSON object. */
+export function validateAppState(raw: unknown): AppState {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("Backup non valido: root non è un oggetto.");
+  }
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.transactions)) {
     throw new Error("Backup non valido: manca transactions[].");
   }
-  return normalize(raw as AppState);
+  const transactions = o.transactions.map((row, i) => assertTransaction(row, i));
+  const categoryOverrides =
+    o.categoryOverrides && typeof o.categoryOverrides === "object" && !Array.isArray(o.categoryOverrides)
+      ? (o.categoryOverrides as Record<string, string>)
+      : {};
+  const recurringMarks =
+    o.recurringMarks && typeof o.recurringMarks === "object" && !Array.isArray(o.recurringMarks)
+      ? (o.recurringMarks as Record<string, RecurringMark>)
+      : {};
+  const internalOverrides =
+    o.internalOverrides && typeof o.internalOverrides === "object" && !Array.isArray(o.internalOverrides)
+      ? (o.internalOverrides as Record<string, boolean>)
+      : {};
+  return normalize({ transactions, categoryOverrides, recurringMarks, internalOverrides });
+}
+
+/** @throws Se struttura backup invalida */
+export function parseStateJson(text: string): AppState {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error("Backup non valido: JSON non valido.");
+  }
+  return validateAppState(raw);
 }

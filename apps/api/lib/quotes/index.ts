@@ -44,6 +44,37 @@ export function getCachedClose(db: Database.Database, ticker: string): number | 
   return row?.close ?? null;
 }
 
+/** Barre in cache nel range [from, to] inclusive. */
+export function getCachedBars(
+  db: Database.Database,
+  ticker: string,
+  from: string,
+  to: string,
+): QuoteBar[] {
+  const rows = db
+    .prepare(
+      `SELECT as_of, open, high, low, close, source FROM quotes_cache
+       WHERE ticker = ? AND as_of >= ? AND as_of <= ?
+       ORDER BY as_of ASC`,
+    )
+    .all(ticker, from, to) as {
+    as_of: string;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    close: number;
+    source: string;
+  }[];
+  return rows.map((r) => ({
+    asOf: r.as_of,
+    open: r.open,
+    high: r.high,
+    low: r.low,
+    close: r.close,
+    source: r.source,
+  }));
+}
+
 type CachedBar = QuoteBar & { fetchedAt: string };
 
 function getCachedBar(db: Database.Database, ticker: string, asOf: string): CachedBar | null {

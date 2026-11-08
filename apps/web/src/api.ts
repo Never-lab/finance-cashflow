@@ -134,11 +134,23 @@ export const api = {
       body: JSON.stringify({ key, mark }),
     }).then((r) => json<AppState>(r)),
   /** POST /api/migrate — importa stato JSON/IndexedDB; `force` sovrascrive dati server. */
-  migrate: (state: AppState, force = false) =>
-    apiFetch("/api/migrate", {
+  migrate: async (state: AppState, force = false) => {
+    const res = await apiFetch("/api/migrate", {
       method: "POST",
       body: JSON.stringify({ ...state, force }),
-    }).then((r) => json<{ ok: boolean; state: AppState }>(r)),
+    });
+    const body = (await res.json()) as {
+      ok: boolean;
+      migrated?: boolean;
+      state: AppState;
+      error?: string;
+    };
+    if (res.status === 409) {
+      return { ok: false, migrated: false as const, state: body.state };
+    }
+    if (!res.ok) throw new Error(body.error ?? (await res.text().catch(() => res.statusText)));
+    return { ok: true, migrated: body.migrated !== false, state: body.state };
+  },
   /** GET /api/instruments — elenco strumenti con posizione (holding). */
   listInstruments: () =>
     apiFetch("/api/instruments").then((r) => json<InstrumentWithHolding[]>(r)),
